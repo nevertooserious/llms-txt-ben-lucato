@@ -3,8 +3,9 @@ import { loadEnvConfig } from '@next/env';
 import type { NextConfig } from 'next';
 
 // The shared .env lives at the repository root (see .env.example); Next only reads
-// apps/web by default. `next dev` and `next build` run from apps/web.
-loadEnvConfig(path.resolve(process.cwd(), '../..'));
+// apps/web by default and caches that result, hence forceReload. `next dev` and
+// `next build` run from apps/web.
+loadEnvConfig(path.resolve(process.cwd(), '../..'), process.env.NODE_ENV !== 'production', console, true);
 
 const nextConfig: NextConfig = {
   // Workspace packages export TypeScript source; Next compiles them.

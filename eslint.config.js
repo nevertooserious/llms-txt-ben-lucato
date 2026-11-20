@@ -46,4 +46,20 @@ export default tseslint.config(
       'The crawler owns all fetching of target sites, behind the SSRF guard.',
     ),
   },
+  // Server code may not call fetch either (LLM calls go through the Anthropic SDK);
+  // browser components in apps/web may still fetch the app's own /api.
+  {
+    files: [
+      'packages/{contracts,generator,monitor,db}/src/**/*.ts',
+      'apps/worker/**/*.ts',
+      'apps/web/src/app/**/route.ts',
+      'apps/web/src/server/**/*.{ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        { name: 'fetch', message: 'The crawler owns all fetching of target sites, behind the SSRF guard.' },
+      ],
+    },
+  },
 );
