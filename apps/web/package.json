@@ -1,0 +1,24 @@
+{
+  "name": "@llms-txt/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "next typegen && tsc --project ."
+  },
+  "dependencies": {
+    "@llms-txt/contracts": "*",
+    "@llms-txt/db": "*",
+    "next": "^16.4.6",
+    "pg-boss": "^12.38.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0"
+  }
+}

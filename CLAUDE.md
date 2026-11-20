@@ -4,17 +4,17 @@ A web app that takes a website URL, generates an llms.txt (spec: https://llmstxt
 
 ## Current state
 
-Design only; no application code yet. Before writing code, read:
+Project skeleton: an npm workspaces monorepo with typed stubs for every component; no pipeline logic yet. `README.md` has the layout and setup. Before writing code, read:
 
 - `docs/design/README.md`: the system design, including open questions that are not yet decided.
 - `db/schema.sql`: the data model. CI applies it to Postgres 14 on every PR (`scripts/validate-schema.sh`).
 
-The stack in the design doc (TypeScript, Next.js, Node worker, pg-boss, Playwright) is proposed, not confirmed. Check with the user before scaffolding.
+Stack (confirmed): TypeScript on Node 24, Next.js for the web app, a Node worker, Playwright for headless rendering, pg-boss for the queue, node-postgres with hand-written SQL, Vitest, ESLint. TypeScript is pinned to 6.0 because typescript-eslint does not support 7 yet.
 
 ## Design rules to keep
 
 - **Five components:** crawler, extractor, generator, monitor, frontend. Keep their boundaries.
-- **Crawler owns all network I/O.** The extractor is a pure function from HTML to a record and is tested with saved HTML fixtures.
+- **Crawler owns all network I/O.** The extractor is a pure function from HTML to a record and is tested with saved HTML fixtures. `eslint.config.js` enforces both; keep its rules in step if packages change.
 - **One writer per column group in `pages`.** A stage writes only its own columns.
 - **User edits are inputs, not output edits.** They live in `workspace_page_overrides` and are applied on every render.
 - **LLM output is cached against a hash of its inputs.** Never ask the LLM again for unchanged inputs; rewording causes spurious new versions.
