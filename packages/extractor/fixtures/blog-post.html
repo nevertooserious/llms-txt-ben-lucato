@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>How we cut build times in half — Lumen Blog</title>
+    <meta property="og:type" content="article" />
+    <meta property="article:published_time" content="2026-03-03T09:00:00Z" />
+    <script type="application/ld+json">
+      {"@context": "https://schema.org", "@type": "BlogPosting", "headline": "How we cut build times in half"}
+    </script>
+  </head>
+  <body>
+    <header><a href="/">Lumen</a> <nav><a href="/blog">Blog</a></nav></header>
+    <article>
+      <header>
+        <h1>How we cut build times in half</h1>
+        <p class="byline">By Dana Whitfield · 3 March 2026</p>
+        <p class="meta">Updated 2 days ago · 1,204 views</p>
+      </header>
+      <p>
+        Large sites were taking minutes to build because every page re-parsed the same templates. Caching parsed
+        templates between pages removed most of that work.
+      </p>
+      <h2>Where the time went</h2>
+      <p>
+        Profiling showed that template parsing, not rendering, dominated the build. A site with 4,000 pages parsed its
+        layout 4,000 times.
+      </p>
+      <h2>What we changed</h2>
+      <p>Templates are now parsed once per build and shared by every page that uses them.</p>
+    </article>
+    <section class="related">
+      <h2>Related posts</h2>
+      <article><a href="/blog/incremental-builds">Incremental builds are here</a></article>
+    </section>
+    <footer><p>© 2026 Lumen Labs</p></footer>
+  </body>
+</html>

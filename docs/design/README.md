@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps that file up to date as the site changes.
 
-Status: project skeleton. Every component exists as a package with typed stubs (see the [root README](../../README.md)); no pipeline logic is implemented yet. The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
+Status: project skeleton with the extractor implemented. Every other component exists as a package with typed stubs (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
 
 ## Contents
 
@@ -54,7 +54,9 @@ A pure function from HTML to a `PageRecord`. No I/O, so it is tested against sav
 - **Title:** Open Graph title, then the title tag, then the first H1.
 - **Description:** meta description, then Open Graph description, then the first paragraph.
 - **Page type:** one of `home`, `docs`, `api`, `guide`, `blog`, `product`, `pricing`, `about`, `legal`, `other`.
-- **Content:** main content converted to markdown.
+- **Language and canonical URL:** from `<html lang>` and `<link rel="canonical">`.
+- **Page type rules:** the first URL path segment (or subdomain, as in `docs.`) that names a section decides; a docs section is narrowed by a later `api` or `guide` segment. Only when the URL says nothing do `og:type` and JSON-LD types count.
+- **Content:** `<main>`, else the only top-level `<article>`, else the smallest element holding 80% of the page's prose (which finds content in client-rendered `<div>` markup), else `<body>` without nav, header, footer and aside. Converted to markdown with links made absolute against the final URL.
 - **Hashes:** `content_digest` and `listing_fields_hash`, described under [Monitor](#5-monitor).
 
 ### Generator
