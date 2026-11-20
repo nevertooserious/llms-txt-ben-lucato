@@ -7,6 +7,7 @@
 #   - every Python script in scripts/ compiles
 #   - ESLint, including the component-boundary import rules in eslint.config.js
 #   - TypeScript typecheck of every workspace
+#   - the Playwright image in CI matches the playwright version in package-lock.json
 #
 # Needs `npm ci` first.
 set -euo pipefail
@@ -43,6 +44,12 @@ fi
 
 if ! npm run --silent typecheck; then
   echo "lint: typecheck failed" >&2
+  status=1
+fi
+
+installed_playwright=$(node -p "require('./package-lock.json').packages['node_modules/playwright'].version")
+if ! grep -q "mcr.microsoft.com/playwright:v${installed_playwright}-" .github/workflows/ci.yml; then
+  echo "lint: the Playwright image in .github/workflows/ci.yml does not match playwright ${installed_playwright} in package-lock.json" >&2
   status=1
 fi
 

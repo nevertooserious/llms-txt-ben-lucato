@@ -29,6 +29,20 @@ jobs:
       - run: scripts/lint.sh
       - run: scripts/test.sh
 
+  e2e:
+    runs-on: ubuntu-latest
+    # Pinned to the playwright version in package-lock.json; scripts/lint.sh checks the two match.
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: scripts/test-e2e.sh
+
   pr-description:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

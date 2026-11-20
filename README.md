@@ -42,6 +42,6 @@ npm run dev:worker
 | `scripts/lint.sh` | ESLint, typecheck, and checks on diagrams and scripts |
 | `scripts/test.sh` | Unit tests (Vitest) and tests for `scripts/` |
 | `scripts/validate-schema.sh`, `npm run test:database` | Apply `db/schema.sql` to Postgres and check it against the contracts enums; CI only (`schema` job) |
-| `npm run test:e2e` | End-to-end tests; not run in CI yet |
+| `scripts/test-e2e.sh` | End-to-end tests against local fixture sites; in CI, runs inside the pinned Playwright image (`e2e` job) |
 
-The same scripts run locally and in CI.
+The same scripts run locally and in CI. The end-to-end tests listen on loopback ports, so a sandbox that blocks local binding will make them fail.

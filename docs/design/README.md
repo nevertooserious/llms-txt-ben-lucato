@@ -159,8 +159,9 @@ Entries are regenerated only for changed pages. The file is rendered per workspa
 
 The app is public, has no accounts, and fetches URLs that users supply.
 
-- **SSRF guard:** blocks private, loopback and link-local addresses, including IPv6 and IPv4-mapped forms and the hosting platform's private network. It is applied again after every redirect, and the resolved IP is pinned to defeat DNS rebinding. It must cover the headless browser as well as the HTTP client.
-- **Fetch limits:** response size and time caps on every fetch; a page budget per run.
+- **SSRF guard:** blocks private, loopback and link-local addresses, including IPv6 and IPv4-mapped forms and the hosting platform's private network. It runs inside the HTTP client's connector: the host is resolved there, every address is checked, and the socket connects to the checked address, so there is no second lookup for DNS rebinding to exploit. A host with any blocked address is refused. Redirects are followed by hand, and each hop opens a new, checked connection. It must cover the headless browser as well as the HTTP client.
+- **Network policy:** the guard's rule is passed in when the fetcher is created. Production uses the public-internet-only policy. End-to-end tests pass one that allows only their fixture sites' loopback ports; it lives in the tests, and no setting or environment variable can loosen the guard.
+- **Fetch limits:** 15 seconds per fetch including redirects, 5 MB per response, 5 redirects, and only `http` and `https`; a page budget per run. A response of a type the caller did not ask for is dropped without reading its body.
 - **Submission limits:** a per-IP rate limit using `site_workspaces.creator_ip_hash`, and a global concurrency cap from the queue.
 - **Monitor expiry:** `monitoring_enabled_until` stops abandoned submissions from being re-crawled forever.
 - **Served files:** `text/plain` with `X-Content-Type-Options: nosniff`.
