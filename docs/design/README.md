@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps that file up to date as the site changes.
 
-Status: design only. Nothing here is implemented yet. The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
+Status: project skeleton. Every component exists as a package with typed stubs (see the [root README](../../README.md)); no pipeline logic is implemented yet. The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
 
 ## Contents
 
@@ -29,7 +29,7 @@ Two processes and one database.
 
 The five components are the crawler, extractor, generator, monitor and frontend. The monitor has no pipeline of its own: it puts check jobs on the same queue, and they run through the same three stages as a first-time generation.
 
-Proposed stack, not yet confirmed: TypeScript throughout, Next.js for the web app, a Node worker with Playwright as the headless fallback, pg-boss for the queue, deployed on Railway or Fly as a web service, a worker service and Postgres.
+Stack: TypeScript throughout, Next.js for the web app, a Node worker with Playwright as the headless fallback, pg-boss for the queue, and node-postgres with hand-written SQL. Hosting is not decided; the proposal is Railway or Fly, as a web service, a worker service and Postgres.
 
 ## 2. Pipeline stages
 
@@ -192,7 +192,7 @@ Checked against llmstxt.org.
 
 Not yet decided or designed.
 
-- **Stack and hosting:** the proposed stack in section 1 is unconfirmed.
+- **Hosting:** Railway or Fly is proposed, not decided.
 - **Redirects:** a page that now returns a permanent redirect is not handled. Proposal: treat it as an immediate removal of the old URL and add the target as a page if it is in scope. Needs one new column on `pages` for the redirect target.
 - **Soft 404s:** sites that answer a deleted URL with 200 and a "not found" body are not handled. Proposal: an extractor check that counts the same as a real 404.
 - **Slow removal:** with a 7-day interval, waiting for two checks can leave a dead link in the file for two weeks. Proposal: schedule a follow-up check 24 hours after any run that sees a first 404.

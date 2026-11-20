@@ -1,0 +1,16 @@
+{
+  "name": "@llms-txt/crawler",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --project ."
+  },
+  "dependencies": {
+    "@llms-txt/contracts": "*",
+    "playwright": "^1.65.1"
+  }
+}

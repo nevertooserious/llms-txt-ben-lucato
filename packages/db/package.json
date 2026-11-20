@@ -1,0 +1,19 @@
+{
+  "name": "@llms-txt/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --project ."
+  },
+  "dependencies": {
+    "@llms-txt/contracts": "*",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1"
+  }
+}

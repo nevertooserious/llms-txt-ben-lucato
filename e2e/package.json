@@ -1,0 +1,12 @@
+{
+  "name": "@llms-txt/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --project ."
+  },
+  "dependencies": {
+    "@llms-txt/contracts": "*"
+  }
+}

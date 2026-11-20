@@ -5,6 +5,10 @@
 #   - every diagram in docs/design/diagrams is well-formed standalone SVG (XML)
 #   - every shell script in scripts/ parses
 #   - every Python script in scripts/ compiles
+#   - ESLint, including the component-boundary import rules in eslint.config.js
+#   - TypeScript typecheck of every workspace
+#
+# Needs `npm ci` first.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -31,5 +35,15 @@ for script in scripts/*.py; do
     status=1
   fi
 done
+
+if ! npm run --silent lint; then
+  echo "lint: eslint failed" >&2
+  status=1
+fi
+
+if ! npm run --silent typecheck; then
+  echo "lint: typecheck failed" >&2
+  status=1
+fi
 
 exit "$status"
