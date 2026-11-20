@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1130" height="490" style="color:#171717;font-family:system-ui,-apple-system,'Segoe UI',sans-serif" viewBox="0 0 1130 490" role="img" aria-label="The web app enqueues one job per site run on a job queue. A worker takes up to ten runs at once and executes crawler, extractor and generator for each. The monitor puts due checks on the same queue and reaps stale runs. Queue and tables both live in Postgres.">
+<style>
+.b { fill: #fff; stroke: currentColor; stroke-width: 1.2; }
+.ext { fill: #f4f4f5; stroke: currentColor; stroke-width: 1.2; }
+.zone { fill: none; stroke: #71717a; stroke-width: 1.2; stroke-dasharray: 5 4; }
+.key { fill: #fff; stroke: #2563eb; stroke-width: 2.4; }
+.ln { fill: none; stroke: currentColor; stroke-width: 1.3; }
+.t { fill: currentColor; font-size: 13px; font-weight: 600; text-anchor: middle; }
+.s { fill: #71717a; font-size: 10.5px; text-anchor: middle; }
+.l { fill: currentColor; font-size: 11px; }
+</style>
+<rect x="0" y="0" width="1130" height="490" fill="#ffffff"/>
+
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- externals -->
+  <rect class="ext" x="650" y="20" width="120" height="50" rx="6"/>
+  <text class="t" x="710" y="50">target website</text>
+  <rect class="ext" x="970" y="20" width="120" height="50" rx="6"/>
+  <text class="t" x="1030" y="50">LLM API</text>
+
+  <!-- worker zone -->
+  <rect class="zone" x="630" y="110" width="480" height="330" rx="8"/>
+  <text class="s" x="642" y="130" style="text-anchor:start">worker process: one job = one site run</text>
+
+  <!-- browser + web -->
+  <rect class="b" x="20" y="150" width="140" height="56" rx="6"/>
+  <text class="t" x="90" y="174">browser</text>
+  <text class="s" x="90" y="192">frontend</text>
+
+  <rect class="b" x="250" y="150" width="170" height="56" rx="6"/>
+  <text class="t" x="335" y="174">web app</text>
+  <text class="s" x="335" y="192">UI + API, serves llms.txt</text>
+
+  <line class="ln" x1="160" y1="168" x2="250" y2="168" marker-end="url(#ar)"/>
+  <text class="l" x="205" y="162" text-anchor="middle">submit, poll</text>
+  <line class="ln" x1="250" y1="190" x2="160" y2="190" marker-end="url(#ar)"/>
+  <text class="l" x="205" y="205" text-anchor="middle">status, file</text>
+
+  <!-- postgres zone -->
+  <rect class="zone" x="190" y="280" width="300" height="160" rx="8"/>
+  <text class="s" x="202" y="300" style="text-anchor:start">Postgres</text>
+
+  <rect class="b" x="205" y="320" width="130" height="80" rx="6"/>
+  <text class="t" x="270" y="356">tables</text>
+  <text class="s" x="270" y="374">sites, pages, versions</text>
+
+  <rect class="key" x="355" y="320" width="120" height="80" rx="6"/>
+  <text class="t" x="415" y="356">job queue</text>
+  <text class="s" x="415" y="374">pg-boss</text>
+
+  <line class="ln" x1="290" y1="206" x2="290" y2="320" marker-end="url(#ar)" marker-start="url(#ar)"/>
+  <text class="l" x="282" y="255" text-anchor="end">read, write</text>
+  <line class="ln" x1="400" y1="206" x2="400" y2="320" marker-end="url(#ar)"/>
+  <text class="l" x="408" y="255">enqueue run</text>
+
+  <!-- queue <-> worker -->
+  <line class="ln" x1="475" y1="345" x2="630" y2="345" marker-end="url(#ar)"/>
+  <text class="l" x="552" y="339" text-anchor="middle">up to 10 runs at once</text>
+  <line class="ln" x1="650" y1="385" x2="475" y2="385" marker-end="url(#ar)"/>
+  <text class="l" x="552" y="379" text-anchor="middle">enqueue due checks</text>
+
+  <!-- worker -> tables -->
+  <polyline class="ln" points="700,440 700,465 270,465 270,400" marker-end="url(#ar)"/>
+  <text class="l" x="485" y="459" text-anchor="middle">pages, versions, progress, heartbeat</text>
+
+  <!-- stages -->
+  <rect class="b" x="650" y="150" width="120" height="56" rx="6"/>
+  <text class="t" x="710" y="174">crawler</text>
+  <text class="s" x="710" y="192">discover + fetch</text>
+
+  <rect class="b" x="810" y="150" width="120" height="56" rx="6"/>
+  <text class="t" x="870" y="174">extractor</text>
+  <text class="s" x="870" y="192">HTML to record</text>
+
+  <rect class="b" x="970" y="150" width="120" height="56" rx="6"/>
+  <text class="t" x="1030" y="174">generator</text>
+  <text class="s" x="1030" y="192">records to llms.txt</text>
+
+  <line class="ln" x1="770" y1="178" x2="810" y2="178" marker-end="url(#ar)"/>
+  <text class="s" x="790" y="170">pages</text>
+  <line class="ln" x1="930" y1="178" x2="970" y2="178" marker-end="url(#ar)"/>
+  <text class="s" x="950" y="170">records</text>
+
+  <rect class="b" x="650" y="357" width="190" height="56" rx="6"/>
+  <text class="t" x="745" y="381">monitor</text>
+  <text class="s" x="745" y="399">due checks + stale-run reaper</text>
+
+  <!-- outbound -->
+  <line class="ln" x1="710" y1="150" x2="710" y2="70" marker-end="url(#ar)"/>
+  <text class="l" x="718" y="95">GET robots, sitemap, pages</text>
+  <line class="ln" x1="1030" y1="150" x2="1030" y2="70" marker-end="url(#ar)"/>
+  <text class="l" x="1022" y="95" text-anchor="end">summary, descriptions</text>
+</svg>
