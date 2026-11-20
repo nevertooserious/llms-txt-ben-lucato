@@ -16,6 +16,7 @@
     "lint": "eslint .",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run --project unit",
+    "test:database": "vitest run --project database",
     "test:e2e": "vitest run --project e2e"
   },
   "devDependencies": {

@@ -59,3 +59,11 @@ jobs:
       - run: scripts/validate-schema.sh
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/schema_check
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run test:database
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/schema_check

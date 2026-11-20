@@ -41,6 +41,7 @@ npm run dev:worker
 |---|---|
 | `scripts/lint.sh` | ESLint, typecheck, and checks on diagrams and scripts |
 | `scripts/test.sh` | Unit tests (Vitest) and tests for `scripts/` |
+| `scripts/validate-schema.sh`, `npm run test:database` | Apply `db/schema.sql` to Postgres and check it against the contracts enums; CI only (`schema` job) |
 | `npm run test:e2e` | End-to-end tests; not run in CI yet |
 
 The same scripts run in CI and in the no-mistakes gate.

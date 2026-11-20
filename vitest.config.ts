@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
@@ -7,6 +7,14 @@ export default defineConfig({
         test: {
           name: 'unit',
           include: ['packages/*/src/**/*.test.ts', 'apps/*/src/**/*.test.ts'],
+          exclude: [...configDefaults.exclude, '**/*.database.test.ts'],
+        },
+      },
+      {
+        // Needs DATABASE_URL pointing at a database with db/schema.sql applied; CI only.
+        test: {
+          name: 'database',
+          include: ['packages/*/src/**/*.database.test.ts'],
         },
       },
       {
