@@ -1,0 +1,15 @@
+{
+  "input": {
+    "normalisedUrl": "https://bakery.example/visit",
+    "finalUrl": "https://bakery.example/visit",
+    "isHomepage": false
+  },
+  "record": {
+    "normalisedUrl": "https://bakery.example/visit",
+    "canonicalUrl": null,
+    "title": "Opening hours & directions",
+    "description": "When we are open and how to find us",
+    "pageType": "other",
+    "languageCode": null
+  }
+}

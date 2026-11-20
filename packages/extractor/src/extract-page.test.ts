@@ -1,11 +1,39 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import type { PageRecord } from '@llms-txt/contracts';
 import { extractLinks, extractPage, measureContentDensity, type ExtractPageInput } from './index';
 
-// One saved HTML file per kind of page, in packages/extractor/fixtures/. Each test
-// runs the whole extractor on it: HTML in, PageRecord out.
+// Each fixture in packages/extractor/fixtures/ is a saved page. Its expected result is
+// written by hand in fixtures/expected/: <name>.json holds the input and every
+// PageRecord field except the markdown and the hashes, and <name>.md holds the exact
+// markdown. The hashes are checked by behaviour below, not by value.
+const fixturesDirectory = new URL('../fixtures/', import.meta.url);
+const expectedDirectory = new URL('expected/', fixturesDirectory);
+
+const fixtureNames = readdirSync(fixturesDirectory)
+  .filter((fileName) => fileName.endsWith('.html'))
+  .map((fileName) => fileName.replace(/\.html$/, ''))
+  .sort();
+
+type ExpectedFields = Omit<PageRecord, 'contentMarkdown' | 'contentDigest' | 'listingFieldsHash'>;
+
+interface ExpectedResult {
+  input: Omit<ExtractPageInput, 'html'>;
+  record: ExpectedFields;
+}
+
 function readFixture(name: string): string {
-  return readFileSync(new URL(`../fixtures/${name}.html`, import.meta.url), 'utf8');
+  return readFileSync(new URL(`${name}.html`, fixturesDirectory), 'utf8');
+}
+
+function readExpected(name: string): ExpectedResult & { contentMarkdown: string } {
+  const expected = JSON.parse(readFileSync(new URL(`${name}.json`, expectedDirectory), 'utf8')) as ExpectedResult;
+  const contentMarkdown = readFileSync(new URL(`${name}.md`, expectedDirectory), 'utf8').replace(/\n$/, '');
+  return { ...expected, contentMarkdown };
+}
+
+function extractFixture(name: string, transformHtml: (html: string) => string = (html) => html): PageRecord {
+  return extractPage({ html: transformHtml(readFixture(name)), ...readExpected(name).input });
 }
 
 function extract(html: string, url = 'https://lumen.example/docs/page', overrides: Partial<ExtractPageInput> = {}) {
@@ -17,7 +45,40 @@ const page = (head: string, body = '') => `<!doctype html><html><head>${head}</h
 const longParagraph =
   'Lumen builds static sites from markdown and templates, and keeps rebuilds fast as a site grows past thousands of pages.';
 
-describe('extractPage', () => {
+const sha256Hex = /^[0-9a-f]{64}$/;
+
+describe('extractPage on saved pages', () => {
+  it('has a hand-written expected result for every fixture', () => {
+    const expectedNames = readdirSync(expectedDirectory)
+      .filter((fileName) => /\.(?:json|md)$/.test(fileName))
+      .map((fileName) => fileName.replace(/\.(?:json|md)$/, ''));
+    for (const name of fixtureNames) {
+      expect(expectedNames.filter((expectedName) => expectedName === name), name).toHaveLength(2);
+    }
+    expect(new Set(expectedNames)).toEqual(new Set(fixtureNames));
+  });
+
+  describe.each(fixtureNames)('%s', (name) => {
+    const expected = readExpected(name);
+    const { contentMarkdown, contentDigest, listingFieldsHash, ...fields } = extractFixture(name);
+
+    it('extracts every field', () => {
+      expect(fields).toEqual(expected.record);
+    });
+
+    it('converts the main content to the expected markdown', () => {
+      expect(contentMarkdown).toBe(expected.contentMarkdown);
+    });
+
+    it('hashes the content and the listing fields', () => {
+      expect(contentDigest).toMatch(sha256Hex);
+      expect(listingFieldsHash).toMatch(sha256Hex);
+      expect(listingFieldsHash).not.toBe(contentDigest);
+    });
+  });
+});
+
+describe('extractPage rules', () => {
   describe('title', () => {
     it('takes the title from og:title, then <title>, then the first <h1>', () => {
       const openGraph = '<meta property="og:title" content="From Open Graph">';
@@ -48,9 +109,9 @@ describe('extractPage', () => {
       expect(extract(page('', '<main><h1>Only a heading</h1></main>')).description).toBeNull();
     });
 
-    it('skips short paragraphs such as bylines when using the first paragraph', () => {
-      const record = extract(readFixture('blog-post'), 'https://lumen.example/blog/faster-builds');
-      expect(record.description).toMatch(/^Large sites were taking minutes to build/);
+    it('skips paragraphs shorter than 50 characters, such as bylines', () => {
+      const body = `<main><p>By Dana Whitfield · 3 March 2026</p><p>${longParagraph}</p></main>`;
+      expect(extract(page('', body)).description).toBe(longParagraph);
     });
 
     it('cuts a long first paragraph at a word boundary', () => {
@@ -61,31 +122,7 @@ describe('extractPage', () => {
     });
   });
 
-  describe('main content', () => {
-    it('extracts main content from a static page', () => {
-      const record = extract(readFixture('static-docs-page'), 'https://lumen.example/docs/configuration');
-
-      expect(record.title).toBe('Configuration');
-      expect(record.description).toBe('Every option in lumen.config.json, with defaults and examples.');
-      expect(record.canonicalUrl).toBe('https://lumen.example/docs/configuration');
-      expect(record.languageCode).toBe('en-gb');
-      expect(record.pageType).toBe('docs');
-
-      const markdown = record.contentMarkdown;
-      expect(markdown).toMatch(/^# Configuration\n/);
-      expect(markdown).toContain('## Output directory');
-      expect(markdown).toContain('```json\n{\n  "outputDirectory": "public",');
-      expect(markdown).toContain('| outputDirectory | dist | Where built pages go |');
-      // Relative links are made absolute; mailto links keep their text only.
-      expect(markdown).toContain('[the build command](https://lumen.example/docs/cli#build)');
-      expect(markdown).toContain('Email the team');
-      expect(markdown).not.toContain('mailto:');
-      // Page chrome, breadcrumbs, the table of contents and code are left out.
-      for (const chrome of ['GitHub', 'Command line', 'On this page', 'Docs /', '© 2026', 'analyticsQueue', 'font-family']) {
-        expect(markdown).not.toContain(chrome);
-      }
-    });
-
+  describe('content', () => {
     it('resolves links against the final URL after redirects, not the normalised URL', () => {
       // /docs redirected to /docs/, so "configuration" means /docs/configuration.
       const record = extract(
@@ -93,62 +130,7 @@ describe('extractPage', () => {
         'https://lumen.example/docs',
         { finalUrl: 'https://lumen.example/docs/' },
       );
-      expect(record.contentMarkdown).toContain('(https://lumen.example/docs/configuration)');
-    });
-
-    it('extracts main content from a headless-rendered client-side app', () => {
-      const record = extract(readFixture('client-app-rendered'), 'https://pebble.example/help/shared-calendars');
-
-      expect(record.title).toBe('Shared calendars · Pebble Help');
-      expect(record.description).toMatch(/^A shared calendar lets everyone in a group/);
-      expect(record.pageType).toBe('docs');
-
-      const markdown = record.contentMarkdown;
-      expect(markdown).toMatch(/^# Shared calendars\n/);
-      expect(markdown).toContain('## Create a shared calendar');
-      expect(markdown).toContain('- Editors can add, move and remove events.');
-      expect(markdown).toContain('## Stop sharing');
-      // The div-based top bar, sidebar, footer and cookie banner are not content.
-      for (const chrome of ['Log in', 'Notifications', 'Pebble Software Ltd', 'We use cookies', 'enable JavaScript']) {
-        expect(markdown).not.toContain(chrome);
-      }
-    });
-
-    it('leaves hydration data out of a server-rendered page', () => {
-      const record = extract(readFixture('server-rendered-hydrated'), 'https://tallyhq.example/pricing');
-
-      expect(record.pageType).toBe('pricing');
-      expect(record.contentMarkdown).toMatch(/^# Plans and pricing\n/);
-      expect(record.contentMarkdown).toContain('## Team');
-      expect(record.contentMarkdown).toContain('Upgrades apply straight away');
-      expect(record.contentMarkdown).not.toContain('priceCents');
-      expect(record.contentMarkdown).not.toContain('Privacy');
-    });
-
-    it('falls back to <body> without nav, header, footer and aside when there is no <main>', () => {
-      const record = extract(readFixture('marketing-page-without-main'), 'https://harbour.example/', {
-        isHomepage: true,
-      });
-
-      expect(record.pageType).toBe('home');
-      const markdown = record.contentMarkdown;
-      // Every section is kept, not just the densest one.
-      expect(markdown).toMatch(/^# Inventory for small warehouses\n/);
-      expect(markdown).toContain('### Reorder on time');
-      expect(markdown).toContain('> We stopped running out of our best sellers');
-      for (const chrome of ['Features', 'Spring offer', 'Quay Street', 'Terms']) {
-        expect(markdown).not.toContain(chrome);
-      }
-    });
-
-    it('takes the content from a post when the page also lists related articles', () => {
-      const record = extract(readFixture('blog-post'), 'https://lumen.example/blog/faster-builds');
-
-      expect(record.title).toBe('How we cut build times in half — Lumen Blog');
-      expect(record.contentMarkdown).toMatch(/^# How we cut build times in half\n/);
-      expect(record.contentMarkdown).toContain('By Dana Whitfield');
-      expect(record.contentMarkdown).toContain('## What we changed');
-      expect(record.contentMarkdown).not.toContain('Related posts');
+      expect(record.contentMarkdown).toBe('See [configuration](https://lumen.example/docs/configuration).');
     });
 
     it('writes ordered and nested lists as compact markdown', () => {
@@ -159,19 +141,27 @@ describe('extractPage', () => {
       expect(extract(html).contentMarkdown).toBe('3. Install\n4. Configure\n   - Output\n   - Minify');
     });
 
-    it('survives malformed HTML', () => {
-      const record = extract(readFixture('malformed'), 'https://bakery.example/visit');
+    it('escapes pipes inside table cells', () => {
+      const html = page('', '<main><table><tr><th>Flag</th></tr><tr><td><code>a|b</code></td></tr></table></main>');
+      expect(extract(html).contentMarkdown).toBe('| Flag |\n| --- |\n| `a\\|b` |');
+    });
 
-      expect(record.title).toBe('Opening hours & directions');
-      expect(record.description).toBe('When we are open and how to find us');
-      expect(record.contentMarkdown).toContain('The entrance is on Mill Lane, next to the bakery.');
-      expect(record.contentMarkdown).toContain('Call ahead for groups larger than ten.');
+    it('prefers a non-empty <main> over an empty one', () => {
+      const html = page('', '<main id="app"></main><main><p>Second main.</p></main>');
+      expect(extract(html).contentMarkdown).toBe('Second main.');
     });
 
     it('returns an empty record for an empty document', () => {
-      const record = extract('');
-      expect(record).toMatchObject({ title: null, description: null, canonicalUrl: null, contentMarkdown: '' });
-      expect(record.contentDigest).toMatch(/^[0-9a-f]{64}$/);
+      const record = extract('', 'https://lumen.example/showcase');
+      expect(record).toMatchObject({
+        canonicalUrl: null,
+        title: null,
+        description: null,
+        pageType: 'other',
+        languageCode: null,
+        contentMarkdown: '',
+      });
+      expect(record.contentDigest).toMatch(sha256Hex);
     });
   });
 
@@ -212,27 +202,47 @@ describe('extractPage', () => {
   });
 
   describe('hashes', () => {
-    const blogPost = readFixture('blog-post');
-    const url = 'https://lumen.example/blog/faster-builds';
-
     it('gives the same content_digest when only dates and numbers change', () => {
-      const original = extract(blogPost, url);
-      const redated = extract(
-        blogPost
+      const original = extractFixture('blog-post');
+      const redated = extractFixture('blog-post', (html) =>
+        html
           .replace('3 March 2026', '17 April 2026')
           .replace('2 days ago', '5 hours ago')
           .replace('1,204 views', '9,876 views')
           .replace('4,000 pages parsed its layout 4,000 times', '12,500 pages parsed its layout 12,500 times'),
-        url,
       );
       expect(redated.contentDigest).toBe(original.contentDigest);
       expect(redated.listingFieldsHash).toBe(original.listingFieldsHash);
     });
 
+    it('gives the same hashes when only page chrome changes', () => {
+      const original = extractFixture('static-docs-page');
+      const rechromed = extractFixture('static-docs-page', (html) =>
+        html
+          .replace('Lumen Labs. Released under the MIT licence.', 'Lumen Labs Ltd. All rights reserved.')
+          .replace('>Command line<', '>CLI reference<')
+          .replace('>On this page<', '>Contents<'),
+      );
+      expect(rechromed.contentDigest).toBe(original.contentDigest);
+      expect(rechromed.listingFieldsHash).toBe(original.listingFieldsHash);
+    });
+
     it('gives a different content_digest when the text changes', () => {
-      const original = extract(blogPost, url);
-      const edited = extract(blogPost.replace('shared by every page', 'reused by every page'), url);
+      const original = extractFixture('blog-post');
+      const edited = extractFixture('blog-post', (html) => html.replace('shared by every page', 'reused by every page'));
       expect(edited.contentDigest).not.toBe(original.contentDigest);
+    });
+
+    it('changes listing_fields_hash when the title or description changes', () => {
+      const original = extractFixture('static-docs-page');
+      const retitled = extractFixture('static-docs-page', (html) =>
+        html.replace('content="Configuration"', 'content="Settings"'),
+      );
+      const redescribed = extractFixture('static-docs-page', (html) =>
+        html.replace('with defaults and examples.', 'with their defaults.'),
+      );
+      expect(retitled.listingFieldsHash).not.toBe(original.listingFieldsHash);
+      expect(redescribed.listingFieldsHash).not.toBe(original.listingFieldsHash);
     });
 
     it('leaves content out of listing_fields_hash when the page has a description', () => {
@@ -260,13 +270,15 @@ describe('measureContentDensity', () => {
   it('reports high density for a server-rendered page', () => {
     const density = measureContentDensity(readFixture('server-rendered-hydrated'));
     expect(density.textLength).toBeGreaterThan(400);
-    expect(density.linkCount).toBeGreaterThanOrEqual(6);
+    // Every link in the body counts, chrome included: header (4) and footer (2).
+    expect(density.linkCount).toBe(6);
   });
 
   it('reports high density for a client-side app once rendered', () => {
     const density = measureContentDensity(readFixture('client-app-rendered'));
     expect(density.textLength).toBeGreaterThan(400);
-    expect(density.linkCount).toBeGreaterThanOrEqual(10);
+    // Top bar (4), sidebar (4) and bottom bar (2).
+    expect(density.linkCount).toBe(10);
   });
 });
 
@@ -298,5 +310,19 @@ describe('extractLinks', () => {
        <a>No href</a>`,
     );
     expect(extractLinks(html, 'https://lumen.example/docs/')).toEqual(['https://lumen.example/v2/intro']);
+  });
+
+  it('returns every link on a saved page, in document order', () => {
+    expect(extractLinks(readFixture('static-docs-page'), 'https://lumen.example/docs/configuration')).toEqual([
+      'https://lumen.example/',
+      'https://lumen.example/docs',
+      'https://lumen.example/blog',
+      'https://lumen.example/pricing',
+      'https://github.com/lumen-example/lumen',
+      'https://lumen.example/docs/installation',
+      'https://lumen.example/docs/configuration',
+      'https://lumen.example/docs/cli',
+      'https://lumen.example/legal/privacy',
+    ]);
   });
 });

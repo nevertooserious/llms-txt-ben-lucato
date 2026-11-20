@@ -1,0 +1,15 @@
+{
+  "input": {
+    "normalisedUrl": "https://pebble.example/help/shared-calendars",
+    "finalUrl": "https://pebble.example/help/shared-calendars",
+    "isHomepage": false
+  },
+  "record": {
+    "normalisedUrl": "https://pebble.example/help/shared-calendars",
+    "canonicalUrl": null,
+    "title": "Shared calendars · Pebble Help",
+    "description": "A shared calendar lets everyone in a group see and edit the same events. Changes appear for every member within a few seconds, and each event shows who last edited it.",
+    "pageType": "docs",
+    "languageCode": "en"
+  }
+}

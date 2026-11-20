@@ -1,0 +1,15 @@
+{
+  "input": {
+    "normalisedUrl": "https://lumen.example/fr/docs/demarrage",
+    "finalUrl": "https://lumen.example/fr/docs/demarrage",
+    "isHomepage": false
+  },
+  "record": {
+    "normalisedUrl": "https://lumen.example/fr/docs/demarrage",
+    "canonicalUrl": "https://lumen.example/fr/docs/demarrage",
+    "title": "Démarrage rapide",
+    "description": "Installer Lumen et publier un premier site en cinq minutes.",
+    "pageType": "docs",
+    "languageCode": "fr"
+  }
+}

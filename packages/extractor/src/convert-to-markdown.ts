@@ -35,14 +35,30 @@ turndownService.addRule('listItem', {
   },
 });
 
-// Turndown has no table support; one line per row keeps cells together and readable.
+// Turndown has no table support. Tables become GFM tables: one line per row, and the
+// first row is the header, because GFM requires one even when the HTML has no <th>.
 turndownService.addRule('tableCell', {
   filter: ['th', 'td'],
-  replacement: (content) => ` ${content.replace(/\s+/g, ' ').trim()} |`,
+  replacement: (content) => ` ${content.replace(/\s+/g, ' ').trim().replace(/\|/g, '\\|')} |`,
 });
 turndownService.addRule('tableRow', {
   filter: 'tr',
   replacement: (content) => `\n|${content}\n`,
+});
+turndownService.addRule('table', {
+  filter: 'table',
+  replacement: (content) => {
+    // <thead> and <tbody> leave blank lines between rows; only row lines are kept.
+    const rows = content
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith('|'));
+    const [headerRow, ...bodyRows] = rows;
+    if (headerRow === undefined) return content;
+    const cellCount = (headerRow.match(/(?<!\\)\|/g)?.length ?? 1) - 1;
+    const separatorRow = `|${' --- |'.repeat(cellCount)}`;
+    return `\n\n${[headerRow, separatorRow, ...bodyRows].join('\n')}\n\n`;
+  },
 });
 
 /**
@@ -63,5 +79,6 @@ export function convertToMarkdown($: CheerioAPI, content: Cheerio<Element>, base
   });
 
   const markdown = turndownService.turndown(content.html() ?? '');
-  return markdown.replace(/\n{3,}/g, '\n\n').trim();
+  // Non-breaking spaces (&nbsp;) are layout, not meaning; plain spaces read the same.
+  return markdown.replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
