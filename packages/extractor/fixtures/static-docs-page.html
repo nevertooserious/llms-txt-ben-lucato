@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <title>Configuration · Lumen Docs</title>
+    <meta name="description" content="Every option in lumen.config.json, with defaults and examples." />
+    <meta property="og:title" content="Configuration" />
+    <meta property="og:description" content="Configure Lumen for your project." />
+    <link rel="canonical" href="/docs/configuration" />
+    <link rel="stylesheet" href="/assets/docs.css" />
+    <style>
+      body { font-family: system-ui; }
+    </style>
+    <script>
+      window.analyticsQueue = [];
+    </script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="/" class="logo">Lumen</a>
+      <nav aria-label="Primary">
+        <a href="/docs">Docs</a>
+        <a href="/blog">Blog</a>
+        <a href="/pricing">Pricing</a>
+        <a href="https://github.com/lumen-example/lumen">GitHub</a>
+      </nav>
+    </header>
+    <div class="layout">
+      <aside class="sidebar">
+        <ul>
+          <li><a href="/docs/installation">Installation</a></li>
+          <li><a href="/docs/configuration">Configuration</a></li>
+          <li><a href="/docs/cli">Command line</a></li>
+        </ul>
+      </aside>
+      <main id="content">
+        <nav aria-label="Breadcrumb"><a href="/docs">Docs</a> / Configuration</nav>
+        <article>
+          <h1>Configuration</h1>
+          <p>
+            Lumen reads its settings from <code>lumen.config.json</code> at the root of your project. Every option
+            has a default, so the file can start empty and grow as you need it.
+          </p>
+          <h2>Output directory</h2>
+          <p>
+            Built pages are written to <code>dist</code> unless you set <code>outputDirectory</code>. The path is
+            resolved relative to the config file. See <a href="cli#build">the build command</a> for overriding it
+            from the command line.
+          </p>
+          <pre><code class="language-json">{
+  "outputDirectory": "public",
+  "minify": true
+}</code></pre>
+          <h2>All options</h2>
+          <table>
+            <thead>
+              <tr><th>Option</th><th>Default</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>outputDirectory</td><td>dist</td><td>Where built pages go</td></tr>
+              <tr><td>minify</td><td>false</td><td>Minify HTML and CSS</td></tr>
+            </tbody>
+          </table>
+          <p>Questions? <a href="mailto:help@lumen.example">Email the team</a>.</p>
+        </article>
+        <aside class="on-this-page">
+          <p>On this page</p>
+          <a href="#output-directory">Output directory</a>
+          <a href="#all-options">All options</a>
+        </aside>
+      </main>
+    </div>
+    <footer>
+      <p>© 2026 Lumen Labs. Released under the MIT licence.</p>
+      <a href="/legal/privacy">Privacy</a>
+    </footer>
+  </body>
+</html>

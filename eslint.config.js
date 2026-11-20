@@ -14,6 +14,7 @@ const restrict = (
   /** @type {string[]} */ builtins,
   /** @type {string[]} */ packages,
   /** @type {string} */ message,
+  /** @type {{ regex: string, message: string }[]} */ extraPatterns = [],
 ) => ({
   'no-restricted-imports': [
     'error',
@@ -21,6 +22,7 @@ const restrict = (
       patterns: [
         { regex: `^(node:)?(${builtins.join('|')})(/.*)?$`, message },
         { regex: `^(${packages.join('|')})(/.*)?$`, message },
+        ...extraPatterns,
       ],
     },
   ],
@@ -34,7 +36,10 @@ export default tseslint.config(
     files: ['packages/extractor/src/**/*.ts'],
     ignores: ['**/*.test.ts'],
     rules: {
-      ...restrict(ioBuiltins, ioPackages, 'The extractor is a pure function from HTML to a PageRecord; it does no I/O.'),
+      ...restrict(ioBuiltins, ioPackages, 'The extractor is a pure function from HTML to a PageRecord; it does no I/O.', [
+        // The main cheerio entry bundles an HTTP client (fromURL); cheerio/slim does not.
+        { regex: '^cheerio$', message: 'Import cheerio/slim: the main cheerio entry bundles an HTTP client.' },
+      ]),
       'no-restricted-globals': ['error', { name: 'fetch', message: 'The extractor does no I/O.' }],
     },
   },
