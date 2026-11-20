@@ -50,6 +50,14 @@ class CheckPrDescriptionTest(unittest.TestCase):
         body = "<!-- guidance " + "x" * 1000 + " -->\nShort summary."
         self.assertEqual(run_check(body).returncode, 0)
 
+    def test_excludes_appendix_in_crlf_body(self):
+        body = ("a" * 490 + "\n" + APPENDIX).replace("\n", "\r\n")
+        self.assertEqual(run_check(body).returncode, 0)
+
+    def test_appendix_marker_comment_does_not_end_description(self):
+        body = "<!-- no-mistakes-pr-appendix -->\n" + "a" * 501
+        self.assertEqual(run_check(body).returncode, 1)
+
     def test_unrelated_pipeline_heading_still_counts(self):
         body = "## Pipeline\n\nThe crawl stage " + "a" * 500
         self.assertEqual(run_check(body).returncode, 1)

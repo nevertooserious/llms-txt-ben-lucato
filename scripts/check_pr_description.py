@@ -17,14 +17,14 @@ MAX_PR_DESCRIPTION_CHARACTERS = 500
 
 HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 # The appendix starts at a "## Pipeline" heading whose next non-blank line links to
-# no-mistakes, or at an explicit no-mistakes appendix marker if one is present.
+# no-mistakes.
 NO_MISTAKES_APPENDIX = re.compile(
-    r"^## Pipeline[ \t]*\n\s*[^\n]*no-mistakes|<!-- no-mistakes-pr-appendix",
-    re.MULTILINE,
+    r"^## Pipeline[ \t]*\n\s*[^\n]*no-mistakes", re.MULTILINE
 )
 
 
 def visible_description(pr_body: str) -> str:
+    pr_body = pr_body.replace("\r\n", "\n")
     appendix = NO_MISTAKES_APPENDIX.search(pr_body)
     if appendix:
         pr_body = pr_body[: appendix.start()]
