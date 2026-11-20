@@ -7,7 +7,7 @@ A web app that takes a website URL, generates an llms.txt (spec: https://llmstxt
 Design only; no application code yet. Before writing code, read:
 
 - `docs/design/README.md`: the system design, including open questions that are not yet decided.
-- `db/schema.sql`: the data model. It has not been run against a real Postgres; validate it before building on it.
+- `db/schema.sql`: the data model. CI applies it to Postgres 14 on every PR (`scripts/validate-schema.sh`).
 
 The stack in the design doc (TypeScript, Next.js, Node worker, pg-boss, Playwright) is proposed, not confirmed. Check with the user before scaffolding.
 
@@ -21,6 +21,15 @@ The stack in the design doc (TypeScript, Next.js, Node worker, pg-boss, Playwrig
 - **A page is removed only on its own repeated 404/410,** never because a crawl did not reach it.
 - **Every outbound fetch goes through the SSRF guard,** including fetches made by the headless browser.
 - **Output conforms to the spec:** H1 and H2 only, one-line entries, an H2 named exactly `Optional`.
+
+## Workflow: PRs, green CI, no-mistakes
+
+`main` is protected: no direct pushes, every change lands through a pull request whose required checks (`lint`, `schema`) are green.
+
+- **Never commit to or push `main`.** Work on a feature branch, one per change.
+- **Ship through no-mistakes.** Commit on the branch, then run `no-mistakes axi run --intent "<the user's goal>"` (the `/no-mistakes` skill describes the loop). It reviews, tests, lints, pushes, opens the PR and watches CI. Do not `git push origin` or `gh pr create` by hand.
+- **Wait for green before merging.** Merge only after the run reports `checks-passed`, and only when the user asks you to merge. Never bypass a failing or pending check, and never use admin override.
+- **Checks live in `scripts/`.** `scripts/lint.sh` runs locally and in CI; `scripts/validate-schema.sh` applies `db/schema.sql` to an empty Postgres (CI only, needs `DATABASE_URL`). When adding a check, add it to `.github/workflows/ci.yml`, to `.no-mistakes.yaml` if it can run locally, and to the required checks on `main`.
 
 ## Conventions
 
