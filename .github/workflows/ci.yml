@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+    # edited: re-run pr-description when the description changes.
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read
@@ -20,6 +22,16 @@ jobs:
       - name: Install xmllint
         run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends libxml2-utils
       - run: scripts/lint.sh
+      - run: scripts/test.sh
+
+  pr-description:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/check_pr_description.py
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
 
   schema:
     runs-on: ubuntu-latest

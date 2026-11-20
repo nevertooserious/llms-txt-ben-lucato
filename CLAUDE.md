@@ -24,12 +24,13 @@ The stack in the design doc (TypeScript, Next.js, Node worker, pg-boss, Playwrig
 
 ## Workflow: PRs, green CI, no-mistakes
 
-`main` is protected: no direct pushes, every change lands through a pull request whose required checks (`lint`, `schema`) are green.
+`main` is protected: no direct pushes, every change lands through a pull request whose required checks (`lint`, `schema`, `pr-description`) are green.
 
 - **Never commit to or push `main`.** Work on a feature branch, one per change.
 - **Ship through no-mistakes.** Commit on the branch, then run `no-mistakes axi run --intent "<the user's goal>"` (the `/no-mistakes` skill describes the loop). It reviews, tests, lints, pushes, opens the PR and watches CI. Do not `git push origin` or `gh pr create` by hand.
 - **Wait for green before merging.** Merge only after the run reports `checks-passed`, and only when the user asks you to merge. Never bypass a failing or pending check, and never use admin override.
-- **Checks live in `scripts/`.** `scripts/lint.sh` runs locally and in CI; `scripts/validate-schema.sh` applies `db/schema.sql` to an empty Postgres (CI only, needs `DATABASE_URL`). When adding a check, add it to `.github/workflows/ci.yml`, to `.no-mistakes.yaml` if it can run locally, and to the required checks on `main`.
+- **PR descriptions are at most 500 characters.** Count the text above the no-mistakes `## Pipeline` section, excluding HTML comments; that section is gate-owned and exempt. CI job `pr-description` enforces it (`scripts/check_pr_description.py`). If a generated description runs over, shorten it with `gh pr edit --body-file`, keeping the Pipeline section unchanged.
+- **Checks live in `scripts/`.** `scripts/lint.sh` and `scripts/test.sh` run locally and in CI; `scripts/validate-schema.sh` applies `db/schema.sql` to an empty Postgres (CI only, needs `DATABASE_URL`). When adding a check, add it to `.github/workflows/ci.yml`, to `.no-mistakes.yaml` if it can run locally, and to the required checks on `main`.
 
 ## Conventions
 
