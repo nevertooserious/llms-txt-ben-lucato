@@ -1,0 +1,50 @@
+import { describe, expect, it } from 'vitest';
+import { isInScope, normaliseUrl } from './normalise-url';
+
+describe('normaliseUrl', () => {
+  it.each([
+    ['HTTPS://Example.COM/Docs/', 'https://example.com/Docs'],
+    ['https://example.com:443/a', 'https://example.com/a'],
+    ['http://example.com:80/', 'http://example.com'],
+    ['https://example.com/', 'https://example.com'],
+    ['https://example.com', 'https://example.com'],
+    ['https://example.com/a#section', 'https://example.com/a'],
+    ['https://example.com/a?b=2&a=1', 'https://example.com/a?a=1&b=2'],
+    ['https://example.com/a?utm_source=x&id=7&fbclid=y&gclid=z', 'https://example.com/a?id=7'],
+    ['https://example.com/?utm_campaign=launch', 'https://example.com'],
+    ['https://example.com/a///', 'https://example.com/a'],
+    ['https://example.com/%7Euser', 'https://example.com/%7Euser'],
+  ])('%s -> %s', (input, expected) => {
+    expect(normaliseUrl(input)).toBe(expected);
+  });
+
+  it('resolves against a base URL', () => {
+    expect(normaliseUrl('../b/', 'https://example.com/docs/a/')).toBe('https://example.com/docs/b');
+  });
+
+  it.each(['mailto:someone@example.com', 'javascript:void(0)', 'ftp://example.com/', 'not a url', 'https://user:pass@example.com/'])(
+    'rejects %s',
+    (input) => {
+      expect(normaliseUrl(input)).toBeNull();
+    },
+  );
+});
+
+describe('isInScope', () => {
+  it('accepts any path on a bare origin root', () => {
+    expect(isInScope('https://example.com/anything', 'https://example.com')).toBe(true);
+  });
+
+  it('accepts the prefix itself and paths under it, on a segment boundary', () => {
+    expect(isInScope('https://example.com/docs', 'https://example.com/docs')).toBe(true);
+    expect(isInScope('https://example.com/docs/a', 'https://example.com/docs')).toBe(true);
+    expect(isInScope('https://example.com/docs-old', 'https://example.com/docs')).toBe(false);
+    expect(isInScope('https://example.com/blog', 'https://example.com/docs')).toBe(false);
+  });
+
+  it('rejects another scheme, host, subdomain or port', () => {
+    expect(isInScope('http://example.com/a', 'https://example.com')).toBe(false);
+    expect(isInScope('https://docs.example.com/a', 'https://example.com')).toBe(false);
+    expect(isInScope('https://example.com:8443/a', 'https://example.com')).toBe(false);
+  });
+});

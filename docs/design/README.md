@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps that file up to date as the site changes.
 
-Status: project skeleton with the extractor implemented. Every other component exists as a package with typed stubs (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
+Status: project skeleton with the extractor and crawler implemented. Every other component exists as a package with typed stubs (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
 
 ## Contents
 
@@ -39,13 +39,16 @@ Each stage has one typed input and one typed output, so each can be tested alone
 
 ### Crawler
 
-Owns all network I/O.
+Owns all network I/O. Its output is a `CrawlResult`: the fetched pages (404s and 410s included, since the monitor needs them), the fetches that failed (timeouts, 5xx, 429s, blocks), and the site's rendering decision.
 
-- **Discovery:** robots.txt, sitemaps, any existing llms.txt, and homepage navigation seed a prioritised breadth-first crawl under a page budget.
-- **Fetching:** plain HTTP first. The headless browser is used only when a page's extracted text length and link count fall below a threshold, which is the sign of a JavaScript-rendered page.
-- **Politeness:** obeys robots.txt and applies a per-host rate limit.
-- **Markdown variants:** probes for a `.md` version of each page, which the spec recommends linking in preference to HTML.
-- **Scope:** only URLs under the site's `root_url`.
+- **Discovery:** robots.txt, sitemaps, any existing llms.txt, and homepage navigation seed a prioritised breadth-first crawl under a page budget. Sitemaps come from robots.txt's `Sitemap:` lines, else `/sitemap.xml`; at most 10 sitemap files are read, and at most four sitemap URLs are kept per page of budget. Links in an existing llms.txt usually point at `.md` variants, so they are mapped back to the HTML page. Within a depth, navigation links come first, then llms.txt, then sitemap, then other page links.
+- **Fetching, per site:** plain HTTP by default. On a site's first crawl the homepage is fetched both ways and compared, by visible text length and link count. If the browser finds much more (at least 200 more characters and 1.5 times the text, or 5 more links), every page of the site is rendered. A homepage with no executable script skips the comparison. The answer is stored in `sites.requires_headless_rendering` and re-decided after 30 days.
+- **Fetching, per page:** on a site that does not need rendering, a page whose plain HTML is empty, or holds an empty app mount point such as `<div id="root">`, is rendered anyway. The rendered version is kept only if it shows more. This catches a client-rendered section of a server-rendered site. The crawler reads these signals itself, with a shallow parse, so it does not depend on the extractor.
+- **Headless browser:** Chromium never touches the network. Every request it makes is intercepted and performed by Node through the same guarded connector as plain HTTP. Redirects are followed in Node too, because Chromium follows a redirect handed to it by interception without intercepting the next hop. See [Security](#7-security-and-abuse-limits). Rendering waits for network idle, then for the page text to stop changing, which catches content loaded after a timer.
+- **Politeness:** obeys robots.txt for this crawler's token, else `*`. A missing robots.txt, or one that errors, allows everything. Requests to a site are sequential, at least 500 ms apart, or the robots.txt `Crawl-delay` (capped at 10 s). A 429 is retried once after its `Retry-After`, when that is 30 seconds or less, and slows the rest of the crawl.
+- **Markdown variants:** probes for a `.md` version of each page (`index.html.md` for a URL without a file name), which the spec recommends linking in preference to HTML. Probing stops after three misses on a site that has none.
+- **Scope:** only URLs under the site's `root_url`, on a path segment boundary.
+- **Known limitation:** hash-routed sites (`/#/docs`) are one page to the crawler, because fragments are dropped in normalisation and never reach the server.
 
 ### Extractor
 
@@ -97,7 +100,7 @@ The full DDL with comments is in [`db/schema.sql`](../../db/schema.sql).
 ## 4. Queueing and recovery
 
 - **One job is one site's run.** Jobs are not split per page.
-- **Concurrency:** the worker takes up to ten jobs at once, so ten sites run in parallel. Within a run, the target site is fetched at a per-host rate limit. Headless rendering has its own, lower, global limit because of memory.
+- **Concurrency:** the worker takes up to ten jobs at once, so ten sites run in parallel. Within a run, the target site is fetched at a per-host rate limit. Headless rendering has its own, lower, global limit because of memory: the worker shares one `HeadlessRenderer`, which runs at most two renders at once.
 - **Priority:** a user's submission or "check now" is taken ahead of scheduled monitor checks.
 - **One active run per site:** a partial unique index on `pipeline_runs` rejects a second queued or running run for the same site.
 - **Heartbeat:** a running job updates `last_heartbeat_at` every few seconds.
@@ -159,7 +162,7 @@ Entries are regenerated only for changed pages. The file is rendered per workspa
 
 The app is public, has no accounts, and fetches URLs that users supply.
 
-- **SSRF guard:** blocks private, loopback and link-local addresses, including IPv6 and IPv4-mapped forms and the hosting platform's private network. It runs inside the HTTP client's connector: the host is resolved there, every address is checked, and the socket connects to the checked address, so there is no second lookup for DNS rebinding to exploit. A host with any blocked address is refused. Redirects are followed by hand, and each hop opens a new, checked connection. It must cover the headless browser as well as the HTTP client.
+- **SSRF guard:** blocks private, loopback and link-local addresses, including IPv6 and IPv4-mapped forms and the hosting platform's private network. It runs inside the HTTP client's connector: the host is resolved there, every address is checked, and the socket connects to the checked address, so there is no second lookup for DNS rebinding to exploit. A host with any blocked address is refused. Redirects are followed by hand, and each hop opens a new, checked connection. It covers the headless browser by performing every browser request in Node through the same connector. As a second layer, the browser's own DNS is disabled, so a request that escaped interception could not reach anything. WebSockets, service workers and popups are refused.
 - **Network policy:** the guard's rule is passed in when the fetcher is created. Production uses the public-internet-only policy. End-to-end tests pass one that allows only their fixture sites' loopback ports; it lives in the tests, and no setting or environment variable can loosen the guard.
 - **Fetch limits:** 15 seconds per fetch including redirects, 5 MB per response, 5 redirects, and only `http` and `https`; a page budget per run. A response of a type the caller did not ask for is dropped without reading its body.
 - **Submission limits:** a per-IP rate limit using `site_workspaces.creator_ip_hash`, and a global concurrency cap from the queue.
@@ -201,4 +204,4 @@ Not yet decided or designed.
 - **Slow removal:** with a 7-day interval, waiting for two checks can leave a dead link in the file for two weeks. Proposal: schedule a follow-up check 24 hours after any run that sees a first 404.
 - **Stale sitemap:** if `lastmod` is trusted and a deleted page is still listed with an unchanged date, no request is made and the deletion is missed.
 - **Page selection:** rules for large and awkward sites, as noted in section 2.
-- **Thresholds:** the page budget, the headless trigger threshold and the safety-gate failure share have no values yet.
+- **Thresholds:** the page budget and the safety-gate failure share have no values yet. The headless thresholds have starting values in `packages/crawler/src/render-decision.ts`, tuned only against the fixture sites.

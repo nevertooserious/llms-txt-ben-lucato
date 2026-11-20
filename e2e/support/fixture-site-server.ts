@@ -27,7 +27,10 @@ export type FixtureRouteHandler = (
   requestUrl: URL,
 ) => void | Promise<void>;
 
-/** Exported as `routes` from a site's routes.ts, keyed by exact path. */
+/**
+ * Exported as `routes` from a site's routes.ts, keyed by exact path. The key `*` handles
+ * any request no route or file matched, as a single-page app's server would.
+ */
 export type FixtureRoutes = Record<string, FixtureRouteHandler>;
 
 export interface FixtureSite {
@@ -36,6 +39,8 @@ export interface FixtureSite {
   port: number;
   /** Every request the site received, in order, as path plus query. */
   requestLog: string[];
+  /** When each request in `requestLog` arrived, in milliseconds since the epoch. */
+  requestTimes: number[];
   close(): Promise<void>;
 }
 
@@ -43,12 +48,16 @@ export async function startFixtureSite(siteName: string): Promise<FixtureSite> {
   const siteDirectory = join(FIXTURE_SITES_DIRECTORY, siteName);
   const routes = await loadRoutes(siteDirectory);
   const requestLog: string[] = [];
+  const requestTimes: number[] = [];
 
   const server = createServer((request, response) => {
     const requestUrl = new URL(request.url ?? '/', 'http://fixture.invalid');
     requestLog.push(requestUrl.pathname + requestUrl.search);
+    requestTimes.push(Date.now());
     const route = routes[requestUrl.pathname];
-    const handled = route ? route(request, response, requestUrl) : serveFile(siteDirectory, requestUrl, response);
+    const handled = route
+      ? route(request, response, requestUrl)
+      : serveFile(siteDirectory, requestUrl, response, routes['*'] && (() => routes['*']!(request, response, requestUrl)));
     Promise.resolve(handled).catch((error: unknown) => {
       if (!response.headersSent) response.writeHead(500);
       response.end(String(error));
@@ -62,6 +71,7 @@ export async function startFixtureSite(siteName: string): Promise<FixtureSite> {
     origin: `http://127.0.0.1:${port}`,
     port,
     requestLog,
+    requestTimes,
     close: () =>
       new Promise((resolveClose) => {
         // Slow routes may hold sockets open; do not wait for them.
@@ -82,23 +92,35 @@ async function loadRoutes(siteDirectory: string): Promise<FixtureRoutes> {
   return routesModule.routes;
 }
 
-async function serveFile(siteDirectory: string, requestUrl: URL, response: ServerResponse): Promise<void> {
+async function serveFile(
+  siteDirectory: string,
+  requestUrl: URL,
+  response: ServerResponse,
+  fallback: (() => void | Promise<void>) | undefined,
+): Promise<void> {
   let relativePath = normalize(decodeURIComponent(requestUrl.pathname));
   if (relativePath.endsWith('/')) relativePath += 'index.html';
-  const filePath = join(siteDirectory, relativePath);
+  // A directory without its trailing slash redirects to it, as static servers do.
+  if (!relativePath.endsWith('/index.html') && extname(relativePath) === '') {
+    const directoryIndex = join(siteDirectory, relativePath, 'index.html');
+    if (directoryIndex.startsWith(siteDirectory + '/') && (await stat(directoryIndex).catch(() => null))?.isFile()) {
+      response.writeHead(301, { location: `${requestUrl.pathname}/${requestUrl.search}` }).end();
+      return;
+    }
+  }
+  // Clean URLs: /guides/intro serves guides/intro.html.
+  const candidates = [relativePath, ...(extname(relativePath) === '' ? [`${relativePath}.html`] : [])];
 
-  if (!filePath.startsWith(siteDirectory + '/') || filePath.endsWith('routes.ts')) {
-    response.writeHead(404, { 'content-type': 'text/plain' }).end('not found');
+  for (const candidate of candidates) {
+    const filePath = join(siteDirectory, candidate);
+    if (!filePath.startsWith(siteDirectory + '/') || filePath.endsWith('routes.ts')) break;
+    const body = await readFile(filePath).catch(() => null);
+    if (body === null) continue;
+    const contentType = CONTENT_TYPES[extname(filePath)] ?? 'application/octet-stream';
+    response.writeHead(200, { 'content-type': contentType, 'content-length': body.length }).end(body);
     return;
   }
 
-  let body: Buffer;
-  try {
-    body = await readFile(filePath);
-  } catch {
-    response.writeHead(404, { 'content-type': 'text/html' }).end('<!doctype html><title>Not found</title>');
-    return;
-  }
-  const contentType = CONTENT_TYPES[extname(filePath)] ?? 'application/octet-stream';
-  response.writeHead(200, { 'content-type': contentType, 'content-length': body.length }).end(body);
+  if (fallback !== undefined) return fallback();
+  response.writeHead(404, { 'content-type': 'text/html' }).end('<!doctype html><title>Not found</title>');
 }

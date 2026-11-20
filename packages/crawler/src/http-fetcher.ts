@@ -1,5 +1,6 @@
 import { Agent, errors as undiciErrors, request } from 'undici';
 import { decodeBody } from './decode-body';
+import { readCapped, ResponseTooLargeError } from './read-capped';
 import {
   BlockedAddressError,
   buildGuardedConnector,
@@ -28,9 +29,11 @@ export interface HttpFetcherOptions {
 export interface FetchRequest {
   url: string;
   /**
-   * Media types to read the body of, e.g. `text/html`. A response of any other type
-   * fails with `unsupported_content_type` without its body being read. A missing
-   * Content-Type is treated as acceptable, since many servers omit it.
+   * Media types to read the body of, e.g. `text/html`. A 2xx response of any other type
+   * fails with `unsupported_content_type` without its body being read; any other status
+   * comes back as a response with an empty body, since an error page's type says nothing
+   * about the URL. A missing Content-Type is treated as acceptable, since many servers
+   * omit it.
    */
   acceptedContentTypes: readonly string[];
   /** Conditional GET validators from the previous fetch. */
@@ -163,6 +166,11 @@ export class HttpFetcher {
       const contentType = mediaType(headers['content-type']);
       if (contentType !== null && !fetchRequest.acceptedContentTypes.includes(contentType)) {
         await response.body.dump().catch(() => undefined);
+        // An error page's type says nothing about the URL; its status is what matters.
+        const isSuccess = response.statusCode >= 200 && response.statusCode < 300;
+        if (!isSuccess) {
+          return { kind: 'response', requestedUrl, finalUrl: parsedUrl.href, redirectChain, httpStatusCode: response.statusCode, headers, contentType, body: '' };
+        }
         return fail('unsupported_content_type', `content type ${contentType} is not one of the accepted types`);
       }
 
@@ -210,22 +218,6 @@ export class HttpFetcher {
     if (fetchRequest.ifModifiedSince !== undefined) headers['if-modified-since'] = fetchRequest.ifModifiedSince;
     return headers;
   }
-}
-
-class ResponseTooLargeError extends Error {}
-
-async function readCapped(body: AsyncIterable<Buffer> & { destroy(): void }, maxBytes: number): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  let totalBytes = 0;
-  for await (const chunk of body) {
-    totalBytes += chunk.length;
-    if (totalBytes > maxBytes) {
-      body.destroy();
-      throw new ResponseTooLargeError();
-    }
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks);
 }
 
 function classifyError(error: unknown, signal: AbortSignal): [FetchFailureReason, string] {

@@ -52,11 +52,19 @@ create table sites (
   sitemap_lastmod_is_trusted       boolean not null default false,
   -- Fingerprints from discovery, e.g. {"sitemaps": {"<url>": {"etag": "...", "hash": "..."}}, "nav_hash": "..."}.
   discovery_fingerprints           jsonb not null default '{}'::jsonb,
+  -- Crawler: whether the site only has content after JavaScript runs, so every page is
+  -- fetched with the headless browser. Null until a crawl decides it by fetching the
+  -- homepage both ways; the worker passes null again once the decision is 30 days old,
+  -- so a site that moves to server rendering is noticed.
+  requires_headless_rendering      boolean,
+  headless_rendering_decided_at    timestamptz,
 
   created_at                       timestamptz not null default now(),
 
   constraint sites_monitor_check_interval_bounds
-    check (monitor_check_interval between interval '1 hour' and interval '30 days')
+    check (monitor_check_interval between interval '1 hour' and interval '30 days'),
+  constraint sites_headless_rendering_decided_together
+    check ((requires_headless_rendering is null) = (headless_rendering_decided_at is null))
 );
 
 -- The monitor's due-site scan.

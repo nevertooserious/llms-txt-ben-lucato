@@ -85,6 +85,21 @@ export const routes: FixtureRoutes = {
     response.writeHead(200, { 'content-type': 'text/html', etag }).end(page('Conditional'));
   },
 
+  // A page whose script and iframes reach for every address in ?targets= (comma-separated).
+  // Rendered by the headless browser, each must be refused by the SSRF guard.
+  '/browser-ssrf': (_request, response, requestUrl) => {
+    const targets = (requestUrl.searchParams.get('targets') ?? '').split(',').filter(Boolean);
+    const frames = targets.map((target) => `<iframe src="${target}"></iframe>`).join('');
+    const script = `
+      var targets = ${JSON.stringify(targets)};
+      targets.forEach(function (target) { fetch(target).catch(function () {}); });
+      var xhr = new XMLHttpRequest(); xhr.open('GET', targets[0] || '/'); xhr.send();
+      document.querySelector('main').insertAdjacentHTML('beforeend', '<p>Script ran and tried ' + targets.length + ' targets.</p>');`;
+    response
+      .writeHead(200, { 'content-type': 'text/html' })
+      .end(`<!doctype html><html><head><title>Browser SSRF</title></head><body><main><h1>Browser SSRF</h1></main>${frames}<script>${script}</script></body></html>`);
+  },
+
   // Echoes the request headers the crawler sent.
   '/echo-headers': (request, response) => {
     response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(request.headers));

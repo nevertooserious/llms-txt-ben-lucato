@@ -11,9 +11,18 @@ charset parameter, so a page's own `<meta charset>` decides its encoding.
 
 | Site | What it is |
 |---|---|
-| `static-site` | Server-rendered pages with no JavaScript, a windows-1252 page and a PNG |
-| `hostile-site` | Only scripted routes: redirect chains and loops, open redirects, timeouts, oversized bodies, error statuses, non-HTML types |
+| `static-site` | Server-rendered pages with no JavaScript; robots.txt disallowing `/private/`; a sitemap listing a page nothing links to; a windows-1252 page and a PNG |
+| `client-app-shell` | An empty shell for every path; JavaScript renders each route and the navigation, and loads part of the homepage after a timer |
+| `metadata-ssr-site` | Title and description in the server's HTML; body rendered by JavaScript |
+| `hydrated-site` | Fully server-rendered, with a hydration script that changes no text; no sitemap |
+| `hash-routing-site` | Routes on the URL fragment |
+| `mixed-site` | Server-rendered, except one client-rendered section at `/app/` |
+| `markdown-site` | An existing llms.txt and `.md` variants for some pages |
+| `large-sitemap-site` | A sitemap index of 1,500 generated posts |
+| `rate-limited-site` | A page that answers 429 with `Retry-After` before serving |
+| `hostile-site` | Only scripted routes: redirect chains and loops, open redirects, timeouts, oversized bodies, error statuses, non-HTML types, and a page whose scripts reach for private addresses |
 
 Tests reach these sites through `allowLoopbackPorts` in `e2e/support/local-network-policy.ts`,
-which opens exactly the fixture ports and nothing else. The planned sites for the other
-cases are listed in `../tests/site-flavours.test.ts`.
+which opens exactly the fixture ports and nothing else. `../tests/crawler.test.ts` and
+`../tests/http-fetcher.test.ts` test the crawler against these sites. The planned
+pipeline-level cases are listed in `../tests/site-flavours.test.ts`.

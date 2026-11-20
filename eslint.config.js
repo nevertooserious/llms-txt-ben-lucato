@@ -32,6 +32,21 @@ export default tseslint.config(
   { ignores: ['**/node_modules/', '**/.next/', '**/next-env.d.ts'] },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
+  // Scripts the fixture sites serve to the headless browser: plain browser JavaScript.
+  {
+    files: ['e2e/fixture-sites/**/*.js'],
+    languageOptions: {
+      sourceType: 'script',
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        location: 'readonly',
+        fetch: 'readonly',
+        setTimeout: 'readonly',
+        XMLHttpRequest: 'readonly',
+      },
+    },
+  },
   {
     files: ['packages/extractor/src/**/*.ts'],
     ignores: ['**/*.test.ts'],
