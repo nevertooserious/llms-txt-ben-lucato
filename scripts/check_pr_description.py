@@ -16,7 +16,7 @@ import sys
 MAX_PR_DESCRIPTION_CHARACTERS = 500
 
 HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
-# The appendix starts at a "## Pipeline" heading whose next non-blank line links to
+# The appendix starts at a "## Pipeline" heading whose next non-blank line mentions
 # no-mistakes.
 NO_MISTAKES_APPENDIX = re.compile(
     r"^## Pipeline[ \t]*\n\s*[^\n]*no-mistakes", re.MULTILINE
