@@ -4,7 +4,7 @@ A web app that takes a website URL, generates an llms.txt (spec: https://llmstxt
 
 ## Current state
 
-Project skeleton: an npm workspaces monorepo with typed stubs for every component. The extractor is implemented and tested against fixtures in `packages/extractor/fixtures/`; the rest is stubs. `README.md` has the layout and setup. Before writing code, read:
+Project skeleton: an npm workspaces monorepo with typed stubs for every component. The extractor is implemented and tested against fixtures in `packages/extractor/fixtures/`. The crawler is implemented and tested end to end against local fixture sites in `e2e/fixture-sites/` (`scripts/test-e2e.sh`). The rest is stubs. `README.md` has the layout and setup. Before writing code, read:
 
 - `docs/design/README.md`: the system design, including open questions that are not yet decided.
 - `db/schema.sql`: the data model. CI applies it to Postgres 14 on every PR (`scripts/validate-schema.sh`).

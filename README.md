@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps it up to date as the site changes. The design is in [`docs/design/README.md`](docs/design/README.md).
 
-Status: project skeleton. The extractor is implemented; the other packages have typed interfaces and stub functions.
+Status: project skeleton. The extractor and crawler are implemented; the other packages have typed interfaces and stub functions.
 
 ## Layout
 

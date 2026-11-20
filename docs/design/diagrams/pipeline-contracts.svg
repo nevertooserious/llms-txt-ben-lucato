@@ -23,7 +23,7 @@
   <text class="l" x="104" y="116">1  robots.txt, sitemaps, llms.txt</text>
   <text class="l" x="104" y="138">2  seed frontier from homepage nav</text>
   <text class="l" x="104" y="160">3  priority BFS with page budget</text>
-  <text class="l" x="104" y="182">4  plain GET; headless if empty</text>
+  <text class="l" x="104" y="182">4  plain GET; headless per site</text>
   <text class="l" x="104" y="204">5  per-host rate limit, SSRF guard</text>
 
   <!-- extractor -->

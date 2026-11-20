@@ -1,7 +1,9 @@
 import { describe, it } from 'vitest';
 
 // End-to-end: submit a fixture site, run crawl -> extract -> generate, and check the
-// published llms.txt. One fixture site per case, in e2e/fixture-sites.
+// published llms.txt. One fixture site per case, in e2e/fixture-sites. The rendering,
+// discovery and hostile-input cases are already tested at the crawler level in
+// crawler.test.ts and http-fetcher.test.ts; these todos are the pipeline-level versions.
 
 describe('rendering', () => {
   it.todo('static page: plain HTTP only, no headless render');

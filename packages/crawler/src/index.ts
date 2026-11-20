@@ -1,6 +1,19 @@
 // The crawler owns all network I/O to target sites: robots.txt, sitemaps, page fetches
 // and headless renders. Every outbound request goes through the SSRF guard.
-export { crawlSite, type CrawlSiteOptions } from './crawl-site';
+export {
+  crawlSite,
+  type CrawlFailure,
+  type CrawlProgress,
+  type CrawlResult,
+  type CrawlSiteOptions,
+} from './crawl-site';
+export {
+  HeadlessRenderer,
+  type HeadlessRendererOptions,
+  type RenderedPage,
+  type RenderFailure,
+  type RenderOutcome,
+} from './headless-renderer';
 export {
   DEFAULT_USER_AGENT,
   FETCH_FAILURE_REASONS,

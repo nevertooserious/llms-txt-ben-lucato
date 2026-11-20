@@ -1,6 +1,6 @@
 // The typed hand-offs between pipeline stages (docs/design/diagrams/pipeline-contracts.svg):
 //
-//   crawler:   site URL       -> RawPage[]
+//   crawler:   site URL       -> RawPage[] (inside a CrawlResult)
 //   extractor: RawPage        -> PageRecord
 //   generator: GeneratorPage[] -> llms.txt text
 //
@@ -44,6 +44,8 @@ export interface RawPage {
   fetchMethod: FetchMethod;
   crawlSignals: CrawlSignals;
   markdownVariantUrl: string | null;
+  /** The page's sitemap <lastmod>, verbatim, or null when no sitemap lists it. */
+  sitemapLastModified: string | null;
 }
 
 /** Discovery signals the generator uses to score pages. */

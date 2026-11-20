@@ -1,0 +1,9 @@
+# Plaintext Tools
+
+> Command-line tools for working with plain text.
+
+## Docs
+
+- [Introduction](/guides/intro.md): Start here
+- [Setup](/guides/setup.md): Install and configure
+- [Elsewhere](https://example.com/not-in-scope): An external link the crawler must ignore
