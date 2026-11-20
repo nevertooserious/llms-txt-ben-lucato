@@ -1,0 +1,15 @@
+{
+  "input": {
+    "normalisedUrl": "https://pebble.example",
+    "finalUrl": "https://pebble.example/",
+    "isHomepage": true
+  },
+  "record": {
+    "normalisedUrl": "https://pebble.example",
+    "canonicalUrl": null,
+    "title": "Pebble",
+    "description": null,
+    "pageType": "home",
+    "languageCode": "en"
+  }
+}

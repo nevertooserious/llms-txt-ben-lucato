@@ -1,0 +1,15 @@
+{
+  "input": {
+    "normalisedUrl": "https://lumen.example/blog/faster-builds",
+    "finalUrl": "https://lumen.example/blog/faster-builds",
+    "isHomepage": false
+  },
+  "record": {
+    "normalisedUrl": "https://lumen.example/blog/faster-builds",
+    "canonicalUrl": null,
+    "title": "How we cut build times in half — Lumen Blog",
+    "description": "Large sites were taking minutes to build because every page re-parsed the same templates. Caching parsed templates between pages removed most of that work.",
+    "pageType": "blog",
+    "languageCode": "en"
+  }
+}

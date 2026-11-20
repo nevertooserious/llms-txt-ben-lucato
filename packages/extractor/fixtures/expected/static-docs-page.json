@@ -1,0 +1,15 @@
+{
+  "input": {
+    "normalisedUrl": "https://lumen.example/docs/configuration",
+    "finalUrl": "https://lumen.example/docs/configuration",
+    "isHomepage": false
+  },
+  "record": {
+    "normalisedUrl": "https://lumen.example/docs/configuration",
+    "canonicalUrl": "https://lumen.example/docs/configuration",
+    "title": "Configuration",
+    "description": "Every option in lumen.config.json, with defaults and examples.",
+    "pageType": "docs",
+    "languageCode": "en-gb"
+  }
+}
