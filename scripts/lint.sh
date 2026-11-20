@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Repository lint. Run locally, by the no-mistakes gate, and in CI.
+# Repository lint. Run locally and in CI.
 #
 # Checks:
 #   - every diagram in docs/design/diagrams is well-formed standalone SVG (XML)

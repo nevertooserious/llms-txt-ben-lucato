@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for the repository's own scripts. Run locally, by the no-mistakes gate, and in CI.
+# Tests for the repository's own scripts. Run locally and in CI.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
