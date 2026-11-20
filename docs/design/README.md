@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps that file up to date as the site changes.
 
-Status: design only. Nothing here is implemented yet. The schema in [`db/schema.sql`](../../db/schema.sql) has not been run against a real Postgres.
+Status: design only. Nothing here is implemented yet. The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
 
 ## Contents
 

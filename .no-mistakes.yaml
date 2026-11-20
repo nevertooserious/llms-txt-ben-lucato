@@ -1,0 +1,16 @@
+# Per-repo no-mistakes configuration.
+#
+# lint and test mirror the `lint` job in .github/workflows/ci.yml. The schema check
+# needs a Postgres server, so it runs in CI only (the `schema` job) and the gate's CI
+# step waits for it.
+commands:
+  lint: "scripts/lint.sh"
+  test: "scripts/test.sh"
+
+# PR descriptions are capped at 500 characters (CI job `pr-description`), so keep the
+# generated one short: a one-section template, no published intent, and the smallest
+# no-mistakes appendix. These keys are read from the default branch only.
+pr:
+  template: .github/pull_request_template.md
+  publish_intent: false
+  appendix: minimal
