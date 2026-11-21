@@ -6,12 +6,14 @@ export {
   type CrawlProgress,
   type CrawlResult,
   type CrawlSiteOptions,
+  type CrawlStopReason,
 } from './crawl-site';
 export {
   HeadlessRenderer,
   type HeadlessRendererOptions,
   type RenderedPage,
   type RenderFailure,
+  type RenderOptions,
   type RenderOutcome,
 } from './headless-renderer';
 export {
@@ -33,3 +35,4 @@ export {
   type HostnameResolver,
   type NetworkPolicy,
 } from './ssrf-guard';
+export { ROBOTS_USER_AGENT_TOKEN, type RobotsTxtStatus } from './robots-rules';

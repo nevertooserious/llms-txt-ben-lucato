@@ -157,9 +157,9 @@ create unique index pipeline_runs_one_active_per_site_idx
 create table pages (
   id                                   uuid primary key default gen_random_uuid(),
   site_id                              uuid not null references sites (id) on delete cascade,
-  -- The row's identity: the URL we fetch, after cleanup that needs no fetch
-  -- (lowercase host, fragment and tracking params removed, query sorted, trailing
-  -- slash and default port stripped).
+  -- The row's identity: the URL after cleanup that needs no fetch (lowercase host,
+  -- fragment and tracking params removed, query sorted, trailing slash and default port
+  -- stripped). The crawler requests the URL as the site linked it, and keys on this.
   normalised_url                       text not null,
 
   -- Crawler: fetch fingerprint and discovery signals.
@@ -184,6 +184,9 @@ create table pages (
   -- URL of a markdown version of the page (same URL + ".md"), if one exists. The
   -- spec recommends linking these in preference to the HTML page.
   markdown_variant_url                 text,
+  -- A robots directive for this crawler (<meta name="robots"> or X-Robots-Tag) says
+  -- noindex. The site asks that the page not be listed, so the generator leaves it out.
+  has_noindex_directive                boolean not null default false,
 
   -- Extractor: the PageRecord.
   extracted_title                      text,

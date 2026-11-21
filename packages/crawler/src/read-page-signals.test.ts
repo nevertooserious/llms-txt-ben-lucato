@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readPageSignals } from './read-page-signals';
+import { readPageSignals, readXRobotsTag } from './read-page-signals';
 
 const pageUrl = 'https://example.com/docs/page';
 
@@ -41,9 +41,36 @@ describe('readPageSignals', () => {
     expect(readPageSignals('<body><script type="module">1</script></body>', pageUrl).hasScripts).toBe(true);
   });
 
+  it('reads noindex from <meta name="robots"> and from a meta tag naming this crawler', () => {
+    expect(readPageSignals('<head><meta name="robots" content="noindex"></head>', pageUrl).isNoindex).toBe(true);
+    expect(readPageSignals('<head><meta name="LlmsTxtGenerator" content="noindex"></head>', pageUrl).isNoindex).toBe(true);
+    expect(readPageSignals('<head><meta name="googlebot" content="noindex"></head>', pageUrl).isNoindex).toBe(false);
+  });
+
+  it('reads robots directives from X-Robots-Tag', () => {
+    const signals = readPageSignals('<body><a href="/a">A</a></body>', pageUrl, { 'x-robots-tag': 'noindex, nofollow' });
+    expect(signals).toMatchObject({ isNoindex: true, isNofollow: true });
+  });
+
   it('reads a robots nofollow meta tag', () => {
     expect(readPageSignals('<head><meta name="robots" content="noindex, nofollow"></head>', pageUrl).isNofollow).toBe(true);
     expect(readPageSignals('<head><meta name="ROBOTS" content="none"></head>', pageUrl).isNofollow).toBe(true);
     expect(readPageSignals('<head><meta name="robots" content="noindex"></head>', pageUrl).isNofollow).toBe(false);
+  });
+});
+
+describe('readXRobotsTag', () => {
+  it('applies unscoped directives to every crawler', () => {
+    expect(readXRobotsTag('noindex, nofollow')).toEqual(['noindex', 'nofollow']);
+  });
+
+  it('applies directives scoped to this crawler, and not to others', () => {
+    expect(readXRobotsTag('googlebot: noindex, nofollow')).toEqual([]);
+    expect(readXRobotsTag('LlmsTxtGenerator: noindex')).toEqual(['noindex']);
+    expect(readXRobotsTag('googlebot: nofollow, llmstxtgenerator: noindex, noarchive')).toEqual(['noindex', 'noarchive']);
+  });
+
+  it('treats unavailable_after as a directive, not a scope', () => {
+    expect(readXRobotsTag('unavailable_after: 25 Jun 2030 15:00:00 PST')).toEqual(['unavailable_after: 25 jun 2030 15:00:00 pst']);
   });
 });

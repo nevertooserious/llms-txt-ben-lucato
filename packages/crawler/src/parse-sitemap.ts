@@ -1,8 +1,9 @@
 import { load, type CheerioAPI } from 'cheerio/slim';
 import type { Element } from 'domhandler';
 
-// Sitemaps (sitemaps.org): a <urlset> lists pages, a <sitemapindex> lists more sitemaps.
-// Gzipped sitemaps are not supported; their fetch fails on content type and is skipped.
+// Sitemaps, in every format the protocol (sitemaps.org) allows: an XML <urlset> of pages,
+// an XML <sitemapindex> of more sitemaps, a plain-text file of one URL per line, and RSS
+// 2.0 or Atom feeds. Gzipped files are gunzipped by the fetcher before they get here.
 
 export interface SitemapEntry {
   url: string;
@@ -38,7 +39,54 @@ export function parseSitemap(xml: string): ParsedSitemap {
     return { kind: 'urlset', entries };
   }
 
+  const feedEntries = readFeedEntries($, byLocalName);
+  if (feedEntries !== null) return { kind: 'urlset', entries: feedEntries };
+
+  const textEntries = readTextSitemap(xml);
+  if (textEntries !== null) return { kind: 'urlset', entries: textEntries };
+
   return { kind: 'invalid' };
+}
+
+/** RSS 2.0 <item><link>, or Atom <entry><link href>; null if the document is neither. */
+function readFeedEntries(
+  $: CheerioAPI,
+  byLocalName: (name: string) => ReturnType<CheerioAPI>,
+): SitemapEntry[] | null {
+  if (byLocalName('rss').length > 0) {
+    return byLocalName('item')
+      .toArray()
+      .map((item) => {
+        const children = $(item).children().toArray();
+        const url = childText(children, 'link', $);
+        return url === null ? null : { url, lastModified: childText(children, 'pubdate', $) };
+      })
+      .filter((entry): entry is SitemapEntry => entry !== null);
+  }
+  if (byLocalName('feed').length > 0) {
+    return byLocalName('entry')
+      .toArray()
+      .map((entry) => {
+        const children = $(entry).children().toArray();
+        const link =
+          children.find((child) => localName(child.tagName) === 'link' && ($(child).attr('rel') ?? 'alternate') === 'alternate') ??
+          children.find((child) => localName(child.tagName) === 'link');
+        const url = link === undefined ? null : ($(link).attr('href') ?? '').trim() || null;
+        return url === null ? null : { url, lastModified: childText(children, 'updated', $) };
+      })
+      .filter((entry): entry is SitemapEntry => entry !== null);
+  }
+  return null;
+}
+
+/** One absolute URL per line; null unless every non-empty line is one. */
+function readTextSitemap(text: string): SitemapEntry[] | null {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== '');
+  if (lines.length === 0 || !lines.every((line) => /^https?:\/\/\S+$/i.test(line))) return null;
+  return lines.map((url) => ({ url, lastModified: null }));
 }
 
 function localName(tagName: string): string {

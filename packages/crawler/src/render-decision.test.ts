@@ -9,6 +9,7 @@ const signals = (overrides: Partial<PageSignals>): PageSignals => ({
   hasJavaScriptShellMarker: false,
   hasScripts: true,
   isNofollow: false,
+  isNoindex: false,
   ...overrides,
 });
 const links = (count: number) => Array.from({ length: count }, (_unused, index) => `https://example.com/${index}`);

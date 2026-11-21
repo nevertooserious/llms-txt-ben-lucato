@@ -1,11 +1,18 @@
 import type { DiscoverySource, FetchMethod, RawPage } from '@llms-txt/contracts';
 import { HeadlessRenderer } from './headless-renderer';
 import { HttpFetcher, type FetchOutcome, type FetchRequest } from './http-fetcher';
-import { isInScope, normaliseUrl } from './normalise-url';
+import { cleanUrlForFetch, isInScope, normaliseUrl } from './normalise-url';
 import { parseSitemap } from './parse-sitemap';
 import { readPageSignals, type PageSignals } from './read-page-signals';
 import { looksLikeJavaScriptShell, renderedPageIsBetter, renderingAddsContent } from './render-decision';
-import { allowEverything, parseRobotsTxt, type RobotsRules } from './robots-rules';
+import {
+  parseRobotsTxt,
+  ROBOTS_TXT_MAX_PARSED_BYTES,
+  robotsTxtUnavailable,
+  robotsTxtUnreachable,
+  type RobotsRules,
+  type RobotsTxtStatus,
+} from './robots-rules';
 import type { HostnameResolver, NetworkPolicy } from './ssrf-guard';
 
 export interface CrawlSiteOptions {
@@ -23,6 +30,11 @@ export interface CrawlSiteOptions {
   resolveHostname?: HostnameResolver;
   /** Least time between two requests to the site. robots.txt Crawl-delay can raise it. */
   minRequestIntervalMs?: number;
+  /**
+   * No new page is fetched after this long. Crawl-delay is honoured as the site gives it,
+   * so a slow site gets fewer pages, not faster requests.
+   */
+  maxCrawlDurationMs?: number;
   /** Longest wait honoured for a 429's Retry-After before giving up on that URL. */
   maxRetryAfterMs?: number;
   /**
@@ -46,7 +58,15 @@ export interface CrawlFailure {
   message: string;
 }
 
+export type CrawlStopReason = 'frontier_exhausted' | 'page_budget' | 'attempt_limit' | 'time_limit' | 'robots_txt_unreachable';
+
 export interface CrawlResult {
+  /**
+   * robots.txt per RFC 9309: `unreachable` (5xx, timeout, network failure) means the
+   * site was not crawled at all, and the run should fail with that reason.
+   */
+  robotsTxtStatus: RobotsTxtStatus;
+  stopReason: CrawlStopReason;
   /** Every page that answered, including 404s and 410s, which the monitor needs. */
   pages: RawPage[];
   /** Pages that could not be fetched (timeouts, 5xx, blocks). They count toward the safety gate. */
@@ -58,7 +78,8 @@ export interface CrawlResult {
 }
 
 const HTML_TYPES = ['text/html', 'application/xhtml+xml'];
-const SITEMAP_TYPES = ['application/xml', 'text/xml', 'text/plain'];
+/** The sitemaps protocol caps a sitemap file at 50 MB uncompressed. */
+const MAX_SITEMAP_BYTES = 50 * 1024 * 1024;
 const TEXT_TYPES = ['text/plain', 'text/markdown', 'text/x-markdown'];
 
 /** Sitemap files fetched per crawl, index files included. */
@@ -79,7 +100,10 @@ const SOURCE_PRIORITY: Record<DiscoverySource, number> = {
 };
 
 interface FrontierEntry {
+  /** The normalised URL: the page's identity. */
   url: string;
+  /** What is requested: the URL as first linked, cleaned only as far as RFC 3986 allows. */
+  fetchUrl: string;
   crawlDepth: number;
   discoveredVia: DiscoverySource;
   sitemapLastModified: string | null;
@@ -114,7 +138,7 @@ class SiteCrawl {
   private readonly fetcher: HttpFetcher;
   private renderer: HeadlessRenderer | undefined;
   private readonly ownsRenderer: boolean;
-  private robots: RobotsRules = allowEverything;
+  private robots: RobotsRules = robotsTxtUnavailable;
   private requestIntervalMs: number;
   private lastRequestAt = 0;
 
@@ -124,16 +148,25 @@ class SiteCrawl {
   private readonly fetchedUrls = new Set<string>();
   private readonly inboundLinkSources = new Map<string, Set<string>>();
   private readonly navigationUrls = new Set<string>();
-  private readonly results: Array<{ entry: FrontierEntry; page: FetchedPage; markdownVariantUrl: string | null }> = [];
+  private readonly results: Array<{
+    entry: FrontierEntry;
+    page: FetchedPage;
+    markdownVariantUrl: string | null;
+    hasNoindexDirective: boolean;
+  }> = [];
   private readonly failedFetches: CrawlFailure[] = [];
   private markdownProbeMisses = 0;
   private markdownVariantsFound = false;
   private insertionOrder = 0;
+  private readonly fetchRootUrl: string;
+  private readonly deadline: number;
 
   constructor(private readonly options: CrawlSiteOptions) {
     const rootUrl = normaliseUrl(options.rootUrl);
     if (rootUrl === null) throw new Error(`not a crawlable root URL: ${options.rootUrl}`);
     this.rootUrl = rootUrl;
+    this.fetchRootUrl = cleanUrlForFetch(options.rootUrl)!;
+    this.deadline = Date.now() + (options.maxCrawlDurationMs ?? 15 * 60_000);
     this.fetcher = new HttpFetcher({ networkPolicy: options.networkPolicy, resolveHostname: options.resolveHostname });
     this.renderer = options.headlessRenderer;
     this.ownsRenderer = options.headlessRenderer === undefined;
@@ -144,21 +177,30 @@ class SiteCrawl {
   async run(): Promise<CrawlResult> {
     const decidedBefore = this.requiresHeadlessRendering !== null;
     await this.loadRobotsTxt();
-    this.addToFrontier(this.rootUrl, 0, 'navigation', null);
+    if (this.robots.status === 'unreachable') return this.result('robots_txt_unreachable', decidedBefore);
+
+    this.addToFrontier(this.fetchRootUrl, 0, 'navigation', null);
     await this.seedFromSitemaps();
     await this.seedFromExistingLlmsTxt();
 
     for (;;) {
-      if (this.results.length >= this.options.pageBudget) break;
-      if (this.fetchedUrls.size >= this.options.pageBudget * ATTEMPTS_PER_BUDGETED_PAGE) break;
+      if (this.results.length >= this.options.pageBudget) return this.result('page_budget', decidedBefore);
+      if (this.fetchedUrls.size >= this.options.pageBudget * ATTEMPTS_PER_BUDGETED_PAGE) {
+        return this.result('attempt_limit', decidedBefore);
+      }
+      if (Date.now() >= this.deadline) return this.result('time_limit', decidedBefore);
       const entry = this.takeNextFromFrontier();
-      if (entry === undefined) break;
+      if (entry === undefined) return this.result('frontier_exhausted', decidedBefore);
       await this.crawlPage(entry);
       this.reportProgress();
     }
+  }
 
+  private result(stopReason: CrawlStopReason, decidedBefore: boolean): CrawlResult {
     return {
-      pages: this.results.map(({ entry, page, markdownVariantUrl }) => this.toRawPage(entry, page, markdownVariantUrl)),
+      robotsTxtStatus: this.robots.status,
+      stopReason,
+      pages: this.results.map((result) => this.toRawPage(result)),
       failedFetches: this.failedFetches,
       requiresHeadlessRendering: this.requiresHeadlessRendering ?? false,
       decidedHeadlessRendering: !decidedBefore && this.requiresHeadlessRendering !== null,
@@ -172,19 +214,38 @@ class SiteCrawl {
 
   // --- discovery -------------------------------------------------------------------
 
+  /** RFC 9309, section 2.3.1. See robots-rules.ts for the table. */
   private async loadRobotsTxt(): Promise<void> {
     const robotsTxtUrl = new URL('/robots.txt', this.rootUrl).href;
-    const outcome = await this.politeFetch({ url: robotsTxtUrl, acceptedContentTypes: TEXT_TYPES });
-    if (outcome.kind === 'response' && outcome.httpStatusCode === 200) {
-      this.robots = parseRobotsTxt(robotsTxtUrl, outcome.body);
-      if (this.robots.crawlDelaySeconds !== null) {
-        this.requestIntervalMs = Math.max(this.requestIntervalMs, this.robots.crawlDelaySeconds * 1000);
-      }
+    const outcome = await this.politeFetch({
+      url: robotsTxtUrl,
+      // Parsed whatever its media type; only the first 500 KiB need be read.
+      acceptedContentTypes: ['*/*'],
+      maxResponseBytes: ROBOTS_TXT_MAX_PARSED_BYTES,
+      truncateAtMaxBytes: true,
+    });
+
+    if (outcome.kind === 'failed') {
+      const isUnavailable = ['too_many_redirects', 'invalid_url', 'unsupported_scheme'].includes(outcome.reason);
+      this.robots = isUnavailable ? robotsTxtUnavailable : robotsTxtUnreachable;
+      if (!isUnavailable) this.recordFailure(robotsTxtUrl, 'robots_txt_unreachable', outcome.message);
+      return;
+    }
+    const status = outcome.httpStatusCode;
+    if (status >= 200 && status < 300) this.robots = parseRobotsTxt(outcome.finalUrl, outcome.body);
+    else if (status >= 500) {
+      this.robots = robotsTxtUnreachable;
+      this.recordFailure(robotsTxtUrl, 'robots_txt_unreachable', `HTTP ${status}`);
+    } else this.robots = robotsTxtUnavailable;
+
+    if (this.robots.crawlDelaySeconds !== null) {
+      this.requestIntervalMs = Math.max(this.requestIntervalMs, this.robots.crawlDelaySeconds * 1000);
     }
   }
 
   private async seedFromSitemaps(): Promise<void> {
-    const queue = this.robots.sitemapUrls.length > 0 ? [...this.robots.sitemapUrls] : [new URL('/sitemap.xml', this.rootUrl).href];
+    const listedInRobotsTxt = this.robots.sitemapUrls.length > 0;
+    const queue = listedInRobotsTxt ? [...this.robots.sitemapUrls] : [new URL('/sitemap.xml', this.rootUrl).href];
     const seen = new Set<string>();
     const maxEntries = this.options.pageBudget * SITEMAP_ENTRIES_PER_BUDGETED_PAGE;
     let entriesAdded = 0;
@@ -193,7 +254,15 @@ class SiteCrawl {
       const sitemapUrl = queue.shift()!;
       if (seen.has(sitemapUrl)) continue;
       seen.add(sitemapUrl);
-      const outcome = await this.politeFetch({ url: sitemapUrl, acceptedContentTypes: SITEMAP_TYPES });
+      // A sitemap robots.txt lists is invited; one found by guessing is subject to its rules.
+      if (!listedInRobotsTxt && !this.isAllowedByRobots(sitemapUrl)) continue;
+      const outcome = await this.politeFetch({
+        url: sitemapUrl,
+        // Sitemaps are served under many media types; the parser decides what it is.
+        acceptedContentTypes: ['*/*'],
+        maxResponseBytes: MAX_SITEMAP_BYTES,
+        decompressGzip: true,
+      });
       if (outcome.kind !== 'response' || outcome.httpStatusCode !== 200) continue;
 
       const sitemap = parseSitemap(outcome.body);
@@ -208,15 +277,32 @@ class SiteCrawl {
     }
   }
 
+  /** The spec puts llms.txt at the root path, or optionally under a subpath. */
   private async seedFromExistingLlmsTxt(): Promise<void> {
-    const llmsTxtUrl = `${this.rootUrl}/llms.txt`;
-    const outcome = await this.politeFetch({ url: llmsTxtUrl, acceptedContentTypes: TEXT_TYPES });
-    if (outcome.kind !== 'response' || outcome.httpStatusCode !== 200) return;
-    for (const match of outcome.body.matchAll(/\]\(\s*<?([^)\s>]+)>?\s*\)/g)) {
-      const linkedUrl = htmlUrlForMarkdownLink(match[1]!, outcome.finalUrl);
-      if (linkedUrl !== null) this.addToFrontier(linkedUrl, 1, 'existing_llms_txt', null);
+    const candidates = [...new Set([`${this.rootUrl}/llms.txt`, new URL('/llms.txt', this.rootUrl).href])];
+    for (const llmsTxtUrl of candidates) {
+      if (!this.isAllowedByRobots(llmsTxtUrl)) continue;
+      const outcome = await this.politeFetch({ url: llmsTxtUrl, acceptedContentTypes: TEXT_TYPES });
+      if (outcome.kind !== 'response' || outcome.httpStatusCode !== 200) continue;
+      for (const match of outcome.body.matchAll(/\]\(\s*<?([^)\s>]+)>?\s*\)/g)) {
+        const linkedUrl = htmlUrlForMarkdownLink(match[1]!, outcome.finalUrl);
+        if (linkedUrl !== null) this.addToFrontier(linkedUrl, 1, 'existing_llms_txt', null);
+      }
+      return;
     }
   }
+
+  /** robots.txt rules for a URL on this site's host. robots.txt itself is always allowed. */
+  private isAllowedByRobots(url: string): boolean {
+    return this.robots.isAllowed(url);
+  }
+
+  /**
+   * For redirect targets. Rules on this host are checked; another host's robots.txt is
+   * not fetched, and a target off this site is out of scope and dropped after the fetch.
+   */
+  private isRedirectAllowed = (url: string): boolean =>
+    new URL(url).host !== new URL(this.rootUrl).host || this.isAllowedByRobots(url);
 
   /** Adds an in-scope, allowed URL; returns true if it was new. */
   private addToFrontier(
@@ -226,7 +312,9 @@ class SiteCrawl {
     sitemapLastModified: string | null,
   ): boolean {
     const url = normaliseUrl(rawUrl);
-    if (url === null || !isInScope(url, this.rootUrl) || !this.robots.isAllowed(url)) return false;
+    const fetchUrl = cleanUrlForFetch(rawUrl);
+    if (url === null || fetchUrl === null || !isInScope(url, this.rootUrl)) return false;
+    if (!this.isAllowedByRobots(fetchUrl)) return false;
 
     const existing = this.frontier.get(url);
     if (existing !== undefined) {
@@ -234,7 +322,7 @@ class SiteCrawl {
       existing.sitemapLastModified ??= sitemapLastModified;
       return false;
     }
-    this.frontier.set(url, { url, crawlDepth, discoveredVia, sitemapLastModified, order: this.insertionOrder++ });
+    this.frontier.set(url, { url, fetchUrl, crawlDepth, discoveredVia, sitemapLastModified, order: this.insertionOrder++ });
     this.pending.add(url);
     return true;
   }
@@ -268,23 +356,35 @@ class SiteCrawl {
     }
 
     const isSuccess = page.httpStatusCode >= 200 && page.httpStatusCode < 300;
-    if (isSuccess) this.followLinks(entry, page);
-    const markdownVariantUrl = isSuccess ? await this.probeMarkdownVariant(finalUrl) : null;
-    this.results.push({ entry, page, markdownVariantUrl });
+    let hasNoindexDirective = false;
+    let markdownVariantUrl: string | null = null;
+    if (isSuccess) {
+      const signals = readPageSignals(page.html, page.finalUrl, page.headers);
+      hasNoindexDirective = signals.isNoindex;
+      this.followLinks(entry, signals);
+      markdownVariantUrl = await this.probeMarkdownVariant(page.finalUrl);
+    }
+    this.results.push({ entry, page, markdownVariantUrl, hasNoindexDirective });
   }
 
   /** Fetches one page the way the site needs. Null when there is nothing to keep. */
   private async fetchPage(entry: FrontierEntry): Promise<FetchedPage | null> {
-    if (this.requiresHeadlessRendering === true) return this.renderPage(entry.url);
+    if (this.requiresHeadlessRendering === true) return this.renderPage(entry.fetchUrl);
 
-    const outcome = await this.politeFetch({ url: entry.url, acceptedContentTypes: HTML_TYPES });
+    const outcome = await this.politeFetch({
+      url: entry.fetchUrl,
+      acceptedContentTypes: HTML_TYPES,
+      isRedirectAllowed: this.isRedirectAllowed,
+    });
     if (outcome.kind === 'failed') {
-      // Not an HTML page: not part of the site's llms.txt, and not a failure either.
-      if (outcome.reason !== 'unsupported_content_type') this.recordFailure(entry.url, outcome.reason, outcome.message);
+      // Not an HTML page, or a redirect into a disallowed path: not part of the site's
+      // llms.txt, and not a failure of the site either.
+      const isSkip = outcome.reason === 'unsupported_content_type' || outcome.reason === 'disallowed_by_robots';
+      if (!isSkip) this.recordFailure(entry.fetchUrl, outcome.reason, outcome.message);
       return null;
     }
     if (outcome.httpStatusCode >= 500 || outcome.httpStatusCode === 429) {
-      this.recordFailure(entry.url, `http_${outcome.httpStatusCode}`, `HTTP ${outcome.httpStatusCode}`);
+      this.recordFailure(entry.fetchUrl, `http_${outcome.httpStatusCode}`, `HTTP ${outcome.httpStatusCode}`);
       return null;
     }
 
@@ -297,7 +397,7 @@ class SiteCrawl {
     };
     if (outcome.httpStatusCode < 200 || outcome.httpStatusCode >= 300) return plainPage;
 
-    const plainSignals = readPageSignals(outcome.body, outcome.finalUrl);
+    const plainSignals = readPageSignals(outcome.body, outcome.finalUrl, outcome.headers);
     if (!plainSignals.hasScripts) {
       // Without scripts, rendering cannot add anything.
       this.requiresHeadlessRendering ??= false;
@@ -306,21 +406,21 @@ class SiteCrawl {
 
     if (this.requiresHeadlessRendering === null) {
       // The first page fetched is the homepage: compare the two ways once, for the site.
-      const renderedPage = await this.renderPage(entry.url, { recordFailure: false });
+      const renderedPage = await this.renderPage(entry.fetchUrl, { recordFailure: false });
       if (renderedPage === null) {
         this.requiresHeadlessRendering = false;
         return plainPage;
       }
-      const renderedSignals = readPageSignals(renderedPage.html, renderedPage.finalUrl);
+      const renderedSignals = readPageSignals(renderedPage.html, renderedPage.finalUrl, renderedPage.headers);
       this.requiresHeadlessRendering = renderingAddsContent(plainSignals, renderedSignals);
       return this.requiresHeadlessRendering ? renderedPage : plainPage;
     }
 
     // The per-page safety net on a site that is otherwise server-rendered.
     if (looksLikeJavaScriptShell(plainSignals)) {
-      const renderedPage = await this.renderPage(entry.url, { recordFailure: false });
+      const renderedPage = await this.renderPage(entry.fetchUrl, { recordFailure: false });
       if (renderedPage === null) return plainPage;
-      return renderedPageIsBetter(plainSignals, readPageSignals(renderedPage.html, renderedPage.finalUrl))
+      return renderedPageIsBetter(plainSignals, readPageSignals(renderedPage.html, renderedPage.finalUrl, renderedPage.headers))
         ? renderedPage
         : plainPage;
     }
@@ -333,9 +433,10 @@ class SiteCrawl {
       resolveHostname: this.options.resolveHostname,
     });
     await this.waitForRequestSlot();
-    const outcome = await this.renderer.render(url);
+    // The browser's requests to this host obey robots.txt too, as a crawler's should.
+    const outcome = await this.renderer.render(url, { isUrlAllowed: this.isRedirectAllowed });
     if (outcome.kind === 'failed') {
-      if (recordFailure) this.recordFailure(url, outcome.reason, outcome.message);
+      if (recordFailure && outcome.reason !== 'disallowed_by_robots') this.recordFailure(url, outcome.reason, outcome.message);
       return null;
     }
     if (outcome.httpStatusCode >= 500 || outcome.httpStatusCode === 429) {
@@ -351,8 +452,7 @@ class SiteCrawl {
     };
   }
 
-  private followLinks(entry: FrontierEntry, page: FetchedPage): void {
-    const signals: PageSignals = readPageSignals(page.html, page.finalUrl);
+  private followLinks(entry: FrontierEntry, signals: PageSignals): void {
     const isHomepage = entry.crawlDepth === 0;
 
     if (isHomepage) {
@@ -360,7 +460,7 @@ class SiteCrawl {
         const url = normaliseUrl(navigationLink);
         if (url === null || !isInScope(url, this.rootUrl)) continue;
         this.navigationUrls.add(url);
-        this.addToFrontier(url, 1, 'navigation', null);
+        this.addToFrontier(navigationLink, 1, 'navigation', null);
       }
     }
     if (signals.isNofollow) return;
@@ -373,7 +473,7 @@ class SiteCrawl {
       let sources = this.inboundLinkSources.get(url);
       if (sources === undefined) this.inboundLinkSources.set(url, (sources = new Set()));
       sources.add(sourceUrl);
-      this.addToFrontier(url, entry.crawlDepth + 1, 'page_link', null);
+      this.addToFrontier(link, entry.crawlDepth + 1, 'page_link', null);
     }
   }
 
@@ -384,7 +484,7 @@ class SiteCrawl {
   private async probeMarkdownVariant(pageUrl: string): Promise<string | null> {
     if (!this.markdownVariantsFound && this.markdownProbeMisses >= MARKDOWN_PROBES_BEFORE_GIVING_UP) return null;
     const markdownUrl = markdownVariantUrlFor(pageUrl);
-    if (markdownUrl === null || !this.robots.isAllowed(markdownUrl)) return null;
+    if (markdownUrl === null || !this.isAllowedByRobots(markdownUrl)) return null;
 
     const outcome = await this.politeFetch({ url: markdownUrl, acceptedContentTypes: TEXT_TYPES });
     const found = outcome.kind === 'response' && outcome.httpStatusCode === 200 && outcome.contentType !== null;
@@ -393,11 +493,17 @@ class SiteCrawl {
     return found ? outcome.finalUrl : null;
   }
 
-  /** A fetch that waits its turn, and retries once after a 429 if Retry-After allows. */
+  /**
+   * A fetch that waits its turn, and retries once when the server asks it to come back
+   * later: a 429, or a 503 with Retry-After (RFC 9110, sections 10.2.3 and 15.6.4).
+   */
   private async politeFetch(fetchRequest: FetchRequest): Promise<FetchOutcome> {
     await this.waitForRequestSlot();
     const outcome = await this.fetcher.fetch(fetchRequest);
-    if (outcome.kind !== 'response' || outcome.httpStatusCode !== 429) return outcome;
+    if (outcome.kind !== 'response') return outcome;
+    const asksToRetry =
+      outcome.httpStatusCode === 429 || (outcome.httpStatusCode === 503 && outcome.headers['retry-after'] !== undefined);
+    if (!asksToRetry) return outcome;
 
     const retryAfterMs = parseRetryAfter(outcome.headers['retry-after']);
     if (retryAfterMs === null || retryAfterMs > (this.options.maxRetryAfterMs ?? 30_000)) return outcome;
@@ -426,7 +532,17 @@ class SiteCrawl {
     });
   }
 
-  private toRawPage(entry: FrontierEntry, page: FetchedPage, markdownVariantUrl: string | null): RawPage {
+  private toRawPage({
+    entry,
+    page,
+    markdownVariantUrl,
+    hasNoindexDirective,
+  }: {
+    entry: FrontierEntry;
+    page: FetchedPage;
+    markdownVariantUrl: string | null;
+    hasNoindexDirective: boolean;
+  }): RawPage {
     return {
       normalisedUrl: entry.url,
       finalUrl: page.finalUrl,
@@ -439,6 +555,7 @@ class SiteCrawl {
         discoveredVia: entry.discoveredVia,
         isInSiteNavigation: this.navigationUrls.has(entry.url),
         inboundLinkCount: this.inboundLinkSources.get(entry.url)?.size ?? 0,
+        hasNoindexDirective,
       },
       markdownVariantUrl,
       sitemapLastModified: entry.sitemapLastModified,

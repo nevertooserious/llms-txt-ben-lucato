@@ -6,6 +6,7 @@ describe('generateLlmsTxt', () => {
   it.todo('puts low-scoring pages under an H2 named Optional');
   it.todo('applies description overrides and exclusions');
   it.todo('links the .md variant when one exists');
+  it.todo('leaves out pages with a noindex directive');
   it.todo('escapes brackets in titles and keeps each entry on one line');
 });
 

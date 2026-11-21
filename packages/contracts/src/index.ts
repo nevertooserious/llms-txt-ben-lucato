@@ -55,6 +55,11 @@ export interface CrawlSignals {
   discoveredVia: DiscoverySource;
   isInSiteNavigation: boolean;
   inboundLinkCount: number;
+  /**
+   * A robots directive for this crawler (`<meta name="robots">` or X-Robots-Tag) says
+   * `noindex`: the site asks that the page not be listed, so the generator leaves it out.
+   */
+  hasNoindexDirective: boolean;
 }
 
 /** Extractor output. Mirrors the extractor's column group in `pages`. */
