@@ -165,6 +165,8 @@ export interface PageRecord {
 /** One page as the generator sees it: the record plus crawl signals. */
 export interface GeneratorPage {
   record: PageRecord;
+  /** The URL as the site links it (pages.fetch_url); what the page's entry links when there is no .md variant. */
+  fetchUrl: string;
   crawlSignals: CrawlSignals;
   markdownVariantUrl: string | null;
 }

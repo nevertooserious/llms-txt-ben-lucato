@@ -8,9 +8,12 @@ import type { NetworkPolicy } from '@llms-txt/crawler';
  * the metadata address, a private range, or a loopback port that is not a fixture site
  * is still refused. It lives in the tests, not the crawler, so production code has no
  * way to loosen the guard.
+ *
+ * A Set is read on every connection, so ports added to it later are opened too: the
+ * pipeline tests start fixture sites after the worker that crawls them.
  */
 export function allowLoopbackPorts(ports: Iterable<number>): NetworkPolicy {
-  const allowedPorts = new Set(ports);
+  const allowedPorts: ReadonlySet<number> = ports instanceof Set ? ports : new Set(ports);
   return {
     isAllowedConnection: (ipAddress, port) =>
       (ipAddress === '127.0.0.1' || ipAddress === '::1') && allowedPorts.has(port),
