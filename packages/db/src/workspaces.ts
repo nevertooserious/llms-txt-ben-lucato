@@ -20,6 +20,23 @@ export async function createWorkspace(database: Queryable, workspace: NewWorkspa
   return result.rows[0]!.id;
 }
 
+export interface WorkspaceAccess {
+  id: string;
+  siteId: string;
+  /** SHA-256 of the secret link's token, to compare with the token a request presents. */
+  accessTokenHash: string;
+}
+
+/** The workspace served at /w/{publicSlug}, with what is needed to authorise a request for it. */
+export async function loadWorkspaceAccess(database: Queryable, publicSlug: string): Promise<WorkspaceAccess | null> {
+  const result = await database.query<{ id: string; site_id: string; access_token_hash: string }>(
+    'select id, site_id, access_token_hash from site_workspaces where public_slug = $1',
+    [publicSlug],
+  );
+  const row = result.rows[0];
+  return row === undefined ? null : { id: row.id, siteId: row.site_id, accessTokenHash: row.access_token_hash };
+}
+
 /** Workspaces created from one IP in the last `withinSeconds`, for the submission rate limit. */
 export async function countRecentWorkspacesFromIp(
   database: Queryable,

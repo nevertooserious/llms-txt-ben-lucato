@@ -34,8 +34,26 @@ jobs:
     # Pinned to the playwright version in package-lock.json; scripts/lint.sh checks the two match.
     container:
       image: mcr.microsoft.com/playwright:v1.65.1-noble
+    # The monitor's end-to-end test runs the queue and the worker against Postgres.
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: e2e
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/e2e
     steps:
       - uses: actions/checkout@v4
+      - name: Install psql
+        run: apt-get update && apt-get install --yes --no-install-recommends postgresql-client
+      - run: scripts/validate-schema.sh
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
