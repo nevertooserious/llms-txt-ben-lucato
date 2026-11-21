@@ -33,20 +33,35 @@ const SEGMENT_PATTERNS: [ClassifiedPageType, RegExp][] = [
 const DOCS_REFINEMENTS: ReadonlySet<PageType> = new Set(['api', 'guide']);
 
 /**
+ * Names a docs section only at the top of the site. Deeper down they are one area's own
+ * page (`/foundation/faq`, `/store/help`), not the site's documentation.
+ */
+const TOP_LEVEL_ONLY_DOCS_SEGMENT = /^(?:help|support|faqs?)$/;
+/** Sections whose pages may be about legal subjects without being legal pages (`/docs/cookies`). */
+const WRITING_ABOUT_ANYTHING: ReadonlySet<PageType> = new Set(['docs', 'api', 'guide', 'blog']);
+const LOCALE_SEGMENT = /^[a-z]{2}(?:[-_][a-z]{2})?$/;
+
+/**
  * Classifies a page from its URL first: the first path segment (or subdomain, as in
- * docs.example.com) that names a section decides, and a docs section is narrowed by a
- * later api or guide segment. Locale prefixes such as /en/ match nothing and are
+ * docs.example.com) that names a section decides. A docs section is narrowed by a later
+ * api or guide segment, and a later legal segment makes a legal page (`/about/legal`)
+ * outside documentation and blogs, which write about anything. Locale prefixes such as /en/ match nothing and are
  * skipped. Only when the URL says nothing do og:type and JSON-LD types count.
  */
 export function classifyPageType(signals: PageTypeSignals): PageType {
   if (signals.isHomepage) return 'home';
 
-  const segmentTypes = urlSegments(signals.url).flatMap((segment) => {
+  const segments = urlSegments(signals.url);
+  const segmentTypes = segments.flatMap((segment, index) => {
     const match = SEGMENT_PATTERNS.find(([, pattern]) => pattern.test(segment));
-    return match ? [match[0]] : [];
+    if (!match) return [];
+    const isBelowTopLevel = segments.slice(0, index).some((earlier) => !LOCALE_SEGMENT.test(earlier));
+    if (match[0] === 'docs' && TOP_LEVEL_ONLY_DOCS_SEGMENT.test(segment) && isBelowTopLevel) return [];
+    return [match[0]];
   });
   const [firstType, ...laterTypes] = segmentTypes;
   if (firstType === 'docs') return laterTypes.find((type) => DOCS_REFINEMENTS.has(type)) ?? 'docs';
+  if (firstType && !WRITING_ABOUT_ANYTHING.has(firstType) && laterTypes.includes('legal')) return 'legal';
   if (firstType) return firstType;
 
   return classifyFromMetadata(signals) ?? 'other';

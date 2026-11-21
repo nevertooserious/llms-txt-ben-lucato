@@ -166,16 +166,14 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
   });
 
   describe('site shapes', () => {
-    it('blog-heavy site: posts are capped and overflow goes under Optional', async () => {
+    it('blog-heavy site: posts are capped, and the overflow is left out', async () => {
       const { llmsTxt } = await generate('large-sitemap-site');
       const listed = sections(llmsTxt);
-      expect(Object.keys(listed)).toEqual(['Blog', 'Optional']);
-      expect(listed.Blog).toHaveLength(5);
-      expect(listed.Optional!.length).toBeGreaterThan(0);
+      expect(Object.keys(listed)).toEqual(['Blog']);
+      expect(listed.Blog).toHaveLength(3);
       // Numbered URLs sort as numbers when nothing else tells them apart.
       expect(listed.Blog![0]).toMatch(/\/posts\/1$/);
       expect(listed.Blog![1]).toMatch(/\/posts\/2$/);
-      expect(Object.keys(listed).at(-1)).toBe('Optional');
     });
 
     it('leaves out pages with a noindex directive', async () => {

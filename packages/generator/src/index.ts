@@ -1,7 +1,7 @@
 // The generator: selects pages, assigns sections by page type, renders and validates.
 // Pure: the worker loads its inputs, makes the LLM calls through an LlmClient, and stores
 // the outputs. With no LLM configured, the summary falls back to the homepage's
-// description and every candidate page is listed with its own description.
+// description and candidate pages are listed with what the crawl found for them.
 export { entryTitle, generateLlmsTxt, siteNameFrom, type GenerateLlmsTxtInput } from './generate-llms-txt';
 export {
   buildPageAssessmentPrompt,
@@ -23,11 +23,13 @@ export {
 } from './llm-enrichment';
 export {
   DEFAULT_SELECTION_LIMITS,
+  GENERAL_SECTION_NAME,
   isPaginationUrl,
   listingCandidates,
   OPTIONAL_SECTION_NAME,
   scorePage,
   SECTION_NAMES,
+  sectionNamesInOrder,
   selectPages,
   type SelectedPage,
   type SelectionLimits,

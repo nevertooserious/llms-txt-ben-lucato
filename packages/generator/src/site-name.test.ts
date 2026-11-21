@@ -10,6 +10,7 @@ function innerPage(title: string | null, path = '/page'): GeneratorPage {
       canonicalUrl: null,
       title,
       description: null,
+      declaredSiteName: null,
       pageType: 'other',
       languageCode: null,
       contentMarkdown: '',
@@ -24,6 +25,8 @@ function innerPage(title: string | null, path = '/page'): GeneratorPage {
       hasNoindexDirective: false,
       isInSiteNavigation: false,
       inboundLinkCount: 0,
+      navigationLabel: null,
+      navigationPosition: null,
     },
     markdownVariantUrl: null,
   };
@@ -47,6 +50,21 @@ describe('siteNameFrom', () => {
   it('does not count copies of the homepage as evidence', () => {
     const copies = [innerPage('The guide – Acme', '/index'), innerPage('The guide – Acme', '/index.html')];
     expect(siteNameFrom('The guide – Acme', copies)).toBe('The guide – Acme');
+  });
+
+  it('takes the name the homepage declares before anything in its title', () => {
+    const homepage = innerPage('Welcome to Acme', '/');
+    homepage.record.declaredSiteName = 'Acme';
+    homepage.crawlSignals.crawlDepth = 0;
+    expect(siteNameFrom('Welcome to Acme', [homepage, innerPage('Docs | Something else')])).toBe('Acme');
+  });
+
+  it('takes the name most other pages end with when the homepage title does not hold it', () => {
+    const pages = [innerPage('Downloads | Acme'), innerPage('Docs | Acme'), innerPage('Our community | Acme'), innerPage('Untitled')];
+    expect(siteNameFrom('Welcome to Acme.org', pages)).toBe('Acme');
+    expect(siteNameFrom('Welcome to Acme.org', [innerPage('Docs | Acme'), innerPage('Pricing'), innerPage('About')])).toBe(
+      'Welcome to Acme.org',
+    );
   });
 
   it('leaves a title with no separator alone', () => {

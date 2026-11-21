@@ -72,7 +72,7 @@ const fakeCrawl =
       pagesFetchedCount: pages.length,
       pagesWithContentCount: pages.filter((page) => (page.status ?? 200) === 200).length,
       linkSignals: Object.fromEntries(
-        pages.map((page) => [urlOf(page), { isInSiteNavigation: page.path !== '/', inboundLinkCount: 1 }]),
+        pages.map((page) => [urlOf(page), { isInSiteNavigation: page.path !== '/', inboundLinkCount: 1, navigationLabel: null, navigationPosition: null }]),
       ),
       unchangedPerSitemapUrls: [],
       failedFetches,

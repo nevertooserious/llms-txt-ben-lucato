@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { GeneratorPage, PageType, StoredPageAssessment } from '@llms-txt/contracts';
 import { listedEntries } from './decide-publication';
+import { firstParagraphOf } from './entry-text';
 import { generateLlmsTxt, type GenerateLlmsTxtInput } from './generate-llms-txt';
-import { compareText, isPaginationUrl } from './select-pages';
+import { compareText, DEFAULT_SELECTION_LIMITS, isPaginationUrl } from './select-pages';
 import { validateLlmsTxt } from './validate-llms-txt';
 
 const ORIGIN = 'https://example.com';
@@ -20,6 +21,10 @@ interface PageOptions {
   markdownVariantUrl?: string | null;
   fetchUrl?: string;
   contentDigest?: string;
+  contentMarkdown?: string;
+  navigationLabel?: string | null;
+  navigationPosition?: number | null;
+  declaredSiteName?: string | null;
   assessment?: StoredPageAssessment;
 }
 
@@ -30,11 +35,12 @@ function page(path: string, options: PageOptions = {}): GeneratorPage {
       normalisedUrl,
       canonicalUrl: options.canonicalUrl ?? null,
       title: options.title === undefined ? `Title of ${path}` : options.title,
-      description: options.description === undefined ? `About ${path}.` : options.description,
+      description: options.description === undefined ? `What the page at ${path} is about.` : options.description,
+      declaredSiteName: options.declaredSiteName ?? null,
       pageType: options.pageType ?? (path === '/' ? 'home' : 'other'),
       languageCode: options.languageCode ?? null,
-      contentMarkdown: '',
-      contentDigest: options.contentDigest ?? 'digest',
+      contentMarkdown: options.contentMarkdown ?? '',
+      contentDigest: options.contentDigest ?? `digest of ${path}`,
       listingFieldsHash: 'hash',
     },
     assessment: options.assessment ?? null,
@@ -45,6 +51,8 @@ function page(path: string, options: PageOptions = {}): GeneratorPage {
       hasNoindexDirective: options.hasNoindexDirective ?? false,
       isInSiteNavigation: options.isInSiteNavigation ?? false,
       inboundLinkCount: options.inboundLinkCount ?? 0,
+      navigationLabel: options.navigationLabel ?? null,
+      navigationPosition: options.navigationPosition ?? null,
     },
     markdownVariantUrl: options.markdownVariantUrl ?? null,
   };
@@ -116,10 +124,10 @@ describe('generateLlmsTxt with page assessments', () => {
 describe('generateLlmsTxt', () => {
   it('renders the H1, the summary and the sections, in the spec’s order', () => {
     const llmsTxt = generate({
-      pages: [homepage, page('/docs/intro', { pageType: 'docs', title: 'Intro', description: 'Start here.' })],
+      pages: [homepage, page('/docs/intro', { pageType: 'docs', title: 'Intro', description: 'Start here to learn the basics.' })],
     });
     expect(llmsTxt).toBe(
-      ['# Example', '', '> Example makes examples.', '', '## Docs', '', `- [Intro](${ORIGIN}/docs/intro): Start here.`, ''].join('\n'),
+      ['# Example', '', '> Example makes examples.', '', '## Docs', '', `- [Intro](${ORIGIN}/docs/intro): Start here to learn the basics.`, ''].join('\n'),
     );
   });
 
@@ -166,14 +174,13 @@ describe('generateLlmsTxt', () => {
     expect(sections(llmsTxt).Docs).toEqual([`${ORIGIN}/docs/nav`, `${ORIGIN}/docs/linked`, `${ORIGIN}/docs/deep`]);
   });
 
-  it('puts legal pages and overflow under an H2 named Optional, last', () => {
+  it('puts legal pages under an H2 named Optional, last, and leaves out pages beyond a section’s limit', () => {
     const posts = Array.from({ length: 8 }, (_, index) => page(`/blog/post-${index}`, { pageType: 'blog' }));
     const llmsTxt = generate({ pages: [homepage, page('/terms', { pageType: 'legal' }), ...posts] });
     const listed = sections(llmsTxt);
-    expect(Object.keys(listed).at(-1)).toBe('Optional');
-    expect(listed.Blog).toHaveLength(5);
-    expect(listed.Optional).toContain(`${ORIGIN}/terms`);
-    expect(listed.Optional).toHaveLength(4);
+    expect(Object.keys(listed)).toEqual(['Blog', 'Optional']);
+    expect(listed.Blog).toEqual([`${ORIGIN}/blog/post-0`, `${ORIGIN}/blog/post-1`, `${ORIGIN}/blog/post-2`]);
+    expect(listed.Optional).toEqual([`${ORIGIN}/terms`]);
   });
 
   it('keeps a flood of blog posts from crowding out core pages', () => {
@@ -183,8 +190,8 @@ describe('generateLlmsTxt', () => {
     const llmsTxt = generate({ pages: [homepage, ...posts, page('/docs/intro', { pageType: 'docs', crawlDepth: 2 })] });
     const listed = sections(llmsTxt);
     expect(listed.Docs).toEqual([`${ORIGIN}/docs/intro`]);
-    expect(listed.Blog).toHaveLength(5);
-    expect(listed.Optional).toHaveLength(40);
+    expect(listed.Blog).toHaveLength(3);
+    expect(listed.Optional).toBeUndefined();
   });
 
   it('applies description overrides and exclusions', () => {
@@ -247,14 +254,19 @@ describe('generateLlmsTxt', () => {
 
   it('leaves out the homepage under its other URLs', () => {
     const llmsTxt = generate({
-      pages: [homepage, page('/index'), page('/index.html'), page('/about', { contentDigest: 'about' })],
+      pages: [
+        homepage,
+        page('/index', { contentDigest: 'digest of /' }),
+        page('/index.html', { contentDigest: 'digest of /' }),
+        page('/about', { contentDigest: 'about' }),
+      ],
     });
     expect(Object.values(sections(llmsTxt)).flat()).toEqual([`${ORIGIN}/about`]);
   });
 
   it('titles a page from its URL when its title is only the site name', () => {
     const llmsTxt = generate({ pages: [homepage, page('/getting-started.html', { title: 'Example', contentDigest: 'start' })] });
-    expect(llmsTxt).toContain(`- [Getting started](${ORIGIN}/getting-started.html)`);
+    expect(llmsTxt).toContain(`- [Getting Started](${ORIGIN}/getting-started.html)`);
   });
 
   it('leaves out pagination and pages in another language than the site’s', () => {
@@ -287,7 +299,7 @@ describe('generateLlmsTxt', () => {
       pages: [homepage, page('/docs/getting-started.html', { title: 'Getting started | Example' }), page('/release-notes', { title: null })],
     });
     expect(llmsTxt).toContain('- [Getting started](');
-    expect(llmsTxt).toContain('- [Release notes](');
+    expect(llmsTxt).toContain('- [Release Notes](');
   });
 
   it('cuts long descriptions at a word boundary', () => {
@@ -295,6 +307,260 @@ describe('generateLlmsTxt', () => {
     const line = llmsTxt.split('\n').find((candidate) => candidate.includes('/long'))!;
     expect(line.endsWith('word…')).toBe(true);
     expect(line.length).toBeLessThan(400);
+  });
+});
+
+describe('which pages are listed', () => {
+  const listedUrls = (pages: GeneratorPage[]) => Object.values(sections(generate({ pages: [homepage, ...pages] }))).flat();
+
+  it.each([
+    ['/accounts/login', 'a login page'],
+    ['/signup', 'a sign-up page'],
+    ['/cart', 'a cart'],
+    ['/jobs/create', 'an action on a section'],
+    ['/search', 'a search page'],
+    ['/welcome?next=/account', 'a step on the way to another page'],
+    ['/stories/category/arts', 'a category listing'],
+    ['/blog/tag/releases', 'a tag listing'],
+    ['/events/past', 'a listing of what is over'],
+    ['/events/8219', 'a numbered record'],
+    ['/jobs/location/berlin', 'a page under a job board'],
+  ])('leaves out %s: %s', (path) => {
+    expect(listedUrls([page(path), page('/kept')])).toEqual([`${ORIGIN}/kept`]);
+  });
+
+  it('keeps documentation at URLs that name logins, tags and numbers', () => {
+    const pages = [
+      page('/docs/auth/login', { pageType: 'docs' }),
+      page('/docs/api/tags', { pageType: 'api' }),
+      page('/docs/errors/404', { pageType: 'docs' }),
+    ];
+    expect(listedUrls(pages)).toHaveLength(3);
+  });
+
+  it('keeps a numbered page the navigation links, and numbered blog posts', () => {
+    expect(listedUrls([page('/report/2024', { isInSiteNavigation: true })])).toEqual([`${ORIGIN}/report/2024`]);
+    expect(listedUrls([page('/posts/17', { pageType: 'blog' })])).toEqual([`${ORIGIN}/posts/17`]);
+  });
+
+  it('leaves out a large family of deep sibling pages, but not documentation or navigation pages', () => {
+    const releases = Array.from({ length: 5 }, (_, index) => page(`/downloads/release/version-${index}`));
+    const references = Array.from({ length: 5 }, (_, index) => page(`/docs/reference/part-${index}`, { pageType: 'docs' }));
+    const inNavigation = page('/downloads/release/latest', { isInSiteNavigation: true });
+    const listed = listedUrls([page('/downloads'), ...releases, ...references, inNavigation]);
+    expect(listed).toEqual(expect.arrayContaining([`${ORIGIN}/downloads`, `${ORIGIN}/downloads/release/latest`]));
+    expect(listed.filter((url) => url.includes('/release/version-'))).toEqual([]);
+    expect(listed.filter((url) => url.includes('/docs/reference/'))).toHaveLength(5);
+  });
+
+  it('keeps a small family of deep sibling pages', () => {
+    const pages = Array.from({ length: 4 }, (_, index) => page(`/downloads/release/version-${index}`));
+    expect(listedUrls(pages)).toHaveLength(4);
+  });
+
+  it('leaves out a page that serves the homepage’s content at another URL', () => {
+    expect(listedUrls([page('/shell', { contentDigest: 'digest of /' }), page('/kept')])).toEqual([`${ORIGIN}/kept`]);
+  });
+
+  it('lists everything a small site has, however weakly linked', () => {
+    const pages = Array.from({ length: 8 }, (_, index) => page(`/page-${index}`, { crawlDepth: 3 }));
+    expect(listedUrls(pages)).toHaveLength(8);
+  });
+
+  it('leaves out weakly linked pages of a large site, except documentation', () => {
+    const strong = Array.from({ length: 12 }, (_, index) => page(`/strong-${index}`, { isInSiteNavigation: true }));
+    const weak = page('/weak', { crawlDepth: 2, inboundLinkCount: 1 });
+    const weakDocs = page('/docs/weak', { pageType: 'docs', crawlDepth: 2, inboundLinkCount: 1 });
+    const listed = listedUrls([...strong, weak, weakDocs]);
+    expect(listed).not.toContain(`${ORIGIN}/weak`);
+    expect(listed).toContain(`${ORIGIN}/docs/weak`);
+  });
+
+  it('does not let a template that links a page from everywhere outrank the navigation', () => {
+    const linkedEverywhere = page('/filters', { inboundLinkCount: 5000 });
+    const inNavigation = page('/product', { isInSiteNavigation: true });
+    expect(listedUrls([linkedEverywhere, inNavigation])).toEqual([`${ORIGIN}/product`, `${ORIGIN}/filters`]);
+  });
+
+  it('orders pages that score the same as the navigation does', () => {
+    const pages = [
+      page('/android', { isInSiteNavigation: true, navigationPosition: 3 }),
+      page('/windows', { isInSiteNavigation: true, navigationPosition: 1 }),
+      page('/macos', { isInSiteNavigation: true, navigationPosition: 2 }),
+    ];
+    expect(listedUrls(pages)).toEqual([`${ORIGIN}/windows`, `${ORIGIN}/macos`, `${ORIGIN}/android`]);
+  });
+
+  it('fills the sections a round at a time when the file is full, documentation two at a time', () => {
+    const docs = Array.from({ length: 6 }, (_, index) => page(`/docs/page-${index}`, { pageType: 'docs', isInSiteNavigation: true }));
+    const about = Array.from({ length: 6 }, (_, index) => page(`/about/page-${index}`, { pageType: 'about', isInSiteNavigation: true }));
+    const product = Array.from({ length: 6 }, (_, index) => page(`/product/page-${index}`, { pageType: 'product', isInSiteNavigation: true }));
+    const llmsTxt = generate({
+      pages: [homepage, ...docs, ...about, ...product],
+      limits: { ...DEFAULT_SELECTION_LIMITS, maxPrimaryEntries: 8 },
+    });
+    const listed = sections(llmsTxt);
+    expect([listed.Docs!.length, listed.Product!.length, listed.About!.length]).toEqual([4, 2, 2]);
+  });
+});
+
+describe('sections', () => {
+  it('gives an area of the site its own section, named by the navigation', () => {
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/community', { isInSiteNavigation: true, navigationLabel: 'Community' }),
+        page('/community/forums'),
+        page('/community/awards'),
+        page('/success-stories'),
+        page('/success-stories/one'),
+        page('/success-stories/two'),
+        page('/downloads'),
+        page('/downloads/source'),
+        page('/contact-us'),
+      ],
+    });
+    const listed = sections(llmsTxt);
+    expect(Object.keys(listed)).toEqual(['Community', 'Success Stories', 'Pages']);
+    expect(listed.Community).toHaveLength(3);
+    expect(listed.Pages).toEqual([`${ORIGIN}/contact-us`, `${ORIGIN}/downloads`, `${ORIGIN}/downloads/source`]);
+    expect(validateLlmsTxt(llmsTxt).isValid).toBe(true);
+  });
+
+  it('puts an area named like a page-type section in that section', () => {
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/handbook', { isInSiteNavigation: true, navigationLabel: 'docs' }),
+        page('/handbook/a'),
+        page('/handbook/b'),
+        page('/docs/intro', { pageType: 'docs' }),
+      ],
+    });
+    expect(Object.keys(sections(llmsTxt))).toEqual(['Docs']);
+  });
+
+  it('puts a job board under Optional', () => {
+    const llmsTxt = generate({ pages: [homepage, page('/jobs', { pageType: 'about' }), page('/about', { pageType: 'about' })] });
+    expect(sections(llmsTxt)).toEqual({ About: [`${ORIGIN}/about`], Optional: [`${ORIGIN}/jobs`] });
+  });
+});
+
+describe('entry titles', () => {
+  const titleOf = (llmsTxt: string, path: string) =>
+    /^- \[(.*)\]\(/.exec(llmsTxt.split('\n').find((line) => line.includes(`(${ORIGIN}${path})`)) ?? '')?.[1];
+
+  it('uses the navigation’s label when the title is a sentence, a headline, or the homepage’s', () => {
+    const llmsTxt = generate({
+      pages: [
+        page('/', { title: 'Welcome to Example' }),
+        page('/get-involved', { title: 'Hey community members!', navigationLabel: 'Get Involved' }),
+        page('/psf', { title: 'Welcome to Example', navigationLabel: 'Foundation' }),
+        page('/news', { title: 'A headline that goes on and on. '.repeat(4).trim(), navigationLabel: 'News' }),
+        page('/donations', { title: 'Support us with a donation!' }),
+      ],
+    });
+    expect(titleOf(llmsTxt, '/get-involved')).toBe('Get Involved');
+    expect(titleOf(llmsTxt, '/psf')).toBe('Foundation');
+    expect(titleOf(llmsTxt, '/news')).toBe('News');
+    expect(titleOf(llmsTxt, '/donations')).toBe('Donations');
+  });
+
+  it('tells pages with one title apart by their navigation labels or URLs', () => {
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/events', { title: 'Our Events', isInSiteNavigation: true, navigationLabel: 'Events', navigationPosition: 1 }),
+        page('/events/python-events', { title: 'Our Events', navigationLabel: 'Python Events' }),
+        page('/events/user-groups', { title: 'Our Events' }),
+      ],
+    });
+    expect(titleOf(llmsTxt, '/events')).toBe('Our Events');
+    expect(titleOf(llmsTxt, '/events/python-events')).toBe('Python Events');
+    expect(titleOf(llmsTxt, '/events/user-groups')).toBe('User Groups');
+  });
+
+  it('drops a name that several titles end with, and the page’s own host', () => {
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/foundation/stories', { title: 'Stories | Example Foundation' }),
+        page('/foundation/board', { title: 'Board | Example Foundation' }),
+        page('/proposals', { title: 'Index of proposals | example.com' }),
+      ],
+    });
+    expect(titleOf(llmsTxt, '/foundation/stories')).toBe('Stories');
+    expect(titleOf(llmsTxt, '/foundation/board')).toBe('Board');
+    expect(titleOf(llmsTxt, '/proposals')).toBe('Index of proposals');
+  });
+});
+
+describe('entry descriptions', () => {
+  const boilerplate = 'The official home of the Example project.';
+  const lineOf = (llmsTxt: string, path: string) => llmsTxt.split('\n').find((line) => line.includes(`(${ORIGIN}${path})`));
+
+  it('leaves out a description the site repeats, and uses the page’s opening paragraph instead', () => {
+    const llmsTxt = generate({
+      pages: [
+        page('/', { title: 'Example', description: boilerplate }),
+        page('/about', {
+          description: boilerplate,
+          contentMarkdown: '## About\n\n- [A link](https://example.com/x)\n\nExample is a tool for making examples of every kind. It is free.',
+        }),
+        page('/downloads', { description: boilerplate, contentMarkdown: '## Releases\n\n| Version | Date |\n| --- | --- |' }),
+        page('/own', { description: 'This page has a description of its own.' }),
+      ],
+    });
+    expect(lineOf(llmsTxt, '/about')).toBe(
+      `- [Title of /about](${ORIGIN}/about): Example is a tool for making examples of every kind. It is free.`,
+    );
+    expect(lineOf(llmsTxt, '/downloads')).toBe(`- [Title of /downloads](${ORIGIN}/downloads)`);
+    expect(lineOf(llmsTxt, '/own')).toContain(': This page has a description of its own.');
+  });
+
+  it('counts a description as the site’s own when three pages with different content share it', () => {
+    const shared = 'Everything you need to know about us.';
+    const llmsTxt = generate({
+      pages: [homepage, page('/a', { description: shared }), page('/b', { description: shared }), page('/c', { description: shared })],
+    });
+    expect(llmsTxt).not.toContain(shared);
+  });
+
+  it('leaves out a description that is a fragment of a few words, or that repeats the title', () => {
+    const llmsTxt = generate({
+      pages: [homepage, page('/logos', { description: 'Inline image sizing' }), page('/faq', { title: 'Questions we are asked', description: 'Questions we are asked.' })],
+    });
+    expect(lineOf(llmsTxt, '/logos')).toBe(`- [Title of /logos](${ORIGIN}/logos)`);
+    const short = generate({ pages: [homepage, page('/docs/intro', { description: 'Start here.' })] });
+    expect(lineOf(short, '/docs/intro')).toContain(': Start here.');
+    expect(lineOf(llmsTxt, '/faq')).toBe(`- [Questions we are asked](${ORIGIN}/faq)`);
+  });
+});
+
+describe('firstParagraphOf', () => {
+  it('skips headings, lists, tables, code, link-only lines, fragments and quotations', () => {
+    const markdown = [
+      '# Title',
+      '- [Home](https://example.com/)\n- Logo',
+      '[For more information visit the developer guide, which is elsewhere.](https://example.com/guide)',
+      'Version Maintenance status First released End of support Release schedule',
+      '```\nconst notProse = "A sentence inside a code block that is long enough to count.";\n```',
+      'New to the community? Here are some great places to get started:',
+      '"Example is fast enough for our site and lets us ship features in record time," said a user.',
+      '-- A user, lead designer of something well known. Quoted in an interview.',
+      'Example builds static sites from **markdown** and [templates](https://example.com/t), and keeps rebuilds fast.',
+    ].join('\n\n');
+    expect(firstParagraphOf(markdown)).toBe('Example builds static sites from markdown and templates, and keeps rebuilds fast.');
+  });
+
+  it('stops at the end of a sentence once the description is long enough', () => {
+    const sentence = 'This sentence is exactly as long as it needs to be to fill some of the line.';
+    const paragraph = Array.from({ length: 6 }, () => sentence).join(' ');
+    expect(firstParagraphOf(paragraph)).toBe([sentence, sentence, sentence].join(' '));
+  });
+
+  it('returns null when the content has no prose', () => {
+    expect(firstParagraphOf('## Only a heading\n\n- and a list')).toBeNull();
   });
 });
 

@@ -76,6 +76,29 @@ export function isInScope(url: string, rootUrl: string): boolean {
   return candidate.pathname === rootPath || candidate.pathname.startsWith(`${rootPath}/`);
 }
 
+/**
+ * Whether a URL is on another host of the same site: `docs.example.com` or
+ * `example.com` for a site at `www.example.com`. The site's domain is its host without
+ * a leading `www.`, so a site at `docs.example.com` is related only to hosts under
+ * itself. No public suffix list is needed for that, at the cost of not relating
+ * `docs.example.com` to `blog.example.com`. Same scheme and port as the root.
+ */
+export function isOnRelatedHost(url: string, rootUrl: string): boolean {
+  let candidate: URL;
+  let root: URL;
+  try {
+    candidate = new URL(url);
+    root = new URL(rootUrl);
+  } catch {
+    return false;
+  }
+  if (candidate.host === root.host || candidate.protocol !== root.protocol || candidate.port !== root.port) return false;
+  const siteDomain = root.hostname.replace(/^www\./, '');
+  const isIpAddress = /^\d+(?:\.\d+){3}$/.test(siteDomain) || siteDomain.includes(':');
+  if (isIpAddress || !siteDomain.includes('.')) return false;
+  return candidate.hostname === siteDomain || candidate.hostname.endsWith(`.${siteDomain}`);
+}
+
 function compare(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }

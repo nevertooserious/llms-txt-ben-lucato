@@ -97,8 +97,46 @@ describe('extractPage rules', () => {
 
       const withHeading = page(`${openGraph}<title>changes – Acme</title>`, '<h1>What changed</h1>');
       expect(extractPage({ ...inner, html: withHeading }).title).toBe('What changed');
-      const withoutHeading = page(`${openGraph}<title>Acme | Changes</title>`);
-      expect(extractPage({ ...inner, html: withoutHeading }).title).toBe('Acme | Changes');
+      const withoutHeading = page(`${openGraph}<title>Changes | Acme</title>`);
+      expect(extractPage({ ...inner, html: withoutHeading }).title).toBe('Changes | Acme');
+    });
+
+    it('keeps an og:title that is the page name its <title> starts with', () => {
+      const html = page('<meta property="og:title" content="Our blogs"><title>Our blogs | Acme</title>', '<h1>The latest post</h1>');
+      expect(extract(html, 'https://acme.test/blogs').title).toBe('Our blogs');
+    });
+
+    it('takes the page name from <title> when the page declares the site name beside it', () => {
+      const siteName = '<meta property="og:site_name" content="Acme">';
+      const repeatedHomepageTitle = '<meta property="og:title" content="Welcome to Acme">';
+      const html = page(`${siteName}${repeatedHomepageTitle}<title>Downloads | Acme</title>`, '<h1>Get the latest build</h1>');
+      expect(extract(html, 'https://acme.test/downloads').title).toBe('Downloads');
+      const siteNameFirst = page(`${siteName}<title>Acme – Downloads</title>`);
+      expect(extract(siteNameFirst, 'https://acme.test/downloads').title).toBe('Downloads');
+      const homepageHtml = page(`${siteName}<title>Welcome | Acme</title>`);
+      expect(extract(homepageHtml, 'https://acme.test', { isHomepage: true }).title).toBe('Welcome | Acme');
+    });
+
+    it('drops the permalink anchor from a heading used as the title', () => {
+      const html = page('', '<h1>Frequently asked questions<a class="headerlink" href="#faq">¶</a></h1>');
+      expect(extract(html).title).toBe('Frequently asked questions');
+    });
+  });
+
+  describe('declared site name', () => {
+    it('takes og:site_name, then a JSON-LD WebSite name, then application-name', () => {
+      const openGraph = '<meta property="og:site_name" content="From Open Graph">';
+      const jsonLd = '<script type="application/ld+json">{"@graph":[{"@type":"WebSite","name":"From JSON-LD"}]}</script>';
+      const applicationName = '<meta name="application-name" content="From application-name">';
+      expect(extract(page(`${applicationName}${jsonLd}${openGraph}`)).declaredSiteName).toBe('From Open Graph');
+      expect(extract(page(`${applicationName}${jsonLd}`)).declaredSiteName).toBe('From JSON-LD');
+      expect(extract(page(applicationName)).declaredSiteName).toBe('From application-name');
+      expect(extract(page('<title>No name</title>')).declaredSiteName).toBeNull();
+    });
+
+    it('ignores a declared name too long to be a name', () => {
+      const html = page(`<meta property="og:site_name" content="${'A very long tagline. '.repeat(5)}">`);
+      expect(extract(html).declaredSiteName).toBeNull();
     });
 
     it('keeps the site name as the homepage title', () => {
@@ -195,6 +233,13 @@ describe('extractPage rules', () => {
       ['https://lumen.example/pricing', 'pricing'],
       ['https://lumen.example/about-us', 'about'],
       ['https://lumen.example/legal/privacy', 'legal'],
+      ['https://lumen.example/about/legal', 'legal'],
+      ['https://lumen.example/docs/cookies', 'docs'],
+      ['https://lumen.example/blog/our-privacy-policy', 'blog'],
+      ['https://lumen.example/help/billing', 'docs'],
+      ['https://lumen.example/en/faq', 'docs'],
+      ['https://lumen.example/foundation/faq', 'other'],
+      ['https://lumen.example/about/help', 'about'],
       ['https://lumen.example/privacy-policy.html', 'legal'],
       ['https://lumen.example/features/themes', 'product'],
       ['https://lumen.example/showcase', 'other'],

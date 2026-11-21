@@ -67,6 +67,18 @@ export interface PageCrawlSignals {
 export interface LinkSignals {
   isInSiteNavigation: boolean;
   inboundLinkCount: number;
+  /**
+   * The text of the homepage navigation link to the page ("Downloads"), or null when it
+   * is not in the navigation or the link has no usable text. The generator uses it to
+   * name a page whose own title does not, and to name sections.
+   */
+  navigationLabel: string | null;
+  /**
+   * Where the first navigation link to the page comes among the homepage's navigation
+   * links, from 0; null when it is not in the navigation. The site's own order, which
+   * the generator uses to order pages that score the same.
+   */
+  navigationPosition: number | null;
 }
 
 /** Discovery signals the generator uses to score pages. */
@@ -159,6 +171,11 @@ export interface PageRecord {
   canonicalUrl: string | null;
   title: string | null;
   description: string | null;
+  /**
+   * The site's name as the page declares it: `og:site_name`, a JSON-LD `WebSite` name,
+   * or `application-name`. The homepage's becomes the H1.
+   */
+  declaredSiteName: string | null;
   pageType: PageType;
   languageCode: string | null;
   contentMarkdown: string;

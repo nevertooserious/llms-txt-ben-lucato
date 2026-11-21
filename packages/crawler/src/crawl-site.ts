@@ -12,7 +12,7 @@ import type {
 import { looksLikeBotChallenge } from './detect-bot-challenge';
 import { HeadlessRenderer } from './headless-renderer';
 import { HttpFetcher, type FetchOutcome, type FetchRequest } from './http-fetcher';
-import { cleanUrlForFetch, isInScope, normaliseUrl } from './normalise-url';
+import { cleanUrlForFetch, isInScope, isOnRelatedHost, normaliseUrl } from './normalise-url';
 import { parseSitemap } from './parse-sitemap';
 import { readPageSignals, type PageSignals } from './read-page-signals';
 import { looksLikeJavaScriptShell, renderedPageIsBetter, renderingAddsContent } from './render-decision';
@@ -94,6 +94,11 @@ const SITEMAP_ENTRIES_PER_BUDGETED_PAGE = 4;
 const ATTEMPTS_PER_BUDGETED_PAGE = 2;
 /** .md probes that may miss before the site is assumed to have none. */
 const MARKDOWN_PROBES_BEFORE_GIVING_UP = 3;
+/**
+ * Pages on the site's other hosts that the navigation may add per crawl. Each is one
+ * page; its links are not followed. Stored pages on those hosts are re-checked besides.
+ */
+const MAX_RELATED_HOST_PAGES = 15;
 
 // Seeds of the same depth are fetched in this order.
 const SOURCE_PRIORITY: Record<DiscoverySource, number> = {
@@ -112,6 +117,11 @@ interface FrontierEntry {
   discoveredVia: DiscoverySource;
   sitemapLastModified: string | null;
   order: number;
+  /**
+   * On another host of the same site (docs.example.com), which the homepage navigation
+   * links. Fetched as one page under that host's robots.txt; its links are not followed.
+   */
+  isOnRelatedHost: boolean;
 }
 
 interface FetchedPage {
@@ -151,7 +161,12 @@ class SiteCrawl {
   private readonly pending = new Set<string>();
   private readonly fetchedUrls = new Set<string>();
   private readonly inboundLinkSources = new Map<string, Set<string>>();
-  private readonly navigationUrls = new Set<string>();
+  /** The first homepage navigation link to each URL: its text and where it comes among them. */
+  private readonly navigationLinks = new Map<string, { label: string | null; position: number }>();
+  /** robots.txt rules of the site's other hosts, by origin, loaded when first needed. */
+  private readonly relatedHostRobots = new Map<string, RobotsRules>();
+  /** The related-host URLs the homepage navigation links, up to MAX_RELATED_HOST_PAGES. */
+  private readonly relatedHostNavigationUrls = new Set<string>();
   private readonly knownPages = new Map<string, KnownPage>();
   /** Normalised URLs of the pages passed to onPage, in order. */
   private readonly emittedUrls: string[] = [];
@@ -233,7 +248,14 @@ class SiteCrawl {
 
   /** RFC 9309, section 2.3.1. See robots-rules.ts for the table. */
   private async loadRobotsTxt(): Promise<void> {
-    const robotsTxtUrl = new URL('/robots.txt', this.rootUrl).href;
+    this.robots = await this.fetchRobotsTxt(this.rootUrl, { recordFailures: true });
+    if (this.robots.crawlDelaySeconds !== null) {
+      this.requestIntervalMs = Math.max(this.requestIntervalMs, this.robots.crawlDelaySeconds * 1000);
+    }
+  }
+
+  private async fetchRobotsTxt(hostUrl: string, { recordFailures }: { recordFailures: boolean }): Promise<RobotsRules> {
+    const robotsTxtUrl = new URL('/robots.txt', hostUrl).href;
     const outcome = await this.politeFetch({
       url: robotsTxtUrl,
       // Parsed whatever its media type; only the first 500 KiB need be read.
@@ -244,21 +266,31 @@ class SiteCrawl {
 
     if (outcome.kind === 'failed') {
       const isUnavailable = ['too_many_redirects', 'invalid_url', 'unsupported_scheme'].includes(outcome.reason);
-      this.robots = isUnavailable ? robotsTxtUnavailable : robotsTxtUnreachable;
-      if (!isUnavailable) this.recordFailure(robotsTxtUrl, 'robots_txt_unreachable', outcome.message);
-      return;
+      if (!isUnavailable && recordFailures) this.recordFailure(robotsTxtUrl, 'robots_txt_unreachable', outcome.message);
+      return isUnavailable ? robotsTxtUnavailable : robotsTxtUnreachable;
     }
     const status = outcome.httpStatusCode;
     // Keyed on the requested URL: rules reached through a redirect still govern this host (RFC 9309, 2.3.1.2).
-    if (status >= 200 && status < 300) this.robots = parseRobotsTxt(robotsTxtUrl, outcome.body);
-    else if (status >= 500) {
-      this.robots = robotsTxtUnreachable;
-      this.recordFailure(robotsTxtUrl, 'robots_txt_unreachable', `HTTP ${status}`, status);
-    } else this.robots = robotsTxtUnavailable;
-
-    if (this.robots.crawlDelaySeconds !== null) {
-      this.requestIntervalMs = Math.max(this.requestIntervalMs, this.robots.crawlDelaySeconds * 1000);
+    if (status >= 200 && status < 300) return parseRobotsTxt(robotsTxtUrl, outcome.body);
+    if (status >= 500) {
+      if (recordFailures) this.recordFailure(robotsTxtUrl, 'robots_txt_unreachable', `HTTP ${status}`, status);
+      return robotsTxtUnreachable;
     }
+    return robotsTxtUnavailable;
+  }
+
+  /**
+   * The robots.txt rules of another host of the site, fetched once per crawl. A host
+   * whose robots.txt cannot be reached is left alone; that is not a failure of the site.
+   */
+  private async isAllowedOnRelatedHost(url: string): Promise<boolean> {
+    const origin = new URL(url).origin;
+    let rules = this.relatedHostRobots.get(origin);
+    if (rules === undefined) {
+      rules = await this.fetchRobotsTxt(origin, { recordFailures: false });
+      this.relatedHostRobots.set(origin, rules);
+    }
+    return rules.isAllowed(url);
   }
 
   private async seedFromSitemaps(): Promise<void> {
@@ -321,7 +353,10 @@ class SiteCrawl {
    */
   private seedFromKnownPages(): void {
     for (const knownPage of this.knownPages.values()) {
-      this.addToFrontier(knownPage.fetchUrl, knownPage.crawlDepth, knownPage.discoveredVia, null);
+      // A stored page on a related host is re-checked even if the navigation dropped it.
+      this.addToFrontier(knownPage.fetchUrl, knownPage.crawlDepth, knownPage.discoveredVia, null, {
+        allowRelatedHost: true,
+      });
     }
   }
 
@@ -331,23 +366,34 @@ class SiteCrawl {
   }
 
   /**
-   * For redirect targets. Rules on this host are checked; another host's robots.txt is
-   * not fetched, and a target off this site is out of scope and dropped after the fetch.
+   * For redirect targets. Rules on this host are checked, and those of a related host
+   * whose robots.txt has been loaded. No other host's robots.txt is fetched, and a
+   * target off the site is out of scope and dropped after the fetch.
    */
-  private isRedirectAllowed = (url: string): boolean =>
-    new URL(url).host !== new URL(this.rootUrl).host || this.isAllowedByRobots(url);
+  private isRedirectAllowed = (url: string): boolean => {
+    const target = new URL(url);
+    if (target.host === new URL(this.rootUrl).host) return this.isAllowedByRobots(url);
+    return this.relatedHostRobots.get(target.origin)?.isAllowed(url) ?? true;
+  };
 
-  /** Adds an in-scope, allowed URL; returns true if it was new. */
+  /**
+   * Adds an in-scope, allowed URL; returns true if it was new. With `allowRelatedHost`,
+   * a URL on another host of the site is added too; its robots.txt is checked when it
+   * is fetched.
+   */
   private addToFrontier(
     rawUrl: string,
     crawlDepth: number,
     discoveredVia: DiscoverySource,
     sitemapLastModified: string | null,
+    { allowRelatedHost = false } = {},
   ): boolean {
     const url = normaliseUrl(rawUrl);
     const fetchUrl = cleanUrlForFetch(rawUrl);
-    if (url === null || fetchUrl === null || !isInScope(url, this.rootUrl)) return false;
-    if (!this.isAllowedByRobots(fetchUrl)) return false;
+    if (url === null || fetchUrl === null) return false;
+    const isRelated = !isInScope(url, this.rootUrl);
+    if (isRelated && !(allowRelatedHost && isOnRelatedHost(url, this.rootUrl))) return false;
+    if (!isRelated && !this.isAllowedByRobots(fetchUrl)) return false;
 
     const existing = this.frontier.get(url);
     if (existing !== undefined) {
@@ -355,7 +401,15 @@ class SiteCrawl {
       existing.sitemapLastModified ??= sitemapLastModified;
       return false;
     }
-    this.frontier.set(url, { url, fetchUrl, crawlDepth, discoveredVia, sitemapLastModified, order: this.insertionOrder++ });
+    this.frontier.set(url, {
+      url,
+      fetchUrl,
+      crawlDepth,
+      discoveredVia,
+      sitemapLastModified,
+      order: this.insertionOrder++,
+      isOnRelatedHost: isRelated,
+    });
     this.pending.add(url);
     return true;
   }
@@ -379,13 +433,23 @@ class SiteCrawl {
       return;
     }
     this.fetchedUrls.add(entry.url);
+    if (entry.isOnRelatedHost && !(await this.isAllowedOnRelatedHost(entry.fetchUrl))) return;
 
     const page = await this.fetchPage(entry);
     if (page === null) return;
 
     // A redirect elsewhere in scope lands on a URL that may also be in the frontier.
     const finalUrl = normaliseUrl(page.finalUrl);
-    if (finalUrl === null || !isInScope(finalUrl, this.rootUrl)) return;
+    if (finalUrl === null) return;
+    if (entry.isOnRelatedHost) {
+      // A related host that only redirects into the site (example.com to www.example.com)
+      // is that page of the site, crawled as any other.
+      if (isInScope(finalUrl, this.rootUrl)) {
+        this.addToFrontier(page.finalUrl, entry.crawlDepth, entry.discoveredVia, null);
+        return;
+      }
+      if (!isOnRelatedHost(finalUrl, this.rootUrl)) return;
+    } else if (!isInScope(finalUrl, this.rootUrl)) return;
     if (finalUrl !== entry.url) {
       if (this.fetchedUrls.has(finalUrl)) return;
       this.fetchedUrls.add(finalUrl);
@@ -397,9 +461,12 @@ class SiteCrawl {
     let markdownVariantUrl: string | null = null;
     if (isSuccess) {
       const signals = readPageSignals(page.html, page.finalUrl, page.headers);
+      if (this.followMetaRefresh(entry, finalUrl, signals)) return;
       hasNoindexDirective = signals.isNoindex;
-      this.followLinks(entry, signals);
-      markdownVariantUrl = await this.probeMarkdownVariant(page.finalUrl);
+      if (!entry.isOnRelatedHost) {
+        this.followLinks(entry, signals);
+        markdownVariantUrl = await this.probeMarkdownVariant(page.finalUrl);
+      }
     }
     this.emittedUrls.push(entry.url);
     if (isSuccess || page.httpStatusCode === 304) this.pagesWithContentCount += 1;
@@ -535,16 +602,57 @@ class SiteCrawl {
     };
   }
 
+  /**
+   * A page that only sends the reader on with `<meta http-equiv="refresh">` is a redirect
+   * written in HTML. Its target is queued in its place, keeping its depth and its place
+   * in the navigation, and the page itself is not passed on. Returns whether it was one.
+   * The homepage is never treated so: discovery starts from its links.
+   */
+  private followMetaRefresh(entry: FrontierEntry, finalUrl: string, signals: PageSignals): boolean {
+    if (entry.crawlDepth === 0 || signals.metaRefreshUrl === null) return false;
+    const targetUrl = normaliseUrl(signals.metaRefreshUrl);
+    if (targetUrl === null || targetUrl === entry.url || targetUrl === finalUrl) return false;
+
+    this.addToFrontier(signals.metaRefreshUrl, entry.crawlDepth, entry.discoveredVia, null, {
+      allowRelatedHost: entry.isOnRelatedHost,
+    });
+    if (this.frontier.has(targetUrl)) {
+      const navigationLink = this.navigationLinks.get(entry.url);
+      if (navigationLink !== undefined && !this.navigationLinks.has(targetUrl)) {
+        this.navigationLinks.set(targetUrl, navigationLink);
+      }
+      const sources = this.inboundLinkSources.get(entry.url);
+      if (sources !== undefined) {
+        const targetSources = this.inboundLinkSources.get(targetUrl) ?? new Set<string>();
+        for (const source of sources) targetSources.add(source);
+        this.inboundLinkSources.set(targetUrl, targetSources);
+      }
+    }
+    return true;
+  }
+
   private followLinks(entry: FrontierEntry, signals: PageSignals): void {
     const isHomepage = entry.crawlDepth === 0;
 
     if (isHomepage) {
-      for (const navigationLink of signals.navigationLinkUrls) {
-        const url = normaliseUrl(navigationLink);
-        if (url === null || !isInScope(url, this.rootUrl)) continue;
-        // Membership is a fact about the page; nofollow only forbids following the link.
-        this.navigationUrls.add(url);
-        if (!signals.isNofollow) this.addToFrontier(navigationLink, 1, 'navigation', null);
+      for (const [position, navigationLink] of signals.navigationLinks.entries()) {
+        const url = normaliseUrl(navigationLink.url);
+        if (url === null) continue;
+        if (isInScope(url, this.rootUrl)) {
+          // Membership is a fact about the page; nofollow only forbids following the link.
+          if (!signals.isNofollow) this.addToFrontier(navigationLink.url, 1, 'navigation', null);
+        } else {
+          // The site's other hosts (docs.example.com), as far as its navigation names them.
+          if (signals.isNofollow || !isOnRelatedHost(url, this.rootUrl)) continue;
+          // Counted apart from stored pages, so the same links are taken on every crawl.
+          if (!this.relatedHostNavigationUrls.has(url)) {
+            if (this.relatedHostNavigationUrls.size >= MAX_RELATED_HOST_PAGES) continue;
+            this.relatedHostNavigationUrls.add(url);
+          }
+          this.addToFrontier(navigationLink.url, 1, 'navigation', null, { allowRelatedHost: true });
+          if (!this.frontier.has(url)) continue;
+        }
+        if (!this.navigationLinks.has(url)) this.navigationLinks.set(url, { label: navigationLink.label, position });
       }
     }
     if (signals.isNofollow) return;
@@ -553,7 +661,8 @@ class SiteCrawl {
     for (const link of signals.linkUrls) {
       const url = normaliseUrl(link);
       if (url === null || url === sourceUrl) continue;
-      if (!isInScope(url, this.rootUrl)) continue;
+      // Links to a related-host page count toward it, but only the navigation queues one.
+      if (!isInScope(url, this.rootUrl) && this.frontier.get(url)?.isOnRelatedHost !== true) continue;
       let sources = this.inboundLinkSources.get(url);
       if (sources === undefined) this.inboundLinkSources.set(url, (sources = new Set()));
       sources.add(sourceUrl);
@@ -637,8 +746,10 @@ class SiteCrawl {
 
   private linkSignalsFor(url: string): LinkSignals {
     return {
-      isInSiteNavigation: this.navigationUrls.has(url),
+      isInSiteNavigation: this.navigationLinks.has(url),
       inboundLinkCount: this.inboundLinkSources.get(url)?.size ?? 0,
+      navigationLabel: this.navigationLinks.get(url)?.label ?? null,
+      navigationPosition: this.navigationLinks.get(url)?.position ?? null,
     };
   }
 }

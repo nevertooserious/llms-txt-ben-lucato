@@ -204,7 +204,7 @@ describe('discovery', () => {
     const pricing = pageAt(result, site, '/pricing');
     expect(pricing.crawlSignals).toMatchObject({ discoveredVia: 'navigation', crawlDepth: 1 });
     // Linked from the homepage and the blog; its own self-link does not count.
-    expect(result.linkSignals[pricing.normalisedUrl]).toEqual({ isInSiteNavigation: true, inboundLinkCount: 2 });
+    expect(result.linkSignals[pricing.normalisedUrl]).toMatchObject({ isInSiteNavigation: true, inboundLinkCount: 2 });
     expect(pageAt(result, site, '/').crawlSignals.crawlDepth).toBe(0);
   });
 
