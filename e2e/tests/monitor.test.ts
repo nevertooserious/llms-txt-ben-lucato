@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { QUEUE_NAMES } from '@llms-txt/contracts';
 import { crawlSite } from '@llms-txt/crawler';
 import { createDatabasePool, type DatabasePool } from '@llms-txt/db';
-import type { GenerateLlmsTxtInput } from '@llms-txt/generator';
+import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
 import { readWorkerConfig } from '../../apps/worker/src/worker-config';
 import { startWorkerJobs } from '../../apps/worker/src/worker-jobs';
@@ -23,25 +23,11 @@ import { allowLoopbackPorts } from '../support/local-network-policy';
 // instead of waiting for the worker's five-minute cron, and a check is made due by
 // moving sites.next_monitor_check_at back.
 //
-// generateLlmsTxt is still a stub, so the worker renders with a stand-in that lists
-// every page; swap in the real generator once it lands.
-//
 // Needs DATABASE_URL pointing at a database with db/schema.sql applied (CI's e2e job
 // has one). Skipped locally without it.
 
 const databaseUrl = process.env.DATABASE_URL;
 if (process.env.CI && !databaseUrl) throw new Error('DATABASE_URL must be set in CI for the monitor end-to-end test');
-
-/** A deterministic stand-in for generateLlmsTxt: one entry per listed page. */
-const renderLlmsTxt = (input: GenerateLlmsTxtInput) =>
-  [
-    `# ${input.siteTitle}`,
-    '',
-    '## Pages',
-    '',
-    ...input.pages.map((page) => `- [${page.record.title}](${page.record.normalisedUrl}): ${page.record.description}`),
-    '',
-  ].join('\n');
 
 const FINISHED_STATUSES = ['succeeded', 'unchanged', 'failed'];
 
@@ -67,7 +53,7 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
       logger: createLogger({ level: 'error' }),
       config: readWorkerConfig({ DATABASE_URL: databaseUrl }),
       crawl: (options) => crawlSite({ ...options, networkPolicy, minRequestIntervalMs: 20 }),
-      renderLlmsTxt,
+      renderLlmsTxt: generateLlmsTxt,
       pollingIntervalSeconds: 0.5,
     });
   });
