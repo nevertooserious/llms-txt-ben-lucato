@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps that file up to date as the site changes.
 
-Status: the extractor, the crawler, the run lifecycle, the worker's run of the stages and the monitor's scheduling are implemented. The generator's rendering is a typed stub (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
+Status: the extractor, the crawler, the run lifecycle, the worker's run of the stages, the generator and the monitor's scheduling are implemented. The generator's LLM calls are not wired in yet, so it uses the heuristic fallbacks (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
 
 ## Contents
 
@@ -72,13 +72,15 @@ A pure function from HTML to a `PageRecord`. No I/O, so it is tested against sav
 
 ### Generator
 
-- **Selection:** scores pages on navigation presence, crawl depth and inbound links, then drops duplicates that share a canonical URL.
-- **Sections:** derived from `page_type`. The LLM does not choose sections.
-- **LLM use:** writes the site summary, and a description only for pages that have no usable one of their own. Both are cached, because an LLM words the same thing differently each time. If the LLM is unavailable, heuristics are used and the file is still valid.
-- **Rendering:** deterministic, followed by validation against the spec.
+- **Selection:** scores pages on navigation presence, crawl depth and inbound links (plus a lift for pages the site's own llms.txt lists), then keeps one page per canonical URL. Left out: the homepage (it is the H1), `noindex` and excluded pages, pagination (`/page/2`, `?page=2`), and pages whose declared language differs from the homepage's (locale duplicates such as `/de/`). Ties are broken by URL, comparing digit runs as numbers.
+- **Sections:** derived from `page_type`, in a fixed order: Docs, API, Guides, Product, Pricing, About, Blog, Pages (for `other`). The LLM does not choose sections. Legal pages always go under `Optional`.
+- **Limits:** at most 15 entries per section, 5 for Blog, and 60 outside `Optional`; the overflow goes under `Optional`, which holds at most 40. A flood of blog posts therefore cannot crowd out core pages. Starting values, in `packages/generator/src/select-pages.ts`.
+- **Entries:** the `.md` variant when there is one, else the URL as the site links it. The site name is dropped from titles (`Docs | Acme` becomes `Docs`), a page with no title gets one from its URL, and descriptions are cut to 300 characters.
+- **LLM use:** writes the site summary, and a description only for pages that have no usable one of their own. Both are cached, because an LLM words the same thing differently each time. If the LLM is unavailable, heuristics are used and the file is still valid: the summary is the homepage's description, and a page without one is listed without a description. Not wired in yet, so these heuristics are what runs today.
+- **Rendering:** deterministic, followed by validation against the spec. Output that fails validation is a bug, so it fails the run rather than being published.
 - **Per workspace:** the file is rendered once per workspace, applying that workspace's overrides.
 
-Page selection needs explicit handling for very large sitemaps, locale duplicates such as `/en/` and `/de/`, floods of blog posts, and pagination. This is not designed in detail yet.
+Still open: a site whose pages declare no language gets no locale filtering, and very large sites are only bounded by the page budget and the limits above.
 
 ## 3. Data model
 
@@ -233,6 +235,6 @@ Not yet decided or designed.
 - **Soft 404s:** sites that answer a deleted URL with 200 and a "not found" body are not handled. Proposal: an extractor check that counts the same as a real 404.
 - **Slow removal:** with a 7-day interval, waiting for two checks can leave a dead link in the file for two weeks. Proposal: schedule a follow-up check 24 hours after any run that sees a first 404.
 - **Stale sitemap:** if `lastmod` is trusted and a deleted page is still listed with an unchanged date, no request is made and the deletion is missed.
-- **Page selection:** rules for large and awkward sites, as noted in section 2.
+- **Page selection:** the rules in section 2 are a first cut; locale duplicates without a declared language, and the limits themselves, are untested against real sites.
 - **Partial link counts:** a page answered with a 304, or skipped because of a trusted `lastmod`, has no body, so its links are not seen. On such runs, inbound link counts and the frontier miss those links.
 - **Thresholds:** the page budget (200, `CRAWL_PAGE_BUDGET`) and the safety-gate failure share (0.5) have starting values that have not been tuned against real sites. The headless thresholds have starting values in `packages/crawler/src/render-decision.ts`, tuned only against the fixture sites.

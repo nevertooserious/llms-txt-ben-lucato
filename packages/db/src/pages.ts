@@ -200,6 +200,7 @@ export async function saveExtractedPage(database: Queryable, siteId: string, rec
 export async function loadGeneratorPages(database: Queryable, siteId: string): Promise<GeneratorPage[]> {
   const result = await database.query<{
     normalised_url: string;
+    fetch_url: string;
     canonical_url: string | null;
     extracted_title: string | null;
     extracted_description: string | null;
@@ -215,7 +216,7 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
     has_noindex_directive: boolean;
     markdown_variant_url: string | null;
   }>(
-    `select normalised_url, canonical_url, extracted_title, extracted_description, page_type,
+    `select normalised_url, fetch_url, canonical_url, extracted_title, extracted_description, page_type,
             language_code, content_markdown, content_digest, listing_fields_hash, crawl_depth,
             discovered_via, is_in_site_navigation, inbound_link_count, has_noindex_directive,
             markdown_variant_url
@@ -236,6 +237,7 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
       contentDigest: row.content_digest,
       listingFieldsHash: row.listing_fields_hash,
     },
+    fetchUrl: row.fetch_url,
     crawlSignals: {
       crawlDepth: row.crawl_depth,
       discoveredVia: row.discovered_via,
