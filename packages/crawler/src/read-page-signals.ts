@@ -1,4 +1,5 @@
 import { load } from 'cheerio/slim';
+import { ROBOTS_USER_AGENT_TOKEN } from './robots-rules';
 
 // What the crawler reads from a page's HTML for itself: the links to follow, which of
 // them are site navigation, and how much content the HTML holds. This is deliberately
@@ -16,8 +17,10 @@ export interface PageSignals {
   hasJavaScriptShellMarker: boolean;
   /** The page has at least one executable <script>; without one, rendering adds nothing. */
   hasScripts: boolean;
-  /** <meta name="robots"> forbids following links. */
+  /** A robots directive for this crawler forbids following the page's links. */
   isNofollow: boolean;
+  /** A robots directive for this crawler asks that the page not be indexed or listed. */
+  isNoindex: boolean;
 }
 
 // Mount points the common frameworks render into.
@@ -26,7 +29,11 @@ const APP_ROOT_SELECTORS = ['#root', '#app', '#__next', '#__nuxt', '#svelte', '[
 const EXECUTABLE_SCRIPT_TYPE_PATTERN = /^\s*$|^\s*(module|(text|application)\/(x-)?(java|ecma)script)\s*$/i;
 const ENABLE_JAVASCRIPT_PATTERN = /\b(enable|requires?|turn on)\b[^.]{0,40}\bjavascript\b/i;
 
-export function readPageSignals(html: string, pageUrl: string): PageSignals {
+/**
+ * `headers` are the response headers, lowercased, for X-Robots-Tag. Robots directives
+ * come from it and from `<meta name="robots">` or `<meta name="LlmsTxtGenerator">`.
+ */
+export function readPageSignals(html: string, pageUrl: string, headers: Record<string, string> = {}): PageSignals {
   const $ = load(html);
 
   const baseHref = $('base[href]').first().attr('href');
@@ -57,7 +64,12 @@ export function readPageSignals(html: string, pageUrl: string): PageSignals {
     .toArray()
     .some((script) => EXECUTABLE_SCRIPT_TYPE_PATTERN.test($(script).attr('type') ?? ''));
 
-  const robotsMeta = $('meta[name="robots" i]').attr('content') ?? '';
+  const directives = new Set(readXRobotsTag(headers['x-robots-tag'] ?? ''));
+  $('meta[name]').each((_index, element) => {
+    const name = ($(element).attr('name') ?? '').trim().toLowerCase();
+    if (name !== 'robots' && name !== ROBOTS_USER_AGENT_TOKEN.toLowerCase()) return;
+    for (const directive of ($(element).attr('content') ?? '').split(',')) directives.add(directive.trim().toLowerCase());
+  });
 
   return {
     linkUrls,
@@ -65,8 +77,31 @@ export function readPageSignals(html: string, pageUrl: string): PageSignals {
     visibleTextLength,
     hasJavaScriptShellMarker: hasEmptyAppRoot || ENABLE_JAVASCRIPT_PATTERN.test(noscriptText),
     hasScripts,
-    isNofollow: /\b(nofollow|none)\b/i.test(robotsMeta),
+    isNofollow: directives.has('nofollow') || directives.has('none'),
+    isNoindex: directives.has('noindex') || directives.has('none'),
   };
+}
+
+/**
+ * Directives from an X-Robots-Tag value that apply to this crawler. A directive may be
+ * scoped to one crawler (`googlebot: noindex`); the scope carries over to the
+ * directives after it until another scope starts. Unscoped directives apply to all.
+ */
+export function readXRobotsTag(headerValue: string): string[] {
+  const applicable: string[] = [];
+  let scope: string | null = null;
+  for (const rawPart of headerValue.split(',')) {
+    let part = rawPart.trim().toLowerCase();
+    const scoped = /^([a-z0-9_-]+)\s*:\s*(.*)$/.exec(part);
+    // unavailable_after: <date> has a colon too, but is a directive, not a scope.
+    if (scoped !== null && scoped[1] !== 'unavailable_after') {
+      scope = scoped[1]!;
+      part = scoped[2]!.trim();
+    }
+    if (part === '') continue;
+    if (scope === null || scope === ROBOTS_USER_AGENT_TOKEN.toLowerCase()) applicable.push(part);
+  }
+  return applicable;
 }
 
 function tryResolve(href: string, baseUrl: string): string | null {

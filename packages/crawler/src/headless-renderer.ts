@@ -50,12 +50,21 @@ export interface RenderedPage {
 export interface RenderFailure {
   kind: 'failed';
   requestedUrl: string;
-  reason: 'blocked_address' | 'timeout' | 'render_error';
+  reason: 'blocked_address' | 'disallowed_by_robots' | 'timeout' | 'render_error';
   message: string;
   blockedRequestUrls: string[];
 }
 
 export type RenderOutcome = RenderedPage | RenderFailure;
+
+export interface RenderOptions {
+  /**
+   * robots.txt rules for the crawl this render belongs to. Every browser request,
+   * redirects included, is checked; a refused request is aborted, and a refused page
+   * fails the render with `disallowed_by_robots`.
+   */
+  isUrlAllowed?: (url: string) => boolean;
+}
 
 // Resource types that cannot change the DOM text; skipped to save time and memory.
 const SKIPPED_RESOURCE_TYPES = new Set(['image', 'media', 'font', 'stylesheet']);
@@ -78,6 +87,8 @@ const MAX_REDIRECTS = 5;
 interface NavigationState {
   /** Set when the main frame's response was a redirect: where to navigate next. */
   redirectTarget: string | null;
+  /** Set when robots.txt refused the main frame's URL. */
+  wasDisallowedByRobots: boolean;
 }
 
 /** How long the page's text must stay the same before it counts as settled. */
@@ -108,8 +119,8 @@ export class HeadlessRenderer {
     });
   }
 
-  async render(url: string): Promise<RenderOutcome> {
-    return this.renderSlots.run(() => this.renderNow(url));
+  async render(url: string, options: RenderOptions = {}): Promise<RenderOutcome> {
+    return this.renderSlots.run(() => this.renderNow(url, options.isUrlAllowed ?? (() => true)));
   }
 
   async close(): Promise<void> {
@@ -134,7 +145,7 @@ export class HeadlessRenderer {
     return this.browser;
   }
 
-  private async renderNow(url: string): Promise<RenderOutcome> {
+  private async renderNow(url: string, isUrlAllowed: (url: string) => boolean): Promise<RenderOutcome> {
     const browser = await this.launchBrowser();
     const context = await browser.newContext({
       userAgent: this.userAgent,
@@ -143,6 +154,7 @@ export class HeadlessRenderer {
       javaScriptEnabled: true,
     });
     const blockedRequestUrls: string[] = [];
+    const navigation: NavigationState = { redirectTarget: null, wasDisallowedByRobots: false };
     const deadline = Date.now() + this.timeoutMs;
 
     try {
@@ -151,8 +163,7 @@ export class HeadlessRenderer {
       context.on('page', (popup) => {
         if (popup !== page) void popup.close();
       });
-      const navigation: NavigationState = { redirectTarget: null };
-      await page.route('**/*', (route) => this.fulfilFromNode(route, page, navigation, blockedRequestUrls));
+      await page.route('**/*', (route) => this.fulfilFromNode(route, page, navigation, isUrlAllowed, blockedRequestUrls));
       await page.routeWebSocket(/.*/, (webSocket) => webSocket.close());
 
       // Chromium follows a redirect it was handed by route.fulfill outside interception,
@@ -181,11 +192,13 @@ export class HeadlessRenderer {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const reason = /ERR_BLOCKED_BY_CLIENT/.test(message)
-        ? 'blocked_address'
-        : /timeout/i.test(message)
-          ? 'timeout'
-          : 'render_error';
+      const reason = navigation.wasDisallowedByRobots
+        ? 'disallowed_by_robots'
+        : /ERR_BLOCKED_BY_CLIENT/.test(message)
+          ? 'blocked_address'
+          : /timeout/i.test(message)
+            ? 'timeout'
+            : 'render_error';
       return { kind: 'failed', requestedUrl: url, reason, message, blockedRequestUrls };
     } finally {
       await context.close().catch(() => undefined);
@@ -202,6 +215,7 @@ export class HeadlessRenderer {
     route: Route,
     page: Page,
     navigation: NavigationState,
+    isUrlAllowed: (url: string) => boolean,
     blockedRequestUrls: string[],
   ): Promise<void> {
     const browserRequest = route.request();
@@ -221,6 +235,11 @@ export class HeadlessRenderer {
         const parsedUrl = new URL(currentUrl);
         // data: and blob: URLs never reach interception; anything else non-HTTP is refused.
         if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+          await route.abort('blockedbyclient').catch(() => undefined);
+          return;
+        }
+        if (!isUrlAllowed(currentUrl)) {
+          if (isMainFrameNavigation) navigation.wasDisallowedByRobots = true;
           await route.abort('blockedbyclient').catch(() => undefined);
           return;
         }

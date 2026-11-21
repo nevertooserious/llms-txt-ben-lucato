@@ -1,3 +1,4 @@
+import { gunzipSync } from 'node:zlib';
 import { Agent, errors as undiciErrors, request } from 'undici';
 import { decodeBody } from './decode-body';
 import { readCapped, ResponseTooLargeError } from './read-capped';
@@ -12,7 +13,10 @@ import {
 // Plain HTTP fetching for the crawler: pages, robots.txt, sitemaps and .md variants.
 // Every connection, including each redirect hop, goes through the SSRF guard.
 
-export const DEFAULT_USER_AGENT = 'LlmsTxtGenerator/0.1 (+https://llmstxt.org)';
+// The product token robots.txt groups are matched against comes first. By convention a
+// crawler's user agent also links a page that explains it; that page does not exist until
+// the app is hosted, so the worker should pass `userAgent` with it then.
+export const DEFAULT_USER_AGENT = 'LlmsTxtGenerator/0.1';
 
 export interface HttpFetcherOptions {
   /** Production uses `publicInternetOnly`. Tests pass a policy that allows their local servers. */
@@ -33,9 +37,17 @@ export interface FetchRequest {
    * fails with `unsupported_content_type` without its body being read; any other status
    * comes back as a response with an empty body, since an error page's type says nothing
    * about the URL. A missing Content-Type is treated as acceptable, since many servers
-   * omit it.
+   * omit it. The wildcard type, star-slash-star, accepts any type.
    */
   acceptedContentTypes: readonly string[];
+  /** Overrides the fetcher's size cap for this request, e.g. 50 MB for a sitemap. */
+  maxResponseBytes?: number;
+  /** Keep the first `maxResponseBytes` of a larger body instead of failing (robots.txt). */
+  truncateAtMaxBytes?: boolean;
+  /** Gunzip a body that starts with the gzip magic bytes (a `.xml.gz` sitemap). The cap applies after. */
+  decompressGzip?: boolean;
+  /** Checked for every redirect target; false fails the fetch with `disallowed_by_robots`. */
+  isRedirectAllowed?: (url: string) => boolean;
   /** Conditional GET validators from the previous fetch. */
   ifNoneMatch?: string;
   ifModifiedSince?: string;
@@ -65,6 +77,7 @@ export const FETCH_FAILURE_REASONS = [
   'timeout',
   'response_too_large',
   'unsupported_content_type',
+  'disallowed_by_robots',
   'network_error',
 ] as const;
 export type FetchFailureReason = (typeof FETCH_FAILURE_REASONS)[number];
@@ -107,6 +120,7 @@ export class HttpFetcher {
 
   async fetch(fetchRequest: FetchRequest): Promise<FetchOutcome> {
     const { url: requestedUrl } = fetchRequest;
+    const maxResponseBytes = fetchRequest.maxResponseBytes ?? this.maxResponseBytes;
     const signal = AbortSignal.timeout(this.timeoutMs);
     const redirectChain: string[] = [];
     let currentUrl = requestedUrl;
@@ -160,11 +174,15 @@ export class HttpFetcher {
         } catch {
           return fail('invalid_url', `redirect to an invalid URL: ${location}`);
         }
+        if (fetchRequest.isRedirectAllowed?.(currentUrl) === false) {
+          return fail('disallowed_by_robots', `redirect to ${currentUrl}, which robots.txt disallows`);
+        }
         continue;
       }
 
       const contentType = mediaType(headers['content-type']);
-      if (contentType !== null && !fetchRequest.acceptedContentTypes.includes(contentType)) {
+      const acceptsAnyType = fetchRequest.acceptedContentTypes.includes('*/*');
+      if (contentType !== null && !acceptsAnyType && !fetchRequest.acceptedContentTypes.includes(contentType)) {
         await response.body.dump().catch(() => undefined);
         // An error page's type says nothing about the URL; its status is what matters.
         const isSuccess = response.statusCode >= 200 && response.statusCode < 300;
@@ -175,19 +193,27 @@ export class HttpFetcher {
       }
 
       const declaredLength = Number(headers['content-length']);
-      if (Number.isFinite(declaredLength) && declaredLength > this.maxResponseBytes) {
+      if (!fetchRequest.truncateAtMaxBytes && Number.isFinite(declaredLength) && declaredLength > maxResponseBytes) {
         response.body.destroy();
-        return fail('response_too_large', `declared length ${declaredLength} exceeds ${this.maxResponseBytes} bytes`);
+        return fail('response_too_large', `declared length ${declaredLength} exceeds ${maxResponseBytes} bytes`);
       }
 
       let bodyBytes: Buffer;
       try {
-        bodyBytes = await readCapped(response.body, this.maxResponseBytes);
+        bodyBytes = await readCapped(response.body, maxResponseBytes, { truncate: fetchRequest.truncateAtMaxBytes });
       } catch (error) {
         if (error instanceof ResponseTooLargeError) {
-          return fail('response_too_large', `body exceeds ${this.maxResponseBytes} bytes`);
+          return fail('response_too_large', `body exceeds ${maxResponseBytes} bytes`);
         }
         return fail(...classifyError(error, signal));
+      }
+      if (fetchRequest.decompressGzip && bodyBytes[0] === 0x1f && bodyBytes[1] === 0x8b) {
+        try {
+          bodyBytes = gunzipSync(bodyBytes, { maxOutputLength: maxResponseBytes });
+        } catch (error) {
+          if (error instanceof RangeError) return fail('response_too_large', `gunzipped body exceeds ${maxResponseBytes} bytes`);
+          return fail('network_error', `could not gunzip: ${error instanceof Error ? error.message : String(error)}`);
+        }
       }
 
       return {
@@ -211,7 +237,9 @@ export class HttpFetcher {
   private requestHeaders(fetchRequest: FetchRequest): Record<string, string> {
     const headers: Record<string, string> = {
       'user-agent': this.userAgent,
-      accept: [...fetchRequest.acceptedContentTypes, '*/*;q=0.1'].join(', '),
+      accept: fetchRequest.acceptedContentTypes.includes('*/*')
+        ? '*/*'
+        : [...fetchRequest.acceptedContentTypes, '*/*;q=0.1'].join(', '),
       'accept-language': 'en;q=1.0, *;q=0.5',
     };
     if (fetchRequest.ifNoneMatch !== undefined) headers['if-none-match'] = fetchRequest.ifNoneMatch;

@@ -34,6 +34,29 @@ export function normaliseUrl(rawUrl: string, baseUrl?: string): string | null {
 }
 
 /**
+ * The URL to request, as the site linked it: only the normalisation RFC 3986 calls safe
+ * (case of scheme and host, default port, dot segments, percent-encoding case, which the
+ * URL parser does), plus the fragment and tracking parameters dropped. Unlike
+ * `normaliseUrl`, the trailing slash and query order are kept, because servers may treat
+ * `/about` and `/about/` differently. Null for anything that is not http or https.
+ */
+export function cleanUrlForFetch(rawUrl: string, baseUrl?: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(rawUrl.trim(), baseUrl);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+  if (url.username !== '' || url.password !== '') return null;
+  url.hash = '';
+  const trackingNames = [...url.searchParams.keys()].filter((name) => TRACKING_PARAMETER_PATTERN.test(name));
+  for (const name of trackingNames) url.searchParams.delete(name);
+  if (url.search === '?') url.search = '';
+  return url.href;
+}
+
+/**
  * Whether a URL is inside a site's crawl scope: same scheme, host and port as the root,
  * and a path at or under the root's path prefix, on a segment boundary
  * (`/docs` covers `/docs/a`, not `/docs-old`).

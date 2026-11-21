@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isInScope, normaliseUrl } from './normalise-url';
+import { cleanUrlForFetch, isInScope, normaliseUrl } from './normalise-url';
 
 describe('normaliseUrl', () => {
   it.each([
@@ -28,6 +28,24 @@ describe('normaliseUrl', () => {
       expect(normaliseUrl(input)).toBeNull();
     },
   );
+});
+
+describe('cleanUrlForFetch', () => {
+  it.each([
+    // Only RFC 3986 safe normalisation: trailing slash and query order are the site's.
+    ['HTTPS://Example.COM:443/Docs/', 'https://example.com/Docs/'],
+    ['https://example.com/a/./b/../c', 'https://example.com/a/c'],
+    ['https://example.com/a?b=2&a=1#top', 'https://example.com/a?b=2&a=1'],
+    ['https://example.com/a?utm_source=x&id=7', 'https://example.com/a?id=7'],
+    ['https://example.com/?utm_source=x', 'https://example.com/'],
+  ])('%s -> %s', (input, expected) => {
+    expect(cleanUrlForFetch(input)).toBe(expected);
+  });
+
+  it('rejects what normaliseUrl rejects', () => {
+    expect(cleanUrlForFetch('mailto:a@example.com')).toBeNull();
+    expect(cleanUrlForFetch('https://user:pass@example.com/')).toBeNull();
+  });
 });
 
 describe('isInScope', () => {
