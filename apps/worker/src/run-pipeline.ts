@@ -31,9 +31,8 @@ export async function runPipeline(job: PipelineRunJob, dependencies: PipelineDep
   }, dependencies.heartbeatIntervalMs);
 
   try {
-    const status = await runPipelineStages(job, dependencies);
-    const finished = await finishPipelineRun(databasePool, job.pipelineRunId, { status });
-    if (finished) logger.info('run finished', { status });
+    const { status, isRecorded } = await runPipelineStages(job, dependencies);
+    if (isRecorded) logger.info('run finished', { status });
     else logger.warn('run finished after the reaper failed it; its result was not recorded', { status });
   } catch (error) {
     // A PipelineRunFailure is an expected outcome (the site was unreachable, say); anything else is a bug.

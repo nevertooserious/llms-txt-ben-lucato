@@ -7,7 +7,8 @@
 export function normaliseSubmittedUrl(submitted: string): string | null {
   const trimmed = submitted.trim();
   if (trimmed === '' || /\s/.test(trimmed)) return null;
-  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  // Only `://` marks a scheme, so `example.com:8080` is a host and port.
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 
   let url: URL;
   try {

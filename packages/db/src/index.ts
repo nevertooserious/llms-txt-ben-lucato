@@ -33,6 +33,7 @@ export {
   claimDueMonitorChecks,
   findOrCreateSite,
   loadSiteForRun,
+  lockSiteRow,
   saveSiteCrawlOutcome,
   saveSiteTitle,
   type SiteCrawlOutcome,
