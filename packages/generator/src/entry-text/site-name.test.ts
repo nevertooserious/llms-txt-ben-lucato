@@ -60,6 +60,15 @@ describe('siteNameFrom', () => {
     expect(siteNameFrom('Welcome to Acme', [homepage, innerPage('Docs | Something else')])).toBe('Acme');
   });
 
+  it('takes the name from the middle of a title, and ignores a declared name that is the whole title', () => {
+    const tagline = 'A progressive framework';
+    const homepage = innerPage(`Documentation | Acme - ${tagline}`, '/');
+    homepage.record.declaredSiteName = `Documentation | Acme - ${tagline}`;
+    homepage.crawlSignals.crawlDepth = 0;
+    const pages = [homepage, innerPage(`Controllers | Acme - ${tagline}`), innerPage(`Providers | Acme - ${tagline}`)];
+    expect(siteNameFrom(`Documentation | Acme - ${tagline}`, pages)).toBe('Acme');
+  });
+
   it('takes the name most other pages end with when the homepage title does not hold it', () => {
     const pages = [innerPage('Downloads | Acme'), innerPage('Docs | Acme'), innerPage('Our community | Acme'), innerPage('Untitled')];
     expect(siteNameFrom('Welcome to Acme.org', pages)).toBe('Acme');

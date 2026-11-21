@@ -101,6 +101,24 @@ describe('generateLlmsTxt with page assessments', () => {
     expect(sections(llmsTxt)).toEqual({ Docs: [`${ORIGIN}/docs`] });
   });
 
+  it('leaves out the rest of a folder when most of its pages are reference entries', () => {
+    const referenceEntry = assessed({ listingValue: 'exclude', exclusionReason: 'reference_entry' });
+    const options = ['a', 'b', 'c', 'd', 'e'].map((name) => page(`/config/${name}`, { pageType: 'docs', assessment: referenceEntry }));
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/config', { pageType: 'docs', assessment: assessed({}) }),
+        ...options,
+        // The model judged these two differently from their siblings.
+        page('/config/f', { pageType: 'docs', assessment: assessed({}) }),
+        page('/config/g', { pageType: 'docs', assessment: assessed({ listingValue: 'optional' }) }),
+        page('/config/pinned', { pageType: 'docs', isInSiteNavigation: true, assessment: assessed({}) }),
+        page('/guide/setup', { pageType: 'docs', assessment: assessed({}) }),
+      ],
+    });
+    expect(sections(llmsTxt)).toEqual({ Docs: [`${ORIGIN}/config/pinned`, `${ORIGIN}/config`, `${ORIGIN}/guide/setup`] });
+  });
+
   it('uses the assessed description and page type, and puts optional pages under Optional', () => {
     const llmsTxt = generate({
       pages: [

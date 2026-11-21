@@ -17,7 +17,8 @@ import { fileURLToPath } from 'node:url';
 
 const EXAMPLE_SITES = [
   { url: 'https://vitest.dev', kind: 'Documentation, statically generated' },
-  { url: 'https://docs.nestjs.com', kind: 'Documentation, rendered in the browser' },
+  { url: 'https://docs.nestjs.com', kind: 'Documentation, an Angular app served prerendered' },
+  { url: 'https://rxjs.dev', kind: 'Documentation, rendered in the browser' },
   { url: 'https://bun.sh', kind: 'Product site with its own llms.txt' },
   { url: 'https://tailscale.com', kind: 'Marketing site' },
   { url: 'https://overreacted.io', kind: 'Blog' },

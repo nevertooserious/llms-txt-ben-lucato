@@ -121,6 +121,12 @@ describe('extractPage rules', () => {
       const html = page('', '<h1>Frequently asked questions<a class="headerlink" href="#faq">¶</a></h1>');
       expect(extract(html).title).toBe('Frequently asked questions');
     });
+
+    it('drops an icon anchor that titles built from the heading have copied', () => {
+      const anchor = '<a class="header-link" aria-hidden="true" href="#setup"><i class="material-icons">link</i></a>';
+      const head = '<title>Acme - Setuplink</title><meta property="og:title" content="Acme - Setuplink">';
+      expect(extract(page(head, `<h1>Setup${anchor}</h1>`)).title).toBe('Acme - Setup');
+    });
   });
 
   describe('declared site name', () => {

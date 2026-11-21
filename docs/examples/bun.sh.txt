@@ -1,64 +1,64 @@
 # Bun
 
-> Bun is a JavaScript and TypeScript runtime and toolkit for developers, combining a runtime, npm-compatible package manager, test runner, bundler, type checker, formatter and linter in one binary. The site provides docs, guides, API reference and release notes for building, testing and deploying…
+> Bun is a JavaScript and TypeScript runtime and toolkit that ships a package manager, test runner, bundler, type checker and formatter in one binary. This site provides its documentation, guides, API reference and blog for developers building and running JavaScript applications.
 
-- The site says bun install and bun test can be used in existing Node.js projects without switching the runtime to Bun.
-- Bun runs on JavaScriptCore rather than V8, and the site says Node.js APIs and node_modules work as-is.
+- Bun's install and test commands can be used in existing Node.js projects without switching the runtime to Bun.
+- Bun runs on JavaScriptCore and aims to support Node.js APIs and node_modules as-is.
 
 ## Docs
 
-- [Welcome to Bun](https://bun.sh/docs.md): Introduces Bun as an all-in-one JavaScript and TypeScript toolkit, with links to its runtime, package manager, test runner, bundler, and install and quickstart guides.
-- [Bundler](https://bun.sh/docs/bundler.md): Reference for Bun's native bundler covering the bun build CLI and Bun.build API, with options such as entrypoints, target, format, and splitting.
-- [Formatter](https://bun.sh/docs/format.md): Documents Bun's built-in code formatter: running bun fmt, check mode, configuration options, import and Tailwind sorting, git hooks, and migration from Prettier.
-- [Bun Runtime](https://bun.sh/docs/runtime.md): Explains how to run JavaScript and TypeScript files, package.json scripts, and stdin code with bun run, plus a full CLI flag reference.
-- [Test runner](https://bun.sh/docs/test.md): Documentation for Bun's built-in Jest-compatible test runner, covering running tests, CI integration, concurrency, mocking, snapshots, and CLI flags.
+- [Welcome to Bun](https://bun.sh/docs.md): Bun docs landing page introducing the toolkit's runtime, package manager, test runner and bundler, with install and quickstart links.
+- [Install Bun — get started in seconds](https://bun.sh/get.md): Install instructions for Bun on macOS, Linux, Windows and Docker, with links to quickstart, migration guides and documentation.
+- [Bundler](https://bun.sh/docs/bundler.md): Documentation for Bun's native bundler, covering the bun build CLI and Bun.build() API options, loaders, splitting, and env handling.
+- [Formatter](https://bun.sh/docs/format.md): Documents Bun's built-in code formatter: running bun fmt, check mode for CI, options, import and Tailwind sorting, ignore rules, and CLI flags.
+- [Bun Runtime](https://bun.sh/docs/runtime.md): Explains how to run JavaScript and TypeScript files, package.json scripts and stdin with bun run, and lists its CLI flags.
+- [Test runner](https://bun.sh/docs/test.md): Documentation for Bun's built-in Jest-compatible test runner, covering running tests, CI integration, concurrency, retries, mocks, snapshots, hooks and CLI flags.
 - [Type checking](https://bun.sh/docs/runtime/check.md): Explains how to type check a TypeScript project with bun check, including setup, replacing tsc, CI use, and the --check flag.
-- [Installation](https://bun.sh/docs/installation.md): Explains how to install Bun via install script, package managers, Docker or direct downloads, plus upgrading, canary builds, PATH setup and uninstalling.
-- [Shell](https://bun.sh/docs/runtime/shell.md): Documents Bun Shell, a cross-platform bash-like shell API in JavaScript, covering quickstart, redirection, piping, environment variables, builtins, and security.
-- [Fullstack dev server](https://bun.sh/docs/bundler/fullstack.md): Documents Bun's fullstack dev server: serving HTML imports with bundling, API routes, dev and production modes, plugins, env vars and sourcemaps.
-- [JSX](https://bun.sh/docs/runtime/jsx.md): Explains Bun's built-in JSX and TSX transpilation and how jsx, jsxFactory, jsxFragmentFactory, jsxImportSource and pragmas configure it.
-- [Plugins](https://bun.sh/docs/runtime/plugins.md): Documents Bun's plugin API, covering lifecycle hooks onStart, onResolve, onLoad and onBeforeParse, with usage examples and native plugin creation.
-- [SQLite](https://bun.sh/docs/runtime/sqlite.md): Documentation for Bun's built-in bun:sqlite driver, covering database setup, statements, parameters, transactions, WAL mode and integer handling.
-- [Compiler](https://bun.sh/docs/compiler.md): Explains how Bun compiles TypeScript or JavaScript into a single executable, compares the two compile modes, and links to detailed compiler docs.
-- [Linter](https://bun.sh/docs/lint.md): Explains Bun's built-in linter: running bun lint, fixing problems, configuring rules in bunfig.toml, type-aware linting, git hooks, CI, and CLI flags.
+- [Installation](https://bun.sh/docs/installation.md): Explains how to install, upgrade, and uninstall Bun, including install script, Homebrew, Docker, canary builds, direct downloads, and CPU requirements.
+- [Shell](https://bun.sh/docs/runtime/shell.md): Documentation for Bun Shell, covering running shell commands from JavaScript, redirection, piping, environment variables, builtin commands, and security.
+- [Fullstack dev server](https://bun.sh/docs/bundler/fullstack.md): Explains Bun's fullstack dev server: serving HTML routes with bundled assets, API routes, development and production modes, plugins, and env configuration.
+- [JSX](https://bun.sh/docs/runtime/jsx.md): Explains Bun's built-in JSX and TSX support, including tsconfig and bunfig options, transpilation output, pragmas, logging and prop punning.
+- [Plugins](https://bun.sh/docs/runtime/plugins.md): Explains Bun's plugin API for runtime and bundler, covering lifecycle hooks, onResolve, onLoad, namespaces, and native plugins.
+- [SQLite](https://bun.sh/docs/runtime/sqlite.md): Documentation for Bun's built-in bun:sqlite driver, covering database opening, statements, query methods, WAL mode, integers and transactions.
+- [Compiler](https://bun.sh/docs/compiler.md): Explains how Bun compiles TypeScript or JavaScript programs into single executables, compares the two compile modes, and links to related compiler docs.
 
 ## API
 
-- [API Reference](https://bun.sh/reference.md): An index of Bun's API reference, listing Bun-specific modules, globals, and Node.js module implementations with short descriptions.
-- [File System Router](https://bun.sh/docs/runtime/file-system-router.md): Documents Bun's FileSystemRouter API for resolving Next.js-style pages directory routes, with examples and a reference interface.
-- [Markdown](https://bun.sh/docs/runtime/markdown.md): Documents Bun's built-in Markdown API with its html, render and react functions, parser options, callback signatures and React component overrides.
-- [Semver](https://bun.sh/docs/runtime/semver.md): Documents the Bun.semver API, with functions to check whether a version satisfies a range and to compare versions.
-- [Server](https://bun.sh/docs/runtime/http/server.md): Explains how to start and configure Bun.serve HTTP servers, including routes, ports, timeouts, HTTP/2 and HTTP/3, and server methods with code examples.
-- [WebSockets](https://bun.sh/docs/runtime/http/websockets.md): Explains Bun's server and client WebSocket API, including handlers, pub/sub, compression, backpressure, timeouts and error handling.
-- [SQL](https://bun.sh/docs/runtime/sql.md): Documentation for Bun's built-in SQL client, covering PostgreSQL, MySQL, MariaDB and SQLite connections, parameters, query results, transforms and fragments.
-- [Redis](https://bun.sh/docs/runtime/redis.md): Documents Bun's native Redis client, covering commands, connection options, pub/sub, URL formats, error codes and limitations with code examples.
-- [S3](https://bun.sh/docs/runtime/s3.md): API reference for Bun's S3 client, covering credentials, S3File methods, presigning URLs, S3-compatible endpoints and error codes.
-- [Hashing](https://bun.sh/docs/runtime/hashing.md): Documents Bun.password, Bun.hash and Bun.CryptoHasher for password hashing, non-cryptographic hashing and incremental cryptographic digests, with supported algorithms and encodings.
-- [FFI](https://bun.sh/docs/runtime/ffi.md): Explains Bun's bun:ffi module for calling native libraries from JavaScript, with usage examples, FFI types, strings, callbacks, pointers and memory management.
-- [Cookies](https://bun.sh/docs/runtime/cookies.md): Documents Bun's native Cookie and CookieMap APIs, with methods, properties, constructors, examples and type definitions for working with HTTP cookies.
+- [API Reference](https://bun.sh/reference.md): Index of Bun's API reference, listing Bun modules, globals and Node.js module implementations generated from TypeScript definitions.
+- [File System Router](https://bun.sh/docs/runtime/file-system-router.md): Documents Bun's FileSystemRouter API for resolving Next.js-style pages directory routes, with usage examples and a reference interface.
+- [Server](https://bun.sh/docs/runtime/http/server.md): Explains how to run an HTTP server with Bun.serve, covering routes, ports, TLS protocols, timeouts, lifecycle methods, and a reference of server options.
+- [WebSockets](https://bun.sh/docs/runtime/http/websockets.md): Explains Bun.serve server-side and client-side WebSocket APIs, including handlers, pub/sub, compression, backpressure, closing, timeouts and errors.
+- [SQL](https://bun.sh/docs/runtime/sql.md): Documents Bun's built-in SQL client for PostgreSQL, MySQL, MariaDB and SQLite, covering connections, queries, parameters, results and transforms.
+- [Redis](https://bun.sh/docs/runtime/redis.md): Documentation for Bun's native Redis client, covering connection setup, commands, pub/sub, options, error codes and usage examples.
+- [S3](https://bun.sh/docs/runtime/s3.md): Explains Bun's S3 API for reading, writing, presigning and deleting objects in S3-compatible storage, with client setup, credentials and error codes.
+- [Hashing](https://bun.sh/docs/runtime/hashing.md): Documents Bun's password hashing and verification APIs, non-cryptographic Bun.hash functions, and Bun.CryptoHasher for digests and HMAC.
+- [Cookies](https://bun.sh/docs/runtime/cookies.md): Documents Bun's native Cookie and CookieMap APIs for parsing, generating and manipulating HTTP cookies, with methods, properties and types.
+- [Fetch](https://bun.sh/docs/runtime/networking/fetch.md): Documents Bun's fetch API for sending HTTP requests, including proxies, headers, TLS, streaming, protocols, performance options and debugging.
+- [File I/O](https://bun.sh/docs/runtime/file-io.md): Documents Bun's Bun.file and Bun.write APIs for reading, writing, and deleting files, incremental FileSink writing, directory operations, and a reference.
+- [Spawn](https://bun.sh/docs/runtime/child-process.md): Explains how to spawn and control child processes with Bun.spawn and Bun.spawnSync, covering streams, exit handling, IPC, terminals, and an API reference.
 
 ## Guides
 
-- [Guides](https://bun.sh/guides.md): An index of Bun code samples and walkthroughs for common tasks, grouped by topic such as HTTP, packages, testing and deployment.
-- [Install Bun — get started in seconds](https://bun.sh/get.md): Install instructions for Bun on macOS, Linux, Windows or Docker, with links to quickstart, migration, docs, guides, API reference and Discord.
-- [Quickstart](https://bun.sh/docs/quickstart.md): A step-by-step tutorial for building a small Bun HTTP server, installing figlet, serving HTML, and running package.json scripts.
-- [Build an app with Next.js and Bun](https://bun.sh/guides/ecosystem/nextjs.md): Walkthrough for creating, running, and configuring a Next.js app with Bun, plus links to deployment guides and starter templates.
-- [Deploy a Bun application on Vercel](https://bun.sh/guides/deployment/vercel.md): Explains how to deploy a Bun application on Vercel, including vercel.json configuration, writing a Bun.serve server, and deploying via CLI.
-- [Deploy a Bun application on Railway](https://bun.sh/guides/deployment/railway.md): Step-by-step instructions for deploying a Bun application to Railway via the CLI or dashboard, with optional PostgreSQL setup and build configuration.
-- [Deploy a Bun application on Render](https://bun.sh/guides/deployment/render.md): A walkthrough for deploying an Express app running on Bun to Render as a web service, from repo setup to live URL.
-- [Deploy a Bun application on AWS Lambda](https://bun.sh/guides/deployment/aws-lambda.md): Step-by-step guide to deploying a Bun HTTP server on AWS Lambda using a Dockerfile, ECR repository, and a Lambda function URL.
-- [Deploy a Bun application on Google Cloud Run](https://bun.sh/guides/deployment/google-cloud-run.md): A step-by-step guide to deploying a Bun HTTP server to Google Cloud Run using a Dockerfile, covering gcloud setup, APIs, and deployment commands.
-- [Install TypeScript declarations for Bun](https://bun.sh/guides/runtime/typescript.md): Explains how to install @types/bun for Bun's built-in API typings and provides a recommended tsconfig.json with compiler options.
-- [Re-map import paths](https://bun.sh/guides/runtime/tsconfig-paths.md): Explains how Bun reads the paths field in tsconfig.json to rewrite import paths, with code examples for aliasing package names and components.
-- [Debugging Bun with the VS Code extension](https://bun.sh/guides/runtime/vscode-debugger.md): Explains how to install the Bun VS Code extension and use its Run File and Debug File commands to set breakpoints and step through code.
+- [Guides](https://bun.sh/guides.md): An index of Bun how-to guides with code samples for tasks such as HTTP servers, file I/O, package management, testing and ecosystem integrations.
+- [Quickstart](https://bun.sh/docs/quickstart.md): A step-by-step tutorial that builds a small Bun HTTP server, adds the figlet package, serves static HTML, and runs a package.json script.
+- [Build an app with Next.js and Bun](https://bun.sh/guides/ecosystem/nextjs.md): Walkthrough for scaffolding a Next.js app with Bun, running its dev server, and updating package.json scripts, with links to hosting guides and templates.
+- [Deploy a Bun application on Vercel](https://bun.sh/guides/deployment/vercel.md): Walkthrough for deploying a Bun application on Vercel, covering vercel.json config, a Bun.serve() server, and deployment via the CLI.
+- [Deploy a Bun application on Railway](https://bun.sh/guides/deployment/railway.md): Step-by-step instructions for deploying a Bun application to Railway via the CLI or dashboard, with optional PostgreSQL setup.
+- [Deploy a Bun application on Render](https://bun.sh/guides/deployment/render.md): Step-by-step guide to deploying a Bun Express server as a Render web service, from GitHub repo setup to build and start commands.
+- [Deploy a Bun application on AWS Lambda](https://bun.sh/guides/deployment/aws-lambda.md): Step-by-step guide to deploying a Bun HTTP server on AWS Lambda using a Dockerfile, ECR, and a Lambda function URL.
+- [Deploy a Bun application on DigitalOcean](https://bun.sh/guides/deployment/digital-ocean.md): Step-by-step guide to deploying a Bun HTTP server to DigitalOcean App Platform using a Dockerfile and the Container Registry.
+- [Deploy a Bun application on Google Cloud Run](https://bun.sh/guides/deployment/google-cloud-run.md): A walkthrough for deploying a Bun HTTP server to Google Cloud Run using a Dockerfile, covering gcloud setup, APIs, and deployment.
+- [Install TypeScript declarations for Bun](https://bun.sh/guides/runtime/typescript.md): Explains installing @types/bun for Bun's built-in API typings and gives a recommended tsconfig.json with compiler options for Bun projects.
+- [Re-map import paths](https://bun.sh/guides/runtime/tsconfig-paths.md): Explains how Bun reads tsconfig.json paths to re-map import paths, with a short configuration and import example.
+- [Debugging Bun with the VS Code extension](https://bun.sh/guides/runtime/vscode-debugger.md): Explains installing the Bun VS Code extension and using its Run File and Debug File commands to set breakpoints, step through code, and inspect variables.
 
 ## Product
 
-- [bun install — a superfast npm-compatible package manager](https://bun.sh/package-manager.md): Product page for Bun's package manager, covering install speed benchmarks against npm, pnpm and yarn, supported features, and a install command.
+- [bun install — a superfast npm-compatible package manager](https://bun.sh/package-manager.md): Product page for Bun's package manager, showing install benchmarks against npm, pnpm and yarn, feature highlights, and links to install docs.
 
 ## Blog
 
-- [Blog](https://bun.sh/blog.md): The main Bun blog index listing the latest release notes, featured articles, and yearly archives of release posts and announcements.
+- [Blog](https://bun.sh/blog.md): Bun's blog index listing release notes, engineering posts and announcements, with the latest release and articles grouped by year.
 
 ## Machine-readable resources
 
@@ -66,18 +66,18 @@
 
 ## Optional
 
-- [Press kit](https://bun.sh/press-kit.md): Official Bun logos, wordmark and icon files for download, with usage guidelines and brand colour hex codes.
-- [License](https://bun.sh/docs/project/license.md): States Bun's MIT license and lists licenses of JavaScriptCore, statically linked libraries, polyfills, type declarations, and credits, with relinking instructions.
-- [Feedback](https://bun.sh/docs/feedback.md): Explains how to report bugs, performance problems, and feature requests for Bun, including checking existing issues and gathering system details.
-- [Bindgen](https://bun.sh/docs/project/bindgen.md): Maintainer documentation describing Bun's internal bindings generator, its schema syntax, Rust and C++ conventions, and type conversion rules.
-- [Deploy a Bun application on DigitalOcean](https://bun.sh/guides/deployment/digital-ocean.md): Step-by-step instructions for deploying a Bun HTTP server to DigitalOcean App Platform using a Dockerfile and the Container Registry.
-- [Get the current Bun version](https://bun.sh/guides/util/version.md): Shows how to read the current Bun version string and the git commit revision using Bun.version and Bun.revision code samples.
-- [Generate a UUID](https://bun.sh/guides/util/javascript-uuid.md): Shows how to generate UUIDs with crypto.randomUUID() and Bun.randomUUIDv7(), with code samples.
-- [Compress and decompress data with DEFLATE](https://bun.sh/guides/util/deflate.md): Shows how to compress and decompress a Uint8Array with DEFLATE using Bun.deflateSync and Bun.inflateSync, with a short code sample.
-- [Escape an HTML string](https://bun.sh/guides/util/escape-html.md): Explains how to use Bun.escapeHTML() to escape HTML characters in a string, listing the replacements and a code example.
-- [Get the path to an executable bin file](https://bun.sh/guides/util/which-path-to-executable-bin.md): A short guide showing how to use Bun.which to find the absolute path of an executable, with examples for found and missing binaries.
-- [Get the directory of the current file](https://bun.sh/guides/util/import-meta-dir.md): A short guide showing how to use import.meta.dir in Bun to get the absolute directory path of the current file, with a code example.
+- [Press kit](https://bun.sh/press-kit.md): Provides downloadable Bun logo, wordmark and icon files, usage guidelines, and the project's brand colour hex codes.
+- [License](https://bun.sh/docs/project/license.md): Explains Bun's MIT license, the LGPL-licensed JavaScriptCore and WebKit it links, relinking steps, and third-party library and polyfill licenses.
+- [Bun v1.4.5](https://bun.sh/blog/release-notes/bun-v1.4.5.md): Release notes for Bun v1.4.5, a security release updating lsquic, c-ares, SQLite, llhttp and BoringSSL, with bugfixes and contributors.
+- [Feedback](https://bun.sh/docs/feedback.md): Explains how to report bugs, performance problems, and feature requests for Bun, including upgrading first and searching existing issues.
+- [Bindgen](https://bun.sh/docs/project/bindgen.md): Maintainer documentation describing Bun's internal bindings generator, its schema syntax, Rust and C++ conventions, and type conversions.
+- [Detect when code is executed with Bun](https://bun.sh/guides/util/detect-bun.md): Shows how to detect whether code runs under Bun by checking process.versions.bun or the Bun global, with TypeScript setup notes.
+- [Get the current Bun version](https://bun.sh/guides/util/version.md): Shows how to read Bun.version and Bun.revision to get the running Bun release and its git commit, with code samples.
+- [Generate a UUID](https://bun.sh/guides/util/javascript-uuid.md): Shows how to generate UUIDs using crypto.randomUUID() for v4 and Bun.randomUUIDv7() for v7, with code examples.
+- [Check if two objects are deeply equal](https://bun.sh/guides/util/deep-equals.md): Explains how to use Bun.deepEquals to compare two objects deeply, including strict mode and examples where results differ.
+- [Convert a file URL to an absolute path](https://bun.sh/guides/util/file-url-to-path.md): Shows how to use Bun.fileURLToPath to convert a file:// URL into an absolute filesystem path, with a short code example.
+- [Convert an absolute path to a file URL](https://bun.sh/guides/util/path-to-file-url.md): Shows how to use Bun.pathToFileURL to convert an absolute filesystem path into a file:// URL, with a short code example.
+- [Get the directory of the current file](https://bun.sh/guides/util/import-meta-dir.md): Shows how to use import.meta.dir in Bun to get the absolute path of the directory containing the current file.
 - [Get the file name of the current file](https://bun.sh/guides/util/import-meta-file.md): Shows how to use import.meta.file in Bun to get the name of the current file, with a short code example.
-- [Get the absolute path of the current file](https://bun.sh/guides/util/import-meta-path.md): A short guide showing how to get the absolute path of the current file using import.meta.path in Bun.
-- [Read and write data to MongoDB using Mongoose and Bun](https://bun.sh/guides/ecosystem/mongoose.md): A walkthrough showing how to define a Mongoose model, connect to MongoDB, save and read records using Bun.
-- [Build an app with SolidStart and Bun](https://bun.sh/guides/ecosystem/solidstart.md): Walkthrough for creating, installing and running a SolidStart app with Bun using create-solid and bun dev.
+- [Check if the current file is the entrypoint](https://bun.sh/guides/util/entrypoint.md): Shows how to use import.meta.main in Bun to detect whether the current file is the process entrypoint, with a short code sample.
+- [Get the absolute path to the current entrypoint](https://bun.sh/guides/util/main.md): Shows how to use Bun.main to get the absolute path of the file executed with bun run.
