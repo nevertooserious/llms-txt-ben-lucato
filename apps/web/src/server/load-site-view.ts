@@ -1,24 +1,23 @@
 import {
   loadLatestPipelineRunSummary,
   listLlmsTxtVersions,
-  loadWorkspaceOverview,
+  loadSiteOverview,
   type DatabasePool,
   type PipelineRunSummary,
-  type WorkspaceAccess,
 } from '@llms-txt/db';
 import { validateLlmsTxt } from '@llms-txt/generator';
-import type { PipelineRunView, WorkspaceView } from '../shared/workspace-view';
+import type { PipelineRunView, SiteView } from '../shared/site-view';
 
-/** Everything the workspace screen shows: the site, its latest run, the published file. */
-export async function loadWorkspaceView(
-  workspace: WorkspaceAccess,
+/** Everything the site screen shows: the site, its latest run, the published file. */
+export async function loadSiteView(
+  siteId: string,
   publicSlug: string,
   dependencies: { databasePool: DatabasePool; now?: Date },
-): Promise<WorkspaceView | null> {
+): Promise<SiteView | null> {
   const [overview, latestRun, versions] = await Promise.all([
-    loadWorkspaceOverview(dependencies.databasePool, workspace.id),
-    loadLatestPipelineRunSummary(dependencies.databasePool, workspace.siteId),
-    listLlmsTxtVersions(dependencies.databasePool, workspace.id),
+    loadSiteOverview(dependencies.databasePool, siteId),
+    loadLatestPipelineRunSummary(dependencies.databasePool, siteId),
+    listLlmsTxtVersions(dependencies.databasePool, siteId),
   ]);
   if (overview === null) return null;
   const now = dependencies.now ?? new Date();

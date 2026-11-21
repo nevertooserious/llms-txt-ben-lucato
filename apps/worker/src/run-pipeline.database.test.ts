@@ -3,8 +3,8 @@ import type { CrawlFailure, CrawlResult, RawPage } from '@llms-txt/contracts';
 import type { CrawlSiteOptions } from '@llms-txt/crawler';
 import {
   createDatabasePool,
-  createWorkspace,
-  findOrCreateSite,
+  createSite,
+  deleteSite,
   startPipelineRun,
   withTransaction,
   type PipelineRunQueue,
@@ -90,16 +90,10 @@ const fakeCrawl =
 const renderLlmsTxt = (input: GenerateLlmsTxtInput) =>
   [`# ${input.siteTitle}`, '', '## Pages', '', ...input.pages.map((page) => `- [${page.record.title}](${page.record.normalisedUrl})`), ''].join('\n');
 
-async function newSiteWithWorkspace(): Promise<{ siteId: string; workspaceId: string; rootUrl: string }> {
+async function newSite(): Promise<{ siteId: string; rootUrl: string }> {
   const rootUrl = `https://${crypto.randomUUID()}.example`;
-  const siteId = await findOrCreateSite(databasePool, rootUrl);
-  const workspaceId = await createWorkspace(databasePool, {
-    siteId,
-    accessTokenHash: crypto.randomUUID(),
-    publicSlug: crypto.randomUUID(),
-    creatorIpHash: null,
-  });
-  return { siteId, workspaceId, rootUrl };
+  const siteId = await createSite(databasePool, { rootUrl, publicSlug: crypto.randomUUID(), creatorIpHash: null });
+  return { siteId, rootUrl };
 }
 
 async function run(
@@ -110,7 +104,7 @@ async function run(
   llmClient: LlmClient | null = null,
 ) {
   const outcome = await withTransaction(databasePool, (transaction) =>
-    startPipelineRun(transaction, queue, { siteId, triggeredBy: 'monitor', requestedByWorkspaceId: null }),
+    startPipelineRun(transaction, queue, { siteId, triggeredBy: 'monitor' }),
   );
   const pipelineRunId = outcome.pipelineRunId!;
   await runPipeline(
@@ -133,10 +127,10 @@ async function run(
   return result.rows[0]!;
 }
 
-async function versions(workspaceId: string) {
+async function versions(siteId: string) {
   const result = await databasePool.query<{ version_number: number; llms_txt_content: string; page_changes: unknown }>(
-    'select version_number, llms_txt_content, page_changes from llms_txt_versions where workspace_id = $1 order by version_number',
-    [workspaceId],
+    'select version_number, llms_txt_content, page_changes from llms_txt_versions where site_id = $1 order by version_number',
+    [siteId],
   );
   return result.rows;
 }
@@ -177,10 +171,10 @@ describe('runPipeline with an LLM', () => {
   ];
 
   it('lists only the pages the assessment keeps, with its descriptions and summary', async () => {
-    const { siteId, workspaceId, rootUrl } = await newSiteWithWorkspace();
+    const { siteId, rootUrl } = await newSite();
     const llm = fakeLlmClient();
     expect((await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client)).status).toBe('succeeded');
-    const content = (await versions(workspaceId))[0]!.llms_txt_content;
+    const content = (await versions(siteId))[0]!.llms_txt_content;
     expect(content).toContain('> Acme, summarised.\n\n- The v1 API is deprecated.\n');
     expect(content).toContain(`- [Docs](${rootUrl}/docs): Assessed Docs.`);
     expect(content).not.toContain('/gone');
@@ -193,38 +187,38 @@ describe('runPipeline with an LLM', () => {
   });
 
   it('does not ask again for unchanged pages, and publishes nothing new', async () => {
-    const { siteId, workspaceId } = await newSiteWithWorkspace();
+    const { siteId } = await newSite();
     const llm = fakeLlmClient();
     await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client);
     expect(llm.calls).toEqual({ assessPage: 3, writeSiteSummary: 1 });
     expect((await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client)).status).toBe('unchanged');
     expect(llm.calls).toEqual({ assessPage: 3, writeSiteSummary: 1 });
-    expect(await versions(workspaceId)).toHaveLength(1);
+    expect(await versions(siteId)).toHaveLength(1);
   });
 
   it('fails the run and keeps the file when the LLM is down for a new page', async () => {
-    const { siteId, workspaceId } = await newSiteWithWorkspace();
+    const { siteId } = await newSite();
     const llm = fakeLlmClient();
     await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client);
     llm.behaviour.failWith = new Error('overloaded');
     const failed = await run(siteId, fakeCrawl([...pages, { path: '/pricing', title: 'Pricing' }]), identity, databasePool, llm.client);
     expect(failed.status).toBe('failed');
     expect(failed.error_message).toMatch(/could not be reached/);
-    expect(await versions(workspaceId)).toHaveLength(1);
+    expect(await versions(siteId)).toHaveLength(1);
   });
 
   it('keeps an older assessment when the LLM is down for a changed page', async () => {
-    const { siteId, workspaceId, rootUrl } = await newSiteWithWorkspace();
+    const { siteId, rootUrl } = await newSite();
     const llm = fakeLlmClient();
     await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client);
     llm.behaviour.failWith = new Error('overloaded');
     const changed = pages.map((page) => (page.path === '/docs' ? { ...page, title: 'Docs v2' } : page));
     expect((await run(siteId, fakeCrawl(changed), identity, databasePool, llm.client)).status).not.toBe('failed');
-    expect((await versions(workspaceId)).at(-1)!.llms_txt_content).toContain(`(${rootUrl}/docs): Assessed Docs.`);
+    expect((await versions(siteId)).at(-1)!.llms_txt_content).toContain(`(${rootUrl}/docs): Assessed Docs.`);
   });
 
   it('leaves out a new page the model will not assess, and still publishes', async () => {
-    const { siteId, workspaceId, rootUrl } = await newSiteWithWorkspace();
+    const { siteId, rootUrl } = await newSite();
     const llm = fakeLlmClient();
     const assessPage = llm.client.assessPage;
     llm.client.assessPage = async (input) => {
@@ -233,7 +227,7 @@ describe('runPipeline with an LLM', () => {
     };
     const withPricing = [...pages, { path: '/pricing', title: 'Pricing' }];
     expect((await run(siteId, fakeCrawl(withPricing), identity, databasePool, llm.client)).status).toBe('succeeded');
-    const content = (await versions(workspaceId))[0]!.llms_txt_content;
+    const content = (await versions(siteId))[0]!.llms_txt_content;
     expect(content).toContain(`${rootUrl}/pricing`);
     expect(content).not.toContain(`${rootUrl}/docs`);
   });
@@ -241,12 +235,12 @@ describe('runPipeline with an LLM', () => {
 
 describe('runPipeline', () => {
   it('publishes a first version listing the extracted pages, titled from the homepage', async () => {
-    const { siteId, workspaceId, rootUrl } = await newSiteWithWorkspace();
+    const { siteId, rootUrl } = await newSite();
     expect(await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/docs', title: 'Docs' }]))).toEqual({
       status: 'succeeded',
       error_message: null,
     });
-    const [first] = await versions(workspaceId);
+    const [first] = await versions(siteId);
     expect(first?.version_number).toBe(1);
     expect(first?.llms_txt_content).toContain('# Acme');
     expect(first?.llms_txt_content).toContain(`- [Docs](${rootUrl}/docs)`);
@@ -259,45 +253,45 @@ describe('runPipeline', () => {
   });
 
   it('publishes nothing when nothing changed', async () => {
-    const { siteId, workspaceId } = await newSiteWithWorkspace();
+    const { siteId } = await newSite();
     const pages = [{ path: '/', title: 'Acme' }, { path: '/docs', title: 'Docs' }];
     await run(siteId, fakeCrawl(pages));
     expect((await run(siteId, fakeCrawl(pages))).status).toBe('unchanged');
-    expect(await versions(workspaceId)).toHaveLength(1);
+    expect(await versions(siteId)).toHaveLength(1);
   });
 
   it('keeps a page after one 404, removes it after two, and never removes an unreached page', async () => {
-    const { siteId, workspaceId, rootUrl } = await newSiteWithWorkspace();
+    const { siteId, rootUrl } = await newSite();
     await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old' }, { path: '/quiet' }]));
 
     // /quiet is not reached by the later crawls; /old answers 404 twice.
     expect((await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old', status: 404 }]))).status).toBe('unchanged');
     expect((await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old', status: 404 }]))).status).toBe('succeeded');
 
-    const latest = (await versions(workspaceId)).at(-1)!;
+    const latest = (await versions(siteId)).at(-1)!;
     expect(latest.llms_txt_content).not.toContain(`${rootUrl}/old`);
     expect(latest.llms_txt_content).toContain(`${rootUrl}/quiet`);
     expect(latest.page_changes).toEqual({ added: [], removed: [`${rootUrl}/old`], changed: [] });
   });
 
   it('fails a first run that finds nothing to list, but lets a published file lose its last page', async () => {
-    const onlyHomepage = await newSiteWithWorkspace();
+    const onlyHomepage = await newSite();
     const failed = await run(onlyHomepage.siteId, fakeCrawl([{ path: '/', title: 'Acme' }]));
     expect(failed).toMatchObject({ status: 'failed', error_message: expect.stringContaining('No page besides the homepage') });
-    expect(await versions(onlyHomepage.workspaceId)).toHaveLength(0);
+    expect(await versions(onlyHomepage.siteId)).toHaveLength(0);
 
-    const { siteId, workspaceId } = await newSiteWithWorkspace();
+    const { siteId } = await newSite();
     await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old' }]));
     await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old', status: 404 }]));
     const emptied = await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old', status: 404 }]));
     expect(emptied.status).toBe('succeeded');
-    const published = await versions(workspaceId);
+    const published = await versions(siteId);
     expect(published).toHaveLength(2);
     expect(published.at(-1)!.llms_txt_content).not.toContain('/old');
   });
 
   it('stores the order the first crawl saw links in, and keeps it on later checks', async () => {
-    const { siteId } = await newSiteWithWorkspace();
+    const { siteId } = await newSite();
     const positions = async () => {
       const result = await databasePool.query<{ path: string; first_link_position: number | null }>(
         `select regexp_replace(normalised_url, '^https://[^/]+', '') as path, first_link_position
@@ -316,7 +310,7 @@ describe('runPipeline', () => {
   });
 
   it('fails a run with too many failed fetches, records no 404s, and leaves the published file', async () => {
-    const { siteId, workspaceId } = await newSiteWithWorkspace();
+    const { siteId } = await newSite();
     await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old' }]));
     await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old', status: 404 }]));
 
@@ -328,71 +322,48 @@ describe('runPipeline', () => {
       [siteId],
     );
     expect(counter.rows[0]).toEqual({ consecutive_not_found_count: 1, removed_at: null });
-    expect(await versions(workspaceId)).toHaveLength(1);
+    expect(await versions(siteId)).toHaveLength(1);
   });
 
   it('moves a first crawl to the root its homepage redirects to', async () => {
-    const { siteId, workspaceId } = await newSiteWithWorkspace();
+    const { siteId } = await newSite();
     const resolvedRootUrl = `https://www.${crypto.randomUUID()}.example`;
     const outcome = await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/docs', title: 'Docs' }]), async () => resolvedRootUrl);
     expect(outcome.status).toBe('succeeded');
     const site = await databasePool.query<{ root_url: string }>('select root_url from sites where id = $1', [siteId]);
     expect(site.rows[0]?.root_url).toBe(resolvedRootUrl);
-    expect((await versions(workspaceId))[0]?.llms_txt_content).toContain(`${resolvedRootUrl}/docs`);
+    expect((await versions(siteId))[0]?.llms_txt_content).toContain(`${resolvedRootUrl}/docs`);
   });
 
-  it('merges a first crawl into the site that already has the resolved root', async () => {
-    const existing = await newSiteWithWorkspace();
-    await run(existing.siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/docs', title: 'Docs' }]));
-    const redirecting = await newSiteWithWorkspace();
+  it('keeps a first crawl on its own site when another site has the resolved root', async () => {
+    const pages = [{ path: '/', title: 'Acme' }, { path: '/docs', title: 'Docs' }];
+    const existing = await newSite();
+    await run(existing.siteId, fakeCrawl(pages));
+    const redirecting = await newSite();
 
-    const outcome = await run(
-      redirecting.siteId,
-      fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/docs', title: 'Docs' }]),
-      async () => existing.rootUrl,
-    );
+    const outcome = await run(redirecting.siteId, fakeCrawl(pages), async () => existing.rootUrl);
     expect(outcome.status).toBe('succeeded');
-    const workspace = await databasePool.query<{ site_id: string }>('select site_id from site_workspaces where id = $1', [
-      redirecting.workspaceId,
+    const roots = await databasePool.query<{ root_url: string }>('select root_url from sites where id = any($1)', [
+      [existing.siteId, redirecting.siteId],
     ]);
-    expect(workspace.rows[0]?.site_id).toBe(existing.siteId);
-    expect((await versions(redirecting.workspaceId))[0]?.llms_txt_content).toContain(`${existing.rootUrl}/docs`);
-    expect(await versions(existing.workspaceId)).toHaveLength(1);
+    expect(roots.rows).toEqual([{ root_url: existing.rootUrl }, { root_url: existing.rootUrl }]);
+    expect((await versions(redirecting.siteId))[0]?.llms_txt_content).toContain(`${existing.rootUrl}/docs`);
+    expect(await versions(existing.siteId)).toHaveLength(1);
   });
 
-  it('still publishes for a workspace that joins after the run read its workspaces', async () => {
-    const { siteId, workspaceId } = await newSiteWithWorkspace();
-    let lateWorkspaceId: string | undefined;
-    // Adds a workspace straight after the run's first read of the site's workspaces.
-    const pool = new Proxy(databasePool, {
-      get(target, property) {
-        if (property !== 'query') {
-          const value = Reflect.get(target, property) as unknown;
-          return typeof value === 'function' ? value.bind(target) : value;
-        }
-        return async (text: string, values?: unknown[]) => {
-          const result = await target.query(text, values);
-          if (lateWorkspaceId === undefined && text.includes('from site_workspaces where site_id')) {
-            lateWorkspaceId = await createWorkspace(target, {
-              siteId,
-              accessTokenHash: crypto.randomUUID(),
-              publicSlug: crypto.randomUUID(),
-              creatorIpHash: null,
-            });
-          }
-          return result;
-        };
-      },
+  it('publishes nothing for a site deleted during its run', async () => {
+    const { siteId } = await newSite();
+    const crawl = fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/docs', title: 'Docs' }]);
+    await run(siteId, async (options) => {
+      await deleteSite(databasePool, siteId);
+      return crawl(options);
     });
-
-    const outcome = await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/docs' }]), undefined, pool);
-    expect(outcome.status).toBe('succeeded');
-    expect(await versions(workspaceId)).toHaveLength(1);
-    expect(await versions(lateWorkspaceId!)).toHaveLength(1);
+    expect(await versions(siteId)).toHaveLength(0);
+    expect((await databasePool.query('select 1 from sites where id = $1', [siteId])).rowCount).toBe(0);
   });
 
   it('fails the run with the error when a stage throws', async () => {
-    const { siteId } = await newSiteWithWorkspace();
+    const { siteId } = await newSite();
     const outcome = await run(siteId, async () => {
       throw new Error('renderer crashed');
     });

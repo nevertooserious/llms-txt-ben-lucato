@@ -1,8 +1,8 @@
-import { WorkspaceScreen } from './workspace-screen';
+import { SiteScreen } from './site-screen';
 
-// A workspace: its latest run, the published llms.txt and monitoring. The data is
-// loaded in the browser, because the secret token is in the URL fragment.
-export default async function WorkspacePage({ params }: { params: Promise<{ publicSlug: string }> }) {
+// A site: its latest run, the published llms.txt and monitoring. The data is loaded and
+// polled in the browser.
+export default async function SitePage({ params }: { params: Promise<{ publicSlug: string }> }) {
   const { publicSlug } = await params;
-  return <WorkspaceScreen publicSlug={publicSlug} />;
+  return <SiteScreen publicSlug={publicSlug} />;
 }

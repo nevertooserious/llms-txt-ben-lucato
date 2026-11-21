@@ -1,60 +1,47 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { accessTokenFor, forgetWorkspace, saveWorkspace } from '../../../browser/saved-workspaces';
-import { isActiveRunStatus, type WorkspaceView } from '../../../shared/workspace-view';
+import { forgetSite, saveSite } from '../../../browser/saved-sites';
+import { isActiveRunStatus, type SiteView } from '../../../shared/site-view';
 import { DeleteSiteControl } from './delete-site-control';
 import { LlmsTxtResult } from './llms-txt-result';
 import { MonitoringPanel } from './monitoring-panel';
 import { RunProgress } from './run-progress';
 import { VersionComparison } from './version-comparison';
 import { VersionHistory } from './version-history';
-import { fetchWorkspaceView, WorkspaceApiError } from './workspace-api';
+import { fetchSiteView, SiteApiError } from './site-api';
 
 const ACTIVE_POLL_INTERVAL_MS = 1500;
 const IDLE_POLL_INTERVAL_MS = 30_000;
 
-type TokenState = { kind: 'reading' } | { kind: 'missing' } | { kind: 'found'; accessToken: string };
-
-export function WorkspaceScreen({ publicSlug }: { publicSlug: string }) {
-  const [token, setToken] = useState<TokenState>({ kind: 'reading' });
-  const [view, setView] = useState<WorkspaceView | null>(null);
-  const [loadError, setLoadError] = useState<WorkspaceApiError | null>(null);
-  // Set on delete, so a poll already in flight cannot save the workspace back.
+export function SiteScreen({ publicSlug }: { publicSlug: string }) {
+  const [view, setView] = useState<SiteView | null>(null);
+  const [loadError, setLoadError] = useState<SiteApiError | null>(null);
+  // Set on delete, so a poll already in flight cannot save the site back.
   const isDeleted = useRef(false);
 
-  // The token lives in the URL fragment or localStorage, so it can only be read here.
-  useEffect(() => {
-    const accessToken = accessTokenFor(publicSlug);
-    setToken(accessToken === null ? { kind: 'missing' } : { kind: 'found', accessToken });
-  }, [publicSlug]);
-
-  const accessToken = token.kind === 'found' ? token.accessToken : null;
-
   const refresh = useCallback(async () => {
-    if (accessToken === null) return;
     try {
-      const loaded = await fetchWorkspaceView(publicSlug, accessToken);
+      const loaded = await fetchSiteView(publicSlug);
       if (isDeleted.current) return;
       setView(loaded);
       setLoadError(null);
-      saveWorkspace({ publicSlug, accessToken, rootUrl: loaded.rootUrl, createdAt: new Date().toISOString() });
+      saveSite({ publicSlug, rootUrl: loaded.rootUrl, createdAt: new Date().toISOString() });
     } catch (error) {
       if (isDeleted.current) return;
-      setLoadError(error instanceof WorkspaceApiError ? error : new WorkspaceApiError('Could not reach the server.', 0));
+      setLoadError(error instanceof SiteApiError ? error : new SiteApiError('Could not reach the server.', 0));
     }
-  }, [publicSlug, accessToken]);
+  }, [publicSlug]);
 
   const handleDeleted = useCallback(() => {
     isDeleted.current = true;
-    forgetWorkspace(publicSlug);
+    forgetSite(publicSlug);
     window.location.assign('/');
   }, [publicSlug]);
 
   // Poll quickly while a run is queued or running, slowly otherwise.
   const isRunActive = view?.latestRun ? isActiveRunStatus(view.latestRun.status) : false;
   useEffect(() => {
-    if (accessToken === null) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let isCancelled = false;
     const tick = async () => {
@@ -66,18 +53,14 @@ export function WorkspaceScreen({ publicSlug }: { publicSlug: string }) {
       isCancelled = true;
       clearTimeout(timer);
     };
-  }, [accessToken, isRunActive, refresh]);
+  }, [isRunActive, refresh]);
 
-  if (token.kind === 'missing' || loadError?.status === 401 || loadError?.status === 404) {
+  if (loadError?.status === 404) {
     return (
       <main className="site-heading">
-        <span className="label">Workspace</span>
-        <h1>{loadError?.status === 404 ? 'No workspace here.' : 'This link is missing its token.'}</h1>
-        <p className="hero-lede">
-          {loadError?.status === 404
-            ? 'Check the address, or generate a new llms.txt from the home page.'
-            : 'Open the full secret link you were given when you submitted the site. It ends in #token=….'}
-        </p>
+        <span className="label">Site</span>
+        <h1>No site here.</h1>
+        <p className="hero-lede">Check the address, or generate a new llms.txt from the home page.</p>
         <a className="button" href="/">
           ← Home
         </a>
@@ -85,10 +68,10 @@ export function WorkspaceScreen({ publicSlug }: { publicSlug: string }) {
     );
   }
 
-  if (view === null || accessToken === null) {
+  if (view === null) {
     return (
       <main className="site-heading">
-        <span className="label">Workspace</span>
+        <span className="label">Site</span>
         <h1>Loading…</h1>
         {loadError && <p className="notice notice-danger">{loadError.message}</p>}
       </main>
@@ -110,7 +93,7 @@ export function WorkspaceScreen({ publicSlug }: { publicSlug: string }) {
               </a>
             </h1>
           </div>
-          <DeleteSiteControl publicSlug={publicSlug} accessToken={accessToken} onDeleted={handleDeleted} />
+          <DeleteSiteControl publicSlug={publicSlug} onDeleted={handleDeleted} />
         </div>
         {loadError && <p className="notice notice-danger">{loadError.message} Retrying…</p>}
       </section>
@@ -119,7 +102,7 @@ export function WorkspaceScreen({ publicSlug }: { publicSlug: string }) {
           <RunProgress run={view.latestRun} hasPublishedVersion={view.publishedVersion !== null} />
         </section>
         <section className="cell cell-half">
-          <MonitoringPanel view={view} accessToken={accessToken} onChanged={refresh} />
+          <MonitoringPanel view={view} onChanged={refresh} />
         </section>
         <section className="cell">
           <LlmsTxtResult view={view} siteHost={siteHost} />
@@ -128,14 +111,14 @@ export function WorkspaceScreen({ publicSlug }: { publicSlug: string }) {
           <section className="cell">
             <VersionComparison
               publicSlug={publicSlug}
-              accessToken={accessToken}
+             
               publishedVersionNumber={view.publishedVersion.versionNumber}
               newestVersionNumber={view.versions[0]?.versionNumber ?? view.publishedVersion.versionNumber}
             />
           </section>
         )}
         <section className="cell">
-          <VersionHistory view={view} accessToken={accessToken} onChanged={refresh} />
+          <VersionHistory view={view} onChanged={refresh} />
         </section>
       </div>
     </main>

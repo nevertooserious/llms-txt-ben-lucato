@@ -1,11 +1,10 @@
 import {
-  enableWorkspaceMonitoring,
+  enableSiteMonitoring,
   loadLatestPipelineRun,
   startPipelineRun,
   withTransaction,
   type DatabasePool,
   type PipelineRunQueue,
-  type WorkspaceAccess,
 } from '@llms-txt/db';
 import { MONITORING_DURATION_SECONDS } from './monitoring-duration';
 
@@ -26,29 +25,21 @@ export type CheckSiteNowOutcome =
  * "Check now": runs the same pipeline as a scheduled monitor check, ahead of scheduled
  * checks in the queue. A run already in progress for the site is joined. Otherwise a
  * site is checked at most once per cooldown, counted from its last run of any kind, so
- * one secret link cannot keep a site under constant crawling. Pressing it also renews
- * the workspace's monitoring, whatever the outcome: it shows the workspace is still used.
+ * no one can keep a site under constant crawling. Pressing it also renews the site's
+ * monitoring, whatever the outcome: it shows the site is still used.
  */
 export async function checkSiteNow(
-  workspace: WorkspaceAccess,
+  siteId: string,
   dependencies: CheckSiteNowDependencies,
 ): Promise<CheckSiteNowOutcome> {
   return withTransaction(dependencies.databasePool, async (transaction) => {
-    await enableWorkspaceMonitoring(transaction, {
-      workspaceId: workspace.id,
-      siteId: workspace.siteId,
-      durationSeconds: MONITORING_DURATION_SECONDS,
-    });
-    const latest = await loadLatestPipelineRun(transaction, workspace.siteId);
+    await enableSiteMonitoring(transaction, { siteId, durationSeconds: MONITORING_DURATION_SECONDS });
+    const latest = await loadLatestPipelineRun(transaction, siteId);
     if (latest?.isActive) return { kind: 'joined', pipelineRunId: latest.id };
     if (latest !== null && latest.ageSeconds < dependencies.checkNowCooldownSeconds) {
       return { kind: 'too_soon', retryAfterSeconds: Math.ceil(dependencies.checkNowCooldownSeconds - latest.ageSeconds) };
     }
-    const outcome = await startPipelineRun(transaction, dependencies.queue, {
-      siteId: workspace.siteId,
-      triggeredBy: 'user_check_now',
-      requestedByWorkspaceId: workspace.id,
-    });
+    const outcome = await startPipelineRun(transaction, dependencies.queue, { siteId, triggeredBy: 'user_check_now' });
     if (outcome.kind === 'started') return { kind: 'started', pipelineRunId: outcome.pipelineRunId };
     // Another request started a run between the read above and the insert.
     if (outcome.pipelineRunId !== null) return { kind: 'joined', pipelineRunId: outcome.pipelineRunId };

@@ -1,4 +1,4 @@
-// The JSON the workspace screen polls: GET /api/workspaces/{publicSlug}. Shared by the
+// The JSON the site screen polls: GET /api/sites/{publicSlug}. Shared by the
 // route handler and the browser; dates are ISO 8601 strings.
 
 export type PipelineRunStatus = 'queued' | 'running' | 'succeeded' | 'unchanged' | 'failed';
@@ -14,7 +14,7 @@ export interface PipelineRunView {
   finishedAt: string | null;
 }
 
-export interface WorkspaceView {
+export interface SiteView {
   publicSlug: string;
   rootUrl: string;
   siteTitle: string | null;
@@ -39,7 +39,7 @@ export interface WorkspaceView {
   versions: LlmsTxtVersionSummaryView[];
 }
 
-/** One entry of GET /api/workspaces/{publicSlug}/versions, newest first. */
+/** One entry of GET /api/sites/{publicSlug}/versions, newest first. */
 export interface LlmsTxtVersionSummaryView {
   versionNumber: number;
   listedPageCount: number;

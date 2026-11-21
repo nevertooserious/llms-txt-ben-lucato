@@ -1,23 +1,18 @@
 import { checkSiteNow } from '../../../../../server/check-site-now';
 import { webServices } from '../../../../../server/web-services';
-import { authoriseWorkspaceRequest } from '../../../../../server/workspace-access';
+import { requestedSite } from '../../../../../server/requested-site';
 
-// "Check now": POST with the workspace's secret token as a bearer token. Answers 202
-// with the run to poll, which may be one already in progress, or 429 with Retry-After
+// "Check now". Answers 202 with the run to poll, which may be one already in progress, or 429 with Retry-After
 // when the site was checked within the cooldown.
 export async function POST(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ publicSlug: string }> },
 ): Promise<Response> {
   const services = webServices();
   try {
-    const { workspace, response } = await authoriseWorkspaceRequest(
-      services.databasePool,
-      request,
-      (await params).publicSlug,
-    );
+    const { siteId, response } = await requestedSite(services.databasePool, (await params).publicSlug);
     if (response) return response;
-    const outcome = await checkSiteNow(workspace, {
+    const outcome = await checkSiteNow(siteId, {
       databasePool: services.databasePool,
       queue: await services.queue(),
       checkNowCooldownSeconds: services.config.checkNowCooldownSeconds,

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-// Whether a rendered llms.txt becomes a new version of a workspace's file, and what
+// Whether a rendered llms.txt becomes a new version of a site's file, and what
 // changed relative to the published one. Pure; the worker writes the version.
 
 export interface PageChanges {

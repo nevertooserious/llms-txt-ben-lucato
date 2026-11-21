@@ -2,7 +2,7 @@ import { PgBoss } from 'pg-boss';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { QUEUE_NAMES } from '@llms-txt/contracts';
 import { crawlSite, resolveSiteRootUrl } from '@llms-txt/crawler';
-import { createDatabasePool, createWorkspace, findOrCreateSite, type DatabasePool } from '@llms-txt/db';
+import { createDatabasePool, createSite, type DatabasePool } from '@llms-txt/db';
 import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
 import { readWorkerConfig } from '../../apps/worker/src/worker-config';
@@ -71,17 +71,18 @@ describe.skipIf(!databaseUrl)('the monitor schedule, on the real clock', () => {
   });
 
   it('checks a due site with no tick sent by hand', async () => {
-    const siteId = await findOrCreateSite(databasePool, site.origin);
-    const workspaceId = await createWorkspace(databasePool, {
-      siteId,
-      accessTokenHash: crypto.randomUUID(),
+    const siteId = await createSite(databasePool, {
+      rootUrl: site.origin,
       publicSlug: crypto.randomUUID(),
       creatorIpHash: null,
     });
-    await databasePool.query(`update site_workspaces set monitoring_enabled_until = now() + interval '30 days' where id = $1`, [
-      workspaceId,
-    ]);
-    await databasePool.query(`update sites set next_monitor_check_at = now() - interval '1 second' where id = $1`, [siteId]);
+    await databasePool.query(
+      `update sites
+          set monitoring_enabled_until = now() + interval '30 days',
+              next_monitor_check_at = now() - interval '1 second'
+        where id = $1`,
+      [siteId],
+    );
 
     await scheduleMonitorTick(workerQueue, '* * * * *');
 

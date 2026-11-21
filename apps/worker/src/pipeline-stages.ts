@@ -1,21 +1,19 @@
 import type { CrawlResult, KnownPage, PipelineRunJob, RawPage } from '@llms-txt/contracts';
 import type { CrawlSiteOptions } from '@llms-txt/crawler';
 import {
-  adoptResolvedSiteRoot,
   finishPipelineRun,
   loadGeneratorPages,
   loadNewestVersion,
+  loadPageOverrides,
   loadSiteForRun,
   loadStoredPages,
-  loadWorkspaceIdsForSite,
-  loadWorkspaceOverrides,
   lockRunningPipelineRun,
-  lockSiteRow,
   publishLlmsTxtVersion,
   recordPipelineRunProgress,
   saveCrawledPage,
   saveExtractedPage,
   saveLinkSignals,
+  saveResolvedRootUrl,
   saveSiteCrawlOutcome,
   saveSiteTitle,
   withTransaction,
@@ -91,23 +89,16 @@ export async function runPipelineStages(
 
   // --- load --------------------------------------------------------------------------
   let site = await loadSiteForRun(databasePool, job.siteId);
-  let storedPageList = await loadStoredPages(databasePool, site.id);
+  const storedPageList = await loadStoredPages(databasePool, site.id);
 
-  // A site's first crawl settles where it really lives, so example.com and
-  // www.example.com are one row. A site with pages keeps its root: see section 10, "Redirects".
+  // A site's first crawl settles where it really lives. A site with pages keeps its root:
+  // see section 10, "Redirects".
   if (storedPageList.length === 0) {
     const resolvedRootUrl = await dependencies.resolveRootUrl(site.rootUrl);
     if (resolvedRootUrl !== site.rootUrl) {
-      const adoption = await withTransaction(databasePool, (transaction) =>
-        adoptResolvedSiteRoot(transaction, { siteId: site.id, pipelineRunId, resolvedRootUrl }),
-      );
-      logger.info('site root resolved', { resolvedRootUrl, adoption: adoption.kind });
-      if (adoption.kind === 'merged_into_active_run') {
-        // That run's last step picks up the workspaces just moved to its site.
-        return { status: 'unchanged', isRecorded: await finishPipelineRun(databasePool, pipelineRunId, { status: 'unchanged' }) };
-      }
-      site = await loadSiteForRun(databasePool, adoption.siteId);
-      storedPageList = await loadStoredPages(databasePool, site.id);
+      await saveResolvedRootUrl(databasePool, site.id, resolvedRootUrl);
+      logger.info('site root resolved', { resolvedRootUrl });
+      site = await loadSiteForRun(databasePool, site.id);
     }
   }
   const storedPages = new Map(storedPageList.map((page) => [page.normalisedUrl, page]));
@@ -209,7 +200,7 @@ export async function runPipelineStages(
     machineReadableResourceUrls: crawl.machineReadableResourceUrls,
   });
 
-  // --- generate and publish, per workspace ---------------------------------------------
+  // --- generate and publish ------------------------------------------------------------
   await recordPipelineRunProgress(databasePool, pipelineRunId, {
     currentStage: 'generate',
     pagesChangedCount: changedUrls.size,
@@ -229,69 +220,46 @@ export async function runPipelineStages(
         pages: loadedPages,
       })
     : { pages: loadedPages, siteSummary: site.generatedSummary, siteNotes: site.generatedNotes };
-  // Judged for the site, before any workspace's exclusions: a user may empty their own
-  // file. A site that has published before is let through: its pages went one by one, on
-  // their own 404s, and the file should lose those links rather than keep them.
-  if (selectPages(generatorPages, []).length === 0) {
-    const workspaceIds = await loadWorkspaceIdsForSite(databasePool, site.id);
-    const newestVersions = await Promise.all(workspaceIds.map((workspaceId) => loadNewestVersion(databasePool, workspaceId)));
-    if (newestVersions.every((version) => version === null)) throw new PipelineRunFailure(NOTHING_TO_LIST_REASON);
+  // Judged before the user's exclusions: a user may empty their own file. A site that has
+  // published before is let through: its pages went one by one, on their own 404s, and the
+  // file should lose those links rather than keep them.
+  const newestVersion = await loadNewestVersion(databasePool, site.id);
+  if (newestVersion === null && selectPages(generatorPages, []).length === 0) {
+    throw new PipelineRunFailure(NOTHING_TO_LIST_REASON);
   }
-  const renderedWorkspaceIds = new Set<string>();
-  let publishedCount = 0;
-  for (;;) {
-    for (const workspaceId of await loadWorkspaceIdsForSite(databasePool, site.id)) {
-      if (renderedWorkspaceIds.has(workspaceId)) continue;
-      renderedWorkspaceIds.add(workspaceId);
-      const rendered = dependencies.renderLlmsTxt({
-        siteTitle: renderedSiteTitle,
-        siteSummary,
-        siteNotes,
-        machineReadableResourceUrls: crawl.machineReadableResourceUrls ?? site.machineReadableResourceUrls,
-        pages: generatorPages,
-        overrides: await loadWorkspaceOverrides(databasePool, workspaceId),
-      });
-      const newestVersion = await loadNewestVersion(databasePool, workspaceId);
-      const decision = decidePublication(newestVersion?.llmsTxtContent ?? null, rendered);
-      if (decision.kind === 'unchanged') continue;
+  const rendered = dependencies.renderLlmsTxt({
+    siteTitle: renderedSiteTitle,
+    siteSummary,
+    siteNotes,
+    machineReadableResourceUrls: crawl.machineReadableResourceUrls ?? site.machineReadableResourceUrls,
+    pages: generatorPages,
+    overrides: await loadPageOverrides(databasePool, site.id),
+  });
+  const decision = decidePublication(newestVersion?.llmsTxtContent ?? null, rendered);
+  if (decision.kind === 'unchanged') {
+    return { status: 'unchanged', isRecorded: await finishPipelineRun(databasePool, pipelineRunId, { status: 'unchanged' }) };
+  }
 
-      const version = await withTransaction(databasePool, async (transaction) => {
-        // A run the reaper has failed must not publish, even if it got this far.
-        if (!(await lockRunningPipelineRun(transaction, pipelineRunId))) {
-          throw new PipelineRunFailure('The run was failed for missing heartbeats before it could publish.');
-        }
-        return publishLlmsTxtVersion(transaction, {
-          workspaceId,
-          pipelineRunId,
-          createdBy: 'pipeline',
-          llmsTxtContent: decision.llmsTxtContent,
-          llmsTxtContentHash: decision.llmsTxtContentHash,
-          listedPageCount: decision.listedPageCount,
-          pageChanges: decision.pageChanges,
-        });
-      });
-      // The user deleted this workspace during the run.
-      if (version === null) continue;
-      logger.info('published', {
-        workspaceId,
-        versionNumber: version.versionNumber,
-        isLive: version.isLive,
-        ...decision.pageChanges,
-      });
-      publishedCount += 1;
+  const version = await withTransaction(databasePool, async (transaction) => {
+    // A run the reaper has failed must not publish, even if it got this far.
+    if (!(await lockRunningPipelineRun(transaction, pipelineRunId))) {
+      throw new PipelineRunFailure('The run was failed for missing heartbeats before it could publish.');
     }
-
-    // Finish under the site's lock, so a submission either lands before this check and is
-    // rendered above, or lands after it and starts a run of its own.
-    const status = publishedCount > 0 ? 'succeeded' : 'unchanged';
-    const finished = await withTransaction(databasePool, async (transaction) => {
-      await lockSiteRow(transaction, site.id);
-      const workspaceIds = await loadWorkspaceIdsForSite(transaction, site.id);
-      if (workspaceIds.some((workspaceId) => !renderedWorkspaceIds.has(workspaceId))) return null;
-      return { status, isRecorded: await finishPipelineRun(transaction, pipelineRunId, { status }) } as const;
+    return publishLlmsTxtVersion(transaction, {
+      siteId: site.id,
+      pipelineRunId,
+      createdBy: 'pipeline',
+      llmsTxtContent: decision.llmsTxtContent,
+      llmsTxtContentHash: decision.llmsTxtContentHash,
+      listedPageCount: decision.listedPageCount,
+      pageChanges: decision.pageChanges,
     });
-    if (finished !== null) return finished;
+  });
+  if (version !== null) {
+    logger.info('published', { versionNumber: version.versionNumber, isLive: version.isLive, ...decision.pageChanges });
   }
+  const status = version === null ? 'unchanged' : 'succeeded';
+  return { status, isRecorded: await finishPipelineRun(databasePool, pipelineRunId, { status }) };
 }
 
 function knownPageFrom(stored: StoredPage): KnownPage {

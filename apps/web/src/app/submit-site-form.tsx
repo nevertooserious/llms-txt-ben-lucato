@@ -2,11 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
-import { saveWorkspace, secretLinkPath } from '../browser/saved-workspaces';
+import { saveSite, sitePath } from '../browser/saved-sites';
 
 interface SubmitResponse {
   publicSlug?: string;
-  accessToken?: string;
   error?: string;
 }
 
@@ -30,16 +29,15 @@ export function SubmitSiteForm() {
         body: JSON.stringify({ url }),
       });
       const body = (await response.json().catch(() => ({}))) as SubmitResponse;
-      if (!response.ok || !body.publicSlug || !body.accessToken) {
+      if (!response.ok || !body.publicSlug) {
         throw new Error(body.error ?? 'The site could not be submitted.');
       }
-      saveWorkspace({
+      saveSite({
         publicSlug: body.publicSlug,
-        accessToken: body.accessToken,
         rootUrl: url,
         createdAt: new Date().toISOString(),
       });
-      router.push(secretLinkPath(body.publicSlug, body.accessToken));
+      router.push(sitePath(body.publicSlug));
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'The site could not be submitted.');
       setIsSubmitting(false);

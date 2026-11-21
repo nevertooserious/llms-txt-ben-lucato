@@ -1,4 +1,4 @@
-import { isActiveRunStatus, runStatusLabel, type PipelineRunView } from '../../../shared/workspace-view';
+import { isActiveRunStatus, runStatusLabel, type PipelineRunView } from '../../../shared/site-view';
 
 const RUN_TYPE_LABELS: Record<PipelineRunView['triggeredBy'], string> = {
   submission: 'First generation',

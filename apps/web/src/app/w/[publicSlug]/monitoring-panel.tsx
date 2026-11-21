@@ -1,16 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { isActiveRunStatus, type WorkspaceView } from '../../../shared/workspace-view';
-import { checkNow, WorkspaceApiError } from './workspace-api';
+import { isActiveRunStatus, type SiteView } from '../../../shared/site-view';
+import { checkNow, SiteApiError } from './site-api';
 
 interface MonitoringPanelProps {
-  view: WorkspaceView;
-  accessToken: string;
+  view: SiteView;
   onChanged: () => Promise<void>;
 }
 
-export function MonitoringPanel({ view, accessToken, onChanged }: MonitoringPanelProps) {
+export function MonitoringPanel({ view, onChanged }: MonitoringPanelProps) {
   const [isStartingCheck, setIsStartingCheck] = useState(false);
   const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
   const isRunActive = view.latestRun !== null && isActiveRunStatus(view.latestRun.status);
@@ -19,11 +18,11 @@ export function MonitoringPanel({ view, accessToken, onChanged }: MonitoringPane
     setIsStartingCheck(true);
     setMessage(null);
     try {
-      const outcome = await checkNow(view.publicSlug, accessToken);
+      const outcome = await checkNow(view.publicSlug);
       if (outcome.joinedActiveRun) setMessage({ text: 'A run was already in progress.', isError: false });
       await onChanged();
     } catch (error) {
-      const text = error instanceof WorkspaceApiError ? error.message : 'Something went wrong.';
+      const text = error instanceof SiteApiError ? error.message : 'Something went wrong.';
       setMessage({ text, isError: true });
     } finally {
       setIsStartingCheck(false);

@@ -1,4 +1,4 @@
-import type { GeneratorPage, PageType, WorkspacePageOverride } from '@llms-txt/contracts';
+import type { GeneratorPage, PageType, PageOverride } from '@llms-txt/contracts';
 
 // Which pages are listed, and where. Sections come from page type and, for pages of no
 // particular type, from the area of the site they sit in; the LLM never chooses them.
@@ -252,7 +252,7 @@ export function homepageOf(pages: readonly GeneratorPage[]): GeneratorPage | und
 }
 
 /**
- * Takes the listing candidates, minus pages a workspace excluded or an assessment judged
+ * Takes the listing candidates, minus pages the user excluded or an assessment judged
  * not to belong; keeps one page per canonical URL; drops pages that score too low; then
  * fills the sections in score order within the limits. Pages that score the same keep
  * the order of the site's navigation, then the order the crawl first saw links to them,
@@ -262,7 +262,7 @@ export function homepageOf(pages: readonly GeneratorPage[]): GeneratorPage | und
  */
 export function selectPages(
   pages: readonly GeneratorPage[],
-  overrides: readonly WorkspacePageOverride[],
+  overrides: readonly PageOverride[],
   limits: SelectionLimits = DEFAULT_SELECTION_LIMITS,
 ): SelectedPage[] {
   const overridesByUrl = new Map(overrides.map((override) => [override.normalisedUrl, override]));

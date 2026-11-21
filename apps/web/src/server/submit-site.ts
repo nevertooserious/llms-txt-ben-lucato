@@ -1,9 +1,8 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import {
-  countRecentWorkspacesFromIp,
-  createWorkspace,
-  enableWorkspaceMonitoring,
-  findOrCreateSite,
+  countRecentSitesFromIp,
+  createSite,
+  enableSiteMonitoring,
   startPipelineRun,
   withTransaction,
   type DatabasePool,
@@ -11,7 +10,6 @@ import {
 } from '@llms-txt/db';
 import { MONITORING_DURATION_SECONDS } from './monitoring-duration';
 import { normaliseSubmittedUrl } from './normalise-submitted-url';
-import { sha256Hex } from './workspace-access';
 
 export interface SubmitSiteDependencies {
   databasePool: DatabasePool;
@@ -27,12 +25,8 @@ export interface SubmitSiteRequest {
 export type SubmitSiteOutcome =
   | {
       kind: 'submitted';
-      workspaceId: string;
       publicSlug: string;
-      /** The secret in the workspace's edit link. Returned once; only its hash is stored. */
-      accessToken: string;
-      /** The run generating the file: a new one, or the site's run already in progress. */
-      pipelineRunId: string | null;
+      pipelineRunId: string;
     }
   | { kind: 'invalid_url' }
   | { kind: 'rate_limited' };
@@ -40,9 +34,9 @@ export type SubmitSiteOutcome =
 const ONE_HOUR_SECONDS = 3600;
 
 /**
- * A URL submission: rate-limit by IP, then in one transaction find or create the site,
- * create the submitter's workspace with monitoring on, and start a run (or join the
- * site's active one).
+ * A URL submission: rate-limit by IP, then in one transaction create a new site with
+ * monitoring on and start its first run. Each submission is an independent site, even
+ * for a URL submitted before.
  */
 export async function submitSite(
   request: SubmitSiteRequest,
@@ -51,32 +45,19 @@ export async function submitSite(
   const rootUrl = normaliseSubmittedUrl(request.submittedUrl);
   if (rootUrl === null) return { kind: 'invalid_url' };
 
-  const creatorIpHash = request.clientIp === null ? null : sha256Hex(request.clientIp);
+  const creatorIpHash = request.clientIp === null ? null : createHash('sha256').update(request.clientIp).digest('hex');
   if (creatorIpHash !== null) {
-    const recent = await countRecentWorkspacesFromIp(dependencies.databasePool, creatorIpHash, ONE_HOUR_SECONDS);
+    const recent = await countRecentSitesFromIp(dependencies.databasePool, creatorIpHash, ONE_HOUR_SECONDS);
     if (recent >= dependencies.submissionsPerIpPerHour) return { kind: 'rate_limited' };
   }
 
-  const accessToken = randomBytes(32).toString('base64url');
   const publicSlug = randomBytes(12).toString('base64url');
   return withTransaction(dependencies.databasePool, async (transaction) => {
-    const siteId = await findOrCreateSite(transaction, rootUrl);
-    const workspaceId = await createWorkspace(transaction, {
-      siteId,
-      accessTokenHash: sha256Hex(accessToken),
-      publicSlug,
-      creatorIpHash,
-    });
-    await enableWorkspaceMonitoring(transaction, {
-      workspaceId,
-      siteId,
-      durationSeconds: MONITORING_DURATION_SECONDS,
-    });
-    const run = await startPipelineRun(transaction, dependencies.queue, {
-      siteId,
-      triggeredBy: 'submission',
-      requestedByWorkspaceId: workspaceId,
-    });
-    return { kind: 'submitted', workspaceId, publicSlug, accessToken, pipelineRunId: run.pipelineRunId };
+    const siteId = await createSite(transaction, { rootUrl, publicSlug, creatorIpHash });
+    await enableSiteMonitoring(transaction, { siteId, durationSeconds: MONITORING_DURATION_SECONDS });
+    const run = await startPipelineRun(transaction, dependencies.queue, { siteId, triggeredBy: 'submission' });
+    // The site was created in this transaction, so nothing else can have a run on it.
+    if (run.kind !== 'started') throw new Error(`new site ${siteId} already had an active run`);
+    return { kind: 'submitted', publicSlug, pipelineRunId: run.pipelineRunId };
   });
 }

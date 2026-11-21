@@ -1,15 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { deleteWorkspace, WorkspaceApiError } from './workspace-api';
+import { deleteSite, SiteApiError } from './site-api';
 
 interface DeleteSiteControlProps {
   publicSlug: string;
-  accessToken: string;
   onDeleted: () => void;
 }
 
-export function DeleteSiteControl({ publicSlug, accessToken, onDeleted }: DeleteSiteControlProps) {
+export function DeleteSiteControl({ publicSlug, onDeleted }: DeleteSiteControlProps) {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -18,14 +17,14 @@ export function DeleteSiteControl({ publicSlug, accessToken, onDeleted }: Delete
     setIsDeleting(true);
     setErrorMessage(null);
     try {
-      await deleteWorkspace(publicSlug, accessToken);
+      await deleteSite(publicSlug);
       onDeleted();
     } catch (error) {
-      if (error instanceof WorkspaceApiError && error.status === 404) {
+      if (error instanceof SiteApiError && error.status === 404) {
         onDeleted();
         return;
       }
-      setErrorMessage(error instanceof WorkspaceApiError ? error.message : 'Something went wrong.');
+      setErrorMessage(error instanceof SiteApiError ? error.message : 'Something went wrong.');
     } finally {
       setIsDeleting(false);
     }
