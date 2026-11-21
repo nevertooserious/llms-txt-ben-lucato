@@ -26,6 +26,25 @@ describe('renderingAddsContent', () => {
     ).toBe(true);
   });
 
+  it('counts distinct pages of the site, not repeated links or links elsewhere', () => {
+    const plain = signals({ visibleTextLength: 4000, linkUrls: links(30) });
+    // A script-built menu repeating links the HTML already has (kubernetes.io).
+    expect(renderingAddsContent(plain, signals({ visibleTextLength: 4400, linkUrls: [...links(30), ...links(30)] }))).toBe(false);
+    // The same pages under fragments and with a trailing slash.
+    const sameLinksWrittenDifferently = links(30).flatMap((url) => [`${url}#top`, `${url}/`]);
+    expect(renderingAddsContent(plain, signals({ visibleTextLength: 4400, linkUrls: sameLinksWrittenDifferently }))).toBe(false);
+    // Sponsors' sites loaded by script (sqlite.org).
+    const sponsors = Array.from({ length: 8 }, (_unused, index) => `https://sponsor-${index}.example/`);
+    const isOnSite = (url: string) => url.startsWith('https://example.com');
+    expect(renderingAddsContent(plain, signals({ visibleTextLength: 4400, linkUrls: [...links(30), ...sponsors] }), isOnSite)).toBe(false);
+  });
+
+  it('is false when rendering adds a few links to a page that already has many', () => {
+    expect(
+      renderingAddsContent(signals({ visibleTextLength: 12000, linkUrls: links(100) }), signals({ visibleTextLength: 14000, linkUrls: links(110) })),
+    ).toBe(false);
+  });
+
   it('is false for a hydrated page whose text barely changes', () => {
     expect(
       renderingAddsContent(signals({ visibleTextLength: 2000, linkUrls: links(10) }), signals({ visibleTextLength: 2150, linkUrls: links(12) })),

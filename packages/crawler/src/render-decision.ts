@@ -1,10 +1,12 @@
+import { normaliseUrl } from './normalise-url';
 import type { PageSignals } from './read-page-signals';
 
 // When to use the headless browser (docs/design/README.md, section 2, Fetching).
 //
 // Per site: on a first crawl the homepage is fetched both ways and compared. If the
-// browser finds much more text or many more links than plain HTTP, the whole site is
-// rendered. The answer is stored in sites.requires_headless_rendering, so later checks
+// browser finds much more text, or many pages of the site that plain HTTP does not link,
+// the whole site is rendered. Rendering costs seconds a page, so a site whose plain HTML
+// already links its pages must not be rendered for the sake of a carousel of sponsors. The answer is stored in sites.requires_headless_rendering, so later checks
 // skip the comparison until it is re-decided.
 //
 // Per page: on a site that does not need rendering, a page whose plain HTML looks like
@@ -15,8 +17,13 @@ import type { PageSignals } from './read-page-signals';
 const MIN_EXTRA_TEXT_CHARACTERS = 200;
 /** ...and at least this multiple of the plain text, to count as gaining content. */
 const MIN_TEXT_GROWTH_FACTOR = 1.5;
-/** Or this many more links, which catches menus and link lists rendered by script. */
+/**
+ * Or this many pages of the site linked only after rendering, which catches menus and
+ * link lists rendered by script...
+ */
 const MIN_EXTRA_LINKS = 5;
+/** ...and at least this share of what the plain HTML links, as with the text. */
+const MIN_EXTRA_LINKS_SHARE = 0.5;
 
 /** Below both of these, a plain page is empty: not short, empty. */
 const EMPTY_PAGE_MAX_TEXT_CHARACTERS = 50;
@@ -24,13 +31,34 @@ const EMPTY_PAGE_MAX_LINKS = 3;
 /** An empty app mount point counts while the rest of the page holds less than this. */
 const SHELL_MARKER_MAX_TEXT_CHARACTERS = 1000;
 
-/** Whether the rendered version of a page holds content the plain HTML lacks. */
-export function renderingAddsContent(plain: PageSignals, rendered: PageSignals): boolean {
+/**
+ * Whether the rendered version of a page holds content the plain HTML lacks. Links are
+ * counted as distinct pages of the site (`isOnSite`): the same link repeated in a
+ * script-built menu, or links to other sites, give the crawl nothing new to fetch.
+ */
+export function renderingAddsContent(
+  plain: PageSignals,
+  rendered: PageSignals,
+  isOnSite: (url: string) => boolean = () => true,
+): boolean {
   const extraText = rendered.visibleTextLength - plain.visibleTextLength;
   const textGrew =
     extraText >= MIN_EXTRA_TEXT_CHARACTERS && rendered.visibleTextLength >= plain.visibleTextLength * MIN_TEXT_GROWTH_FACTOR;
-  const linksGrew = rendered.linkUrls.length - plain.linkUrls.length >= MIN_EXTRA_LINKS;
+
+  const plainPages = sitePagesLinkedBy(plain, isOnSite);
+  const extraPages = [...sitePagesLinkedBy(rendered, isOnSite)].filter((url) => !plainPages.has(url)).length;
+  const linksGrew = extraPages >= MIN_EXTRA_LINKS && extraPages >= plainPages.size * MIN_EXTRA_LINKS_SHARE;
   return textGrew || linksGrew;
+}
+
+/** The distinct pages of the site a page links, by normalised URL. */
+function sitePagesLinkedBy(signals: PageSignals, isOnSite: (url: string) => boolean): Set<string> {
+  const pages = new Set<string>();
+  for (const linkUrl of signals.linkUrls) {
+    const url = normaliseUrl(linkUrl);
+    if (url !== null && isOnSite(url)) pages.add(url);
+  }
+  return pages;
 }
 
 /**

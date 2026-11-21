@@ -562,7 +562,7 @@ class SiteCrawl {
         return plainPage;
       }
       const renderedSignals = readPageSignals(renderedPage.html, renderedPage.finalUrl, renderedPage.headers);
-      this.requiresHeadlessRendering = renderingAddsContent(plainSignals, renderedSignals);
+      this.requiresHeadlessRendering = renderingAddsContent(plainSignals, renderedSignals, (url) => isInScope(url, this.rootUrl));
       return this.requiresHeadlessRendering ? renderedPage : plainPage;
     }
 
