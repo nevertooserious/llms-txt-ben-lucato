@@ -7,7 +7,7 @@ import type { PipelineStageDependencies } from './pipeline-stages';
 import { runPipeline } from './run-pipeline';
 import type { WorkerConfig } from './worker-config';
 
-export interface WorkerJobDependencies extends Pick<PipelineStageDependencies, 'crawl' | 'renderLlmsTxt'> {
+export interface WorkerJobDependencies extends Pick<PipelineStageDependencies, 'crawl' | 'resolveRootUrl' | 'renderLlmsTxt'> {
   queue: PgBoss;
   databasePool: DatabasePool;
   logger: Logger;
@@ -37,6 +37,7 @@ export async function startWorkerJobs(dependencies: WorkerJobDependencies): Prom
         heartbeatIntervalMs: config.heartbeatIntervalMs,
         settings: { crawlPageBudget: config.crawlPageBudget, maxFailedFetchShare: config.maxFailedFetchShare },
         crawl: dependencies.crawl,
+        resolveRootUrl: dependencies.resolveRootUrl,
         renderLlmsTxt: dependencies.renderLlmsTxt,
       });
     },

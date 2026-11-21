@@ -237,7 +237,8 @@ class SiteCrawl {
       return;
     }
     const status = outcome.httpStatusCode;
-    if (status >= 200 && status < 300) this.robots = parseRobotsTxt(outcome.finalUrl, outcome.body);
+    // Keyed on the requested URL: rules reached through a redirect still govern this host (RFC 9309, 2.3.1.2).
+    if (status >= 200 && status < 300) this.robots = parseRobotsTxt(robotsTxtUrl, outcome.body);
     else if (status >= 500) {
       this.robots = robotsTxtUnreachable;
       this.recordFailure(robotsTxtUrl, 'robots_txt_unreachable', `HTTP ${status}`, status);

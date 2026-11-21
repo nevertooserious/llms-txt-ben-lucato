@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { PgBoss } from 'pg-boss';
 import { generateLlmsTxt, type PageChanges } from '@llms-txt/generator';
-import { crawlSite, HeadlessRenderer } from '@llms-txt/crawler';
+import { crawlSite, HeadlessRenderer, resolveSiteRootUrl } from '@llms-txt/crawler';
 import {
   createDatabasePool,
   createWorkspace,
@@ -99,6 +99,7 @@ export class PipelineHarness {
       logger: createLogger({ level: 'warn', fields: { process: 'e2e-worker' } }),
       config,
       crawl: (options) => crawlSite({ ...options, networkPolicy, headlessRenderer, minRequestIntervalMs: 0 }),
+      resolveRootUrl: (rootUrl) => resolveSiteRootUrl({ rootUrl, networkPolicy, minRequestIntervalMs: 0 }),
       renderLlmsTxt: generateLlmsTxt,
       pollingIntervalSeconds: 0.5,
     });

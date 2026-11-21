@@ -1,6 +1,7 @@
 import type { CrawlResult, KnownPage, PipelineRunJob, RawPage } from '@llms-txt/contracts';
 import type { CrawlSiteOptions } from '@llms-txt/crawler';
 import {
+  adoptResolvedSiteRoot,
   loadGeneratorPages,
   loadPublishedVersion,
   loadSiteForRun,
@@ -50,6 +51,8 @@ export interface PipelineStageDependencies {
   settings: PipelineSettings;
   /** crawlSite, with the worker's shared headless renderer. */
   crawl: (options: CrawlSiteOptions) => Promise<CrawlResult>;
+  /** resolveSiteRootUrl: the root URL after the homepage's redirect. */
+  resolveRootUrl: (rootUrl: string) => Promise<string>;
   /** generateLlmsTxt. */
   renderLlmsTxt: (input: GenerateLlmsTxtInput) => string;
   now?: () => Date;
@@ -74,8 +77,24 @@ export async function runPipelineStages(
   const { pipelineRunId } = job;
 
   // --- load --------------------------------------------------------------------------
-  const site = await loadSiteForRun(databasePool, job.siteId);
-  const storedPages = new Map((await loadStoredPages(databasePool, site.id)).map((page) => [page.normalisedUrl, page]));
+  let site = await loadSiteForRun(databasePool, job.siteId);
+  let storedPageList = await loadStoredPages(databasePool, site.id);
+
+  // A site's first crawl settles where it really lives, so example.com and
+  // www.example.com are one row. A site with pages keeps its root: see section 10, "Redirects".
+  if (storedPageList.length === 0) {
+    const resolvedRootUrl = await dependencies.resolveRootUrl(site.rootUrl);
+    if (resolvedRootUrl !== site.rootUrl) {
+      const adoption = await withTransaction(databasePool, (transaction) =>
+        adoptResolvedSiteRoot(transaction, { siteId: site.id, pipelineRunId, resolvedRootUrl }),
+      );
+      logger.info('site root resolved', { resolvedRootUrl, adoption: adoption.kind });
+      if (adoption.kind === 'merged_into_active_run') return 'unchanged';
+      site = await loadSiteForRun(databasePool, adoption.siteId);
+      storedPageList = await loadStoredPages(databasePool, site.id);
+    }
+  }
+  const storedPages = new Map(storedPageList.map((page) => [page.normalisedUrl, page]));
   let siteTitle = site.siteTitle;
 
   // --- crawl, extracting each page as it arrives ---------------------------------------
