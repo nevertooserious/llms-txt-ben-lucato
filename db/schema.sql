@@ -174,15 +174,16 @@ create table pages (
   -- Where that link comes among the homepage's navigation links, from 0. The site's
   -- own order, used to order pages that score the same.
   navigation_position                  integer,
-  -- The order in which a crawl first saw a link to this page, from 0: the order of the
-  -- site's own menus and sidebars. Written by the first crawl that sees one and kept,
-  -- so the order of a published file does not move between checks. Orders pages that
-  -- score the same and that the navigation does not order.
+  -- This page's links within the site, normalised, in page order, without repeats. Replaced
+  -- when the page is read and kept when it answers 304, so link order and inbound counts
+  -- can be computed from the whole site on every check. Null until the page is first read.
+  outbound_link_urls                   text[],
+  -- Where a walk of outbound_link_urls from the homepage first meets this page, from 0:
+  -- the order of the site's own menus and sidebars. Recomputed on every check, so it moves
+  -- only when the site's links do. Orders pages that score the same and that the
+  -- navigation does not order.
   first_link_position                  integer,
   sitemap_last_modified_at             timestamptz,
-  -- Consecutive direct fetches that returned 404 or 410. removed_at is set at 2.
-  -- Not being reached by a crawl does not count; only the page's own response does.
-  consecutive_not_found_count          integer not null default 0,
   -- URL of a markdown version of the page (same URL + ".md"), if one exists. The
   -- spec recommends linking these in preference to the HTML page.
   markdown_variant_url                 text,
@@ -233,8 +234,8 @@ create table pages (
   -- Lifecycle.
   first_seen_pipeline_run_id           uuid references pipeline_runs (id) on delete set null,
   last_seen_pipeline_run_id            uuid references pipeline_runs (id) on delete set null,
-  -- Set after two consecutive 404/410 responses. Rows are kept so
-  -- overrides survive a page that comes back.
+  -- Set when the page itself answers 404 or 410; not being reached by a crawl does not
+  -- count. Rows are kept so overrides survive a page that comes back.
   removed_at                           timestamptz,
 
   constraint pages_site_normalised_url_key unique (site_id, normalised_url),

@@ -151,7 +151,37 @@ describe('re-checking known pages', () => {
     httpEtag: null,
     httpLastModified: null,
     sitemapLastModifiedAt: null,
+    outboundLinkUrls: [],
+    isRemoved: false,
     ...fields,
+  });
+
+  it('computes the same link signals when known pages answer 304', async () => {
+    const site = sites['static-site'];
+    const first = await crawl('static-site');
+    const knownPages = first.pages.map((page) =>
+      knownPage(site, new URL(page.normalisedUrl).pathname, {
+        normalisedUrl: page.normalisedUrl,
+        fetchUrl: page.fetchUrl,
+        crawlDepth: page.crawlSignals.crawlDepth,
+        discoveredVia: page.crawlSignals.discoveredVia,
+        httpEtag: page.headers.etag ?? null,
+        outboundLinkUrls: page.outboundLinkUrls,
+      }),
+    );
+    const second = await crawl('static-site', { knownPages });
+    expect(second.pages.some((page) => page.httpStatusCode === 304)).toBe(true);
+    expect(second.linkSignals).toEqual(first.linkSignals);
+  });
+
+  it('reads a known page with no stored links in full, even if it has a validator', async () => {
+    const site = sites['static-site'];
+    const first = await crawl('static-site');
+    const about = pageAt(first, site, '/about');
+    const second = await crawl('static-site', {
+      knownPages: [knownPage(site, '/about', { fetchUrl: about.fetchUrl, httpEtag: about.headers.etag ?? null, outboundLinkUrls: null })],
+    });
+    expect(pageAt(second, site, '/about').httpStatusCode).toBe(200);
   });
 
   it('re-checks a known page that nothing links to any more, so its 404 is seen', async () => {

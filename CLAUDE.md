@@ -18,7 +18,7 @@ Stack (confirmed): TypeScript on Node 24, Next.js for the web app, a Node worker
 - **One writer per column group in `pages`.** A stage writes only its own columns.
 - **User edits are inputs, not output edits.** They live in `page_overrides` and `excluded_url_prefixes` and are applied on every render.
 - **LLM output is cached against a hash of its inputs.** Never ask the LLM again for unchanged inputs; rewording causes spurious new versions.
-- **A page is removed only on its own repeated 404/410,** never because a crawl did not reach it.
+- **A page is removed only on its own 404/410,** never because a crawl did not reach it.
 - **Every outbound fetch goes through the SSRF guard,** including fetches made by the headless browser.
 - **Output conforms to the spec:** H1 and H2 only, one-line entries, an H2 named exactly `Optional`.
 
