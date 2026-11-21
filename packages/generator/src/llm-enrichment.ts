@@ -9,7 +9,7 @@ import {
   type PageExclusionReason,
   type PageListingValue,
 } from '@llms-txt/contracts';
-import { entryTitle } from './generate-llms-txt';
+import { buildEntryTextContext, crawledDescriptionOf, entryTitle } from './entry-text';
 import { homepageOf, listingCandidates, OPTIONAL_SECTION_NAME, selectPages } from './select-pages';
 
 // What the generator asks an LLM, and what it accepts back. Pure: the worker makes the
@@ -250,6 +250,7 @@ export function buildSiteSummaryInput(
   previousSummary: string | null,
 ): SiteSummaryInput {
   const homepage = homepageOf(pages);
+  const context = buildEntryTextContext(siteTitle, pages);
   return {
     siteTitle,
     homepageDescription: homepage?.record.description ?? null,
@@ -258,7 +259,7 @@ export function buildSiteSummaryInput(
       .filter((entry) => entry.sectionName !== OPTIONAL_SECTION_NAME)
       .map((entry) => ({
         title: entryTitle(entry.page, siteTitle),
-        description: entry.page.assessment?.description ?? entry.page.record.description,
+        description: entry.page.assessment?.description ?? (crawledDescriptionOf(entry.page, context) || null),
         sectionName: entry.sectionName,
       })),
     previousSummary,

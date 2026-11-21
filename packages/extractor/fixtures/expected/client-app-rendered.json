@@ -9,6 +9,7 @@
     "canonicalUrl": null,
     "title": "Shared calendars · Pebble Help",
     "description": "A shared calendar lets everyone in a group see and edit the same events. Changes appear for every member within a few seconds, and each event shows who last edited it.",
+    "declaredSiteName": null,
     "pageType": "docs",
     "languageCode": "en"
   }

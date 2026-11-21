@@ -9,6 +9,7 @@
     "canonicalUrl": "https://lumen.example/fr/docs/demarrage",
     "title": "Démarrage rapide",
     "description": "Installer Lumen et publier un premier site en cinq minutes.",
+    "declaredSiteName": null,
     "pageType": "docs",
     "languageCode": "fr"
   }

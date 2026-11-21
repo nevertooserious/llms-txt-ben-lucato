@@ -164,15 +164,20 @@ export async function saveLinkSignals(
   await database.query(
     `update pages
         set is_in_site_navigation = signals.is_in_site_navigation,
-            inbound_link_count = signals.inbound_link_count
-       from unnest($2::text[], $3::boolean[], $4::integer[])
-            as signals (normalised_url, is_in_site_navigation, inbound_link_count)
+            inbound_link_count = signals.inbound_link_count,
+            navigation_label = signals.navigation_label,
+            navigation_position = signals.navigation_position
+       from unnest($2::text[], $3::boolean[], $4::integer[], $5::text[], $6::integer[])
+            as signals (normalised_url, is_in_site_navigation, inbound_link_count, navigation_label,
+                        navigation_position)
       where pages.site_id = $1 and pages.normalised_url = signals.normalised_url`,
     [
       siteId,
       entries.map(([url]) => url),
       entries.map(([, signals]) => signals.isInSiteNavigation),
       entries.map(([, signals]) => signals.inboundLinkCount),
+      entries.map(([, signals]) => signals.navigationLabel),
+      entries.map(([, signals]) => signals.navigationPosition),
     ],
   );
 }
@@ -183,7 +188,7 @@ export async function saveExtractedPage(database: Queryable, siteId: string, rec
     `update pages
         set canonical_url = $3, extracted_title = $4, extracted_description = $5, page_type = $6,
             language_code = $7, content_markdown = $8, content_digest = $9, listing_fields_hash = $10,
-            last_extracted_at = now()
+            declared_site_name = $11, last_extracted_at = now()
       where site_id = $1 and normalised_url = $2`,
     [
       siteId,
@@ -196,6 +201,7 @@ export async function saveExtractedPage(database: Queryable, siteId: string, rec
       record.contentMarkdown,
       record.contentDigest,
       record.listingFieldsHash,
+      record.declaredSiteName,
     ],
   );
 }
@@ -232,6 +238,7 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
     canonical_url: string | null;
     extracted_title: string | null;
     extracted_description: string | null;
+    declared_site_name: string | null;
     page_type: PageType;
     language_code: string | null;
     content_markdown: string;
@@ -241,6 +248,8 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
     discovered_via: DiscoverySource;
     is_in_site_navigation: boolean;
     inbound_link_count: number;
+    navigation_label: string | null;
+    navigation_position: number | null;
     has_noindex_directive: boolean;
     markdown_variant_url: string | null;
     generated_description: string | null;
@@ -249,9 +258,10 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
     exclusion_reason: PageExclusionReason | null;
     assessment_source_hash: string | null;
   }>(
-    `select normalised_url, fetch_url, canonical_url, extracted_title, extracted_description, page_type,
-            language_code, content_markdown, content_digest, listing_fields_hash, crawl_depth,
-            discovered_via, is_in_site_navigation, inbound_link_count, has_noindex_directive,
+    `select normalised_url, fetch_url, canonical_url, extracted_title, extracted_description,
+            declared_site_name, page_type, language_code, content_markdown, content_digest,
+            listing_fields_hash, crawl_depth, discovered_via, is_in_site_navigation,
+            inbound_link_count, navigation_label, navigation_position, has_noindex_directive,
             markdown_variant_url, generated_description, assessed_page_type, listing_value,
             exclusion_reason, assessment_source_hash
        from pages
@@ -265,6 +275,7 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
       canonicalUrl: row.canonical_url,
       title: row.extracted_title,
       description: row.extracted_description,
+      declaredSiteName: row.declared_site_name,
       pageType: row.page_type,
       languageCode: row.language_code,
       contentMarkdown: row.content_markdown,
@@ -289,6 +300,8 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
       hasNoindexDirective: row.has_noindex_directive,
       isInSiteNavigation: row.is_in_site_navigation,
       inboundLinkCount: row.inbound_link_count,
+      navigationLabel: row.navigation_label,
+      navigationPosition: row.navigation_position,
     },
     markdownVariantUrl: row.markdown_variant_url,
   }));

@@ -179,6 +179,12 @@ create table pages (
                                          ('sitemap', 'navigation', 'page_link', 'existing_llms_txt')),
   is_in_site_navigation                boolean not null default false,
   inbound_link_count                   integer not null default 0,
+  -- The text of the homepage navigation link to this page ("Downloads"). Names the
+  -- page when its own title does not, and names sections.
+  navigation_label                     text,
+  -- Where that link comes among the homepage's navigation links, from 0. The site's
+  -- own order, used to order pages that score the same.
+  navigation_position                  integer,
   sitemap_last_modified_at             timestamptz,
   -- Consecutive direct fetches that returned 404 or 410. removed_at is set at 2.
   -- Not being reached by a crawl does not count; only the page's own response does.
@@ -196,6 +202,9 @@ create table pages (
   canonical_url                        text,
   extracted_title                      text,
   extracted_description                text,
+  -- The site's name as this page declares it (og:site_name, JSON-LD WebSite name,
+  -- application-name). The homepage's becomes the file's H1.
+  declared_site_name                   text,
   page_type                            text check (page_type in
                                          ('home', 'docs', 'api', 'guide', 'blog', 'product', 'pricing',
                                           'about', 'legal', 'other')),

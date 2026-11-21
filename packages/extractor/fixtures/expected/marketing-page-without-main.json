@@ -9,6 +9,7 @@
     "canonicalUrl": null,
     "title": "Harbour — Inventory for small warehouses",
     "description": "Harbour tracks stock across shelves, vans and storefronts, and tells you what to reorder before you run out.",
+    "declaredSiteName": null,
     "pageType": "home",
     "languageCode": "en"
   }

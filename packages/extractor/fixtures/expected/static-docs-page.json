@@ -9,6 +9,7 @@
     "canonicalUrl": "https://lumen.example/docs/configuration",
     "title": "Configuration",
     "description": "Every option in lumen.config.json, with defaults and examples.",
+    "declaredSiteName": null,
     "pageType": "docs",
     "languageCode": "en-gb"
   }

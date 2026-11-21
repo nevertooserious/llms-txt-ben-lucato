@@ -9,19 +9,37 @@ import { ROBOTS_USER_AGENT_TOKEN } from './robots-rules';
 export interface PageSignals {
   /** Absolute URLs of every <a href>, resolved against <base href> and the page URL. */
   linkUrls: string[];
-  /** The subset of `linkUrls` inside <nav> or <header>. */
-  navigationLinkUrls: string[];
+  /** The subset of `linkUrls` inside <nav> or <header>, with each link's text. */
+  navigationLinks: NavigationLink[];
   /** Characters of visible text in <body>, whitespace collapsed. */
   visibleTextLength: number;
   /** An empty framework mount point or a "please enable JavaScript" notice. */
   hasJavaScriptShellMarker: boolean;
   /** The page has at least one executable <script>; without one, rendering adds nothing. */
   hasScripts: boolean;
+  /**
+   * Where `<meta http-equiv="refresh">` sends the reader at once (a delay of at most
+   * MAXIMUM_REDIRECTING_REFRESH_SECONDS), absolute. Such a page is a redirect written in
+   * HTML. Null when there is none.
+   */
+  metaRefreshUrl: string | null;
   /** A robots directive for this crawler forbids following the page's links. */
   isNofollow: boolean;
   /** A robots directive for this crawler asks that the page not be indexed or listed. */
   isNoindex: boolean;
 }
+
+export interface NavigationLink {
+  url: string;
+  /** The link's text, else its aria-label or title. Null when there is none short enough to be a name. */
+  label: string | null;
+}
+
+/** A refresh after longer than this reloads or moves on from a page that is meant to be read. */
+const MAXIMUM_REDIRECTING_REFRESH_SECONDS = 5;
+
+/** Longer link text is a sentence or a teaser, not the name of a page. */
+const MAXIMUM_NAVIGATION_LABEL_LENGTH = 40;
 
 // Mount points the common frameworks render into.
 const APP_ROOT_SELECTORS = ['#root', '#app', '#__next', '#__nuxt', '#svelte', '[data-reactroot]', 'app-root'];
@@ -40,14 +58,16 @@ export function readPageSignals(html: string, pageUrl: string, headers: Record<s
   const baseUrl = (baseHref !== undefined && tryResolve(baseHref, pageUrl)) || pageUrl;
 
   const linkUrls: string[] = [];
-  const navigationLinkUrls: string[] = [];
+  const navigationLinks: NavigationLink[] = [];
   $('a[href]').each((_index, element) => {
     const anchor = $(element);
     if (/\bnofollow\b/i.test(anchor.attr('rel') ?? '')) return;
     const resolved = tryResolve(anchor.attr('href') ?? '', baseUrl);
     if (resolved === null) return;
     linkUrls.push(resolved);
-    if (anchor.closest('nav, header, [role="navigation"]').length > 0) navigationLinkUrls.push(resolved);
+    if (anchor.closest('nav, header, [role="navigation"]').length > 0) {
+      navigationLinks.push({ url: resolved, label: navigationLabelOf(anchor.text(), anchor.attr('aria-label'), anchor.attr('title')) });
+    }
   });
 
   const noscriptText = $('noscript').text();
@@ -73,13 +93,34 @@ export function readPageSignals(html: string, pageUrl: string, headers: Record<s
 
   return {
     linkUrls,
-    navigationLinkUrls,
+    navigationLinks,
+    metaRefreshUrl: readMetaRefreshUrl($('meta[http-equiv]').toArray().map((element) => $(element).attr()), baseUrl),
     visibleTextLength,
     hasJavaScriptShellMarker: hasEmptyAppRoot || ENABLE_JAVASCRIPT_PATTERN.test(noscriptText),
     hasScripts,
     isNofollow: directives.has('nofollow') || directives.has('none'),
     isNoindex: directives.has('noindex') || directives.has('none'),
   };
+}
+
+/** The target of the first `<meta http-equiv="refresh" content="0; url=/new">` that redirects. */
+function readMetaRefreshUrl(metaAttributes: Array<Record<string, string> | undefined>, baseUrl: string): string | null {
+  for (const attributes of metaAttributes) {
+    if ((attributes?.['http-equiv'] ?? '').trim().toLowerCase() !== 'refresh') continue;
+    const match = /^\s*(\d+(?:\.\d+)?)\s*[;,]\s*(?:url\s*=\s*)?["']?([^"']+?)["']?\s*$/i.exec(attributes?.content ?? '');
+    if (match === null || Number(match[1]) > MAXIMUM_REDIRECTING_REFRESH_SECONDS) continue;
+    const target = tryResolve(match[2]!, baseUrl);
+    if (target !== null && /^https?:/.test(target)) return target;
+  }
+  return null;
+}
+
+function navigationLabelOf(...candidates: Array<string | undefined>): string | null {
+  for (const candidate of candidates) {
+    const label = (candidate ?? '').replace(/\s+/g, ' ').trim();
+    if (label !== '' && label.length <= MAXIMUM_NAVIGATION_LABEL_LENGTH) return label;
+  }
+  return null;
 }
 
 /**

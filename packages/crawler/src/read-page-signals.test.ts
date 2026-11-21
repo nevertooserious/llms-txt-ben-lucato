@@ -14,7 +14,32 @@ describe('readPageSignals', () => {
       pageUrl,
     );
     expect(signals.linkUrls).toEqual(['https://example.com/', 'https://example.com/root/guide', 'https://other.example/x']);
-    expect(signals.navigationLinkUrls).toEqual(['https://example.com/', 'https://example.com/root/guide']);
+    expect(signals.navigationLinks).toEqual([
+      { url: 'https://example.com/', label: 'Home' },
+      { url: 'https://example.com/root/guide', label: 'Guide' },
+    ]);
+  });
+
+  it('labels a navigation link with its text, else its aria-label, and not with a sentence', () => {
+    const signals = readPageSignals(
+      `<body><nav>
+        <a href="/downloads">  Down\n loads </a>
+        <a href="/search" aria-label="Search"><svg></svg></a>
+        <a href="/news">Read the announcement of everything that changed in this release</a>
+      </nav></body>`,
+      pageUrl,
+    );
+    expect(signals.navigationLinks.map((link) => link.label)).toEqual(['Down loads', 'Search', null]);
+  });
+
+  it('reads where a meta refresh redirects to, when it does so at once', () => {
+    const refresh = (content: string) => readPageSignals(`<head><meta http-equiv="Refresh" content="${content}"></head>`, pageUrl).metaRefreshUrl;
+    expect(refresh('0; url=/new/place.html')).toBe('https://example.com/new/place.html');
+    expect(refresh("0;URL='https://other.example/x'")).toBe('https://other.example/x');
+    expect(refresh('2; moved.html')).toBe('https://example.com/docs/moved.html');
+    expect(refresh('30; url=/next-slide')).toBeNull();
+    expect(refresh('60')).toBeNull();
+    expect(readPageSignals('<body><p>No refresh.</p></body>', pageUrl).metaRefreshUrl).toBeNull();
   });
 
   it('counts visible body text only', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanUrlForFetch, isInScope, normaliseUrl } from './normalise-url';
+import { cleanUrlForFetch, isInScope, isOnRelatedHost, normaliseUrl } from './normalise-url';
 
 describe('normaliseUrl', () => {
   it.each([
@@ -64,5 +64,28 @@ describe('isInScope', () => {
     expect(isInScope('http://example.com/a', 'https://example.com')).toBe(false);
     expect(isInScope('https://docs.example.com/a', 'https://example.com')).toBe(false);
     expect(isInScope('https://example.com:8443/a', 'https://example.com')).toBe(false);
+  });
+});
+
+describe('isOnRelatedHost', () => {
+  it('accepts other hosts under the site’s domain', () => {
+    expect(isOnRelatedHost('https://docs.example.com/3/', 'https://www.example.com')).toBe(true);
+    expect(isOnRelatedHost('https://example.com/a', 'https://www.example.com')).toBe(true);
+    expect(isOnRelatedHost('https://docs.example.com/a', 'https://example.com')).toBe(true);
+    expect(isOnRelatedHost('https://api.docs.example.com/a', 'https://docs.example.com')).toBe(true);
+  });
+
+  it('rejects the site’s own host, other sites, and siblings of a site on a subdomain', () => {
+    expect(isOnRelatedHost('https://www.example.com/a', 'https://www.example.com')).toBe(false);
+    expect(isOnRelatedHost('https://example.org/a', 'https://www.example.com')).toBe(false);
+    expect(isOnRelatedHost('https://notexample.com/a', 'https://www.example.com')).toBe(false);
+    expect(isOnRelatedHost('https://blog.example.com/a', 'https://docs.example.com')).toBe(false);
+  });
+
+  it('rejects another scheme or port, and sites addressed by IP or a bare name', () => {
+    expect(isOnRelatedHost('http://docs.example.com/a', 'https://www.example.com')).toBe(false);
+    expect(isOnRelatedHost('https://docs.example.com:8443/a', 'https://www.example.com')).toBe(false);
+    expect(isOnRelatedHost('http://1.0.0.127:80/a', 'http://0.0.127')).toBe(false);
+    expect(isOnRelatedHost('http://docs.localhost/a', 'http://localhost')).toBe(false);
   });
 });

@@ -4,7 +4,8 @@ import { looksLikeJavaScriptShell, renderedPageIsBetter, renderingAddsContent } 
 
 const signals = (overrides: Partial<PageSignals>): PageSignals => ({
   linkUrls: [],
-  navigationLinkUrls: [],
+  navigationLinks: [],
+  metaRefreshUrl: null,
   visibleTextLength: 0,
   hasJavaScriptShellMarker: false,
   hasScripts: true,
