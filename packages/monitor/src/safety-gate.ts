@@ -9,7 +9,7 @@ export type SafetyGateVerdict =
   | { passed: false; failedFetchShare: number; reason: string };
 
 export function evaluateSafetyGate(
-  crawl: Pick<CrawlResult, 'stopReason' | 'pagesFetchedCount' | 'failedFetches'>,
+  crawl: Pick<CrawlResult, 'stopReason' | 'pagesFetchedCount' | 'pagesWithContentCount' | 'failedFetches'>,
   maxFailedFetchShare: number,
 ): SafetyGateVerdict {
   const attempts = crawl.pagesFetchedCount + crawl.failedFetches.length;
@@ -20,6 +20,10 @@ export function evaluateSafetyGate(
   }
   if (crawl.pagesFetchedCount === 0) {
     return { passed: false, failedFetchShare, reason: 'No page of the site could be fetched.' };
+  }
+  // Every page answered 404 or 410: a broken deploy looks like this, and must not remove the whole site.
+  if (crawl.pagesWithContentCount === 0) {
+    return { passed: false, failedFetchShare, reason: 'No page of the site returned any content.' };
   }
   if (failedFetchShare > maxFailedFetchShare) {
     const percent = Math.round(failedFetchShare * 100);

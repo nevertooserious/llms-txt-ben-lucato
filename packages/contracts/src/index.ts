@@ -117,6 +117,8 @@ export const CRAWL_FAILURE_REASONS = [
   'server_error',
   /** A 429 response, after the one retry Retry-After allows. */
   'rate_limited',
+  /** A 401, 403 or 451 response: the site refused us, which says nothing about the page. */
+  'blocked',
   'robots_txt_unreachable',
 ] as const;
 export type CrawlFailureReason = (typeof CRAWL_FAILURE_REASONS)[number];
@@ -124,7 +126,7 @@ export type CrawlFailureReason = (typeof CRAWL_FAILURE_REASONS)[number];
 export interface CrawlFailure {
   url: string;
   reason: CrawlFailureReason;
-  /** The response status for `server_error`, `rate_limited` and a 5xx robots.txt; otherwise null. */
+  /** The response status for `server_error`, `rate_limited`, `blocked` and a 5xx robots.txt; otherwise null. */
   httpStatusCode: number | null;
   message: string;
 }
@@ -135,6 +137,8 @@ export interface CrawlResult {
   stopReason: CrawlStopReason;
   /** Pages passed to `onPage`, 304s and 404s included. */
   pagesFetchedCount: number;
+  /** Of those, pages that answered 2xx or 304. With none, the crawl learned nothing about the site. */
+  pagesWithContentCount: number;
   /** Final link signals for every page passed to `onPage`, keyed by normalised URL. */
   linkSignals: Record<string, LinkSignals>;
   /** Known pages not requested because their trusted sitemap <lastmod> has not moved. */

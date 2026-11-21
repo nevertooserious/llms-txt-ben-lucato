@@ -156,6 +156,7 @@ class SiteCrawl {
   private readonly emittedUrls: string[] = [];
   private readonly unchangedPerSitemapUrls: string[] = [];
   private readonly failedFetches: CrawlFailure[] = [];
+  private pagesWithContentCount = 0;
   private markdownProbeMisses = 0;
   private markdownVariantsFound = false;
   private insertionOrder = 0;
@@ -204,6 +205,7 @@ class SiteCrawl {
       robotsTxtStatus: this.robots.status,
       stopReason,
       pagesFetchedCount: this.emittedUrls.length,
+      pagesWithContentCount: this.pagesWithContentCount,
       linkSignals: Object.fromEntries(this.emittedUrls.map((url) => [url, this.linkSignalsFor(url)])),
       unchangedPerSitemapUrls: this.unchangedPerSitemapUrls,
       failedFetches: this.failedFetches,
@@ -385,6 +387,7 @@ class SiteCrawl {
       markdownVariantUrl = await this.probeMarkdownVariant(page.finalUrl);
     }
     this.emittedUrls.push(entry.url);
+    if (isSuccess || page.httpStatusCode === 304) this.pagesWithContentCount += 1;
     await this.options.onPage({
       normalisedUrl: entry.url,
       fetchUrl: entry.fetchUrl,
@@ -579,10 +582,10 @@ class SiteCrawl {
     this.failedFetches.push({ url, reason, httpStatusCode, message });
   }
 
-  /** Records a 5xx or 429 as a failed fetch. Returns whether it was one. */
+  /** Records a 5xx, 429, 401, 403 or 451 as a failed fetch. Returns whether it was one. */
   private recordErrorStatus(url: string, httpStatusCode: number): boolean {
     if (!isErrorStatus(httpStatusCode)) return false;
-    const reason = httpStatusCode === 429 ? 'rate_limited' : 'server_error';
+    const reason = httpStatusCode === 429 ? 'rate_limited' : httpStatusCode >= 500 ? 'server_error' : 'blocked';
     this.recordFailure(url, reason, `HTTP ${httpStatusCode}`, httpStatusCode);
     return true;
   }
@@ -603,9 +606,9 @@ class SiteCrawl {
   }
 }
 
-/** A response that says the site is struggling, not that the page is gone. */
+/** A response that says the site is struggling or refusing us, not that the page is gone. */
 function isErrorStatus(httpStatusCode: number): boolean {
-  return httpStatusCode >= 500 || httpStatusCode === 429;
+  return httpStatusCode >= 500 || [401, 403, 429, 451].includes(httpStatusCode);
 }
 
 function compareEntries(a: FrontierEntry, b: FrontierEntry): number {

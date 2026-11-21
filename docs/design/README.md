@@ -170,7 +170,7 @@ A page is never removed because a crawl failed to reach it.
 
 ### Safety gate
 
-Failed fetches include errors, blocks and bot-challenge pages. If they are over half of the run's fetches, or nothing could be fetched, or robots.txt was unreachable, the run fails and the published version is left alone. Pages fetched successfully are saved as they arrive, because those facts hold either way. 404 and 410 responses are held back until the run passes the gate, so a failed run never counts toward removing a page.
+Failed fetches include errors, blocks (401, 403, 451) and bot-challenge pages. If they are over half of the run's fetches, or nothing could be fetched, or no page returned content (a site-wide 404, say), or robots.txt was unreachable, the run fails and the published version is left alone. Pages fetched successfully are saved as they arrive, because those facts hold either way. 404 and 410 responses are held back until the run passes the gate, so a failed run never counts toward removing a page.
 
 ### Trusting sitemap `lastmod`
 
