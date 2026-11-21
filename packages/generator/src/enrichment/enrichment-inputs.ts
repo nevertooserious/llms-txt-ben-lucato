@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { GeneratorPage } from '@llms-txt/contracts';
-import { buildEntryTextContext, crawledDescriptionOf, entryTitle } from '../entry-text';
+import { entryTitle } from '../entry-text';
 import { homepageOf, listingCandidates, OPTIONAL_SECTION_NAME, selectPages } from '../selection';
 import { PAGE_ASSESSMENT_MODEL, SITE_SUMMARY_MODEL, type PageAssessmentInput, type SiteSummaryInput } from './llm-client';
 import { PAGE_ASSESSMENT_PROMPT_VERSION, SITE_SUMMARY_PROMPT_VERSION } from './prompts';
@@ -61,7 +61,6 @@ export function buildSiteSummaryInput(
   previous: { summary: string | null; notes: string[] },
 ): SiteSummaryInput {
   const homepage = homepageOf(pages);
-  const context = buildEntryTextContext(siteTitle, pages);
   return {
     siteTitle,
     homepageDescription: homepage?.record.description ?? null,
@@ -70,7 +69,7 @@ export function buildSiteSummaryInput(
       .filter((entry) => entry.sectionName !== OPTIONAL_SECTION_NAME)
       .map((entry) => ({
         title: entryTitle(entry.page, siteTitle),
-        description: entry.page.assessment?.description ?? (crawledDescriptionOf(entry.page, context) || null),
+        description: entry.page.assessment?.description || null,
         sectionName: entry.sectionName,
       })),
     previousSummary: previous.summary,

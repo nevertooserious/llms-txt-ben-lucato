@@ -7,6 +7,7 @@ import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
 import { readWorkerConfig } from '../../apps/worker/src/config/worker-config';
 import { startWorkerJobs } from '../../apps/worker/src/jobs/worker-jobs';
+import { createStubLlmClient } from '../../apps/worker/src/llm/stub-llm-client';
 import { POST as submitSiteRoute } from '../../apps/web/src/app/api/sites/route';
 import { POST as checkNowRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/runs/route';
 import { GET as runRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/runs/[pipelineRunId]/route';
@@ -54,10 +55,11 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
       queue: workerQueue,
       databasePool,
       logger: createLogger({ level: 'error' }),
-      config: readWorkerConfig({ DATABASE_URL: databaseUrl }),
+      config: readWorkerConfig({ DATABASE_URL: databaseUrl , LLM_CLIENT: 'stub' }),
       crawl: (options) => crawlSite({ ...options, networkPolicy, minRequestIntervalMs: 20 }),
       resolveRootUrl: (rootUrl) => resolveSiteRootUrl({ rootUrl, networkPolicy, minRequestIntervalMs: 20 }),
       renderLlmsTxt: generateLlmsTxt,
+      llmClient: createStubLlmClient(),
       pollingIntervalSeconds: 0.5,
     });
   });

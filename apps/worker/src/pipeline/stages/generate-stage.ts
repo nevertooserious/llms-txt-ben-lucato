@@ -28,9 +28,14 @@ export async function generateStage(
   if (crawled.siteTitle !== null && siteTitle !== crawled.siteTitle) {
     await saveSiteTitle(databasePool, site.id, siteTitle);
   }
-  const { pages, siteSummary, siteNotes } = dependencies.llmClient
-    ? await enrichPagesWithLlm({ databasePool, logger, llmClient: dependencies.llmClient, site, siteTitle, pages: loadedPages })
-    : { pages: loadedPages, siteSummary: site.generatedSummary, siteNotes: site.generatedNotes };
+  const { pages, siteSummary, siteNotes } = await enrichPagesWithLlm({
+    databasePool,
+    logger,
+    llmClient: dependencies.llmClient,
+    site,
+    siteTitle,
+    pages: loadedPages,
+  });
 
   return {
     siteTitle,

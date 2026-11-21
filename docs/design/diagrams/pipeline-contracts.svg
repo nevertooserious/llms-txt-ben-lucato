@@ -40,7 +40,7 @@
   <!-- generator -->
   <rect class="b" x="790" y="40" width="240" height="240" rx="6"/>
   <text class="t" x="804" y="68">generator</text>
-  <text class="s" x="804" y="86">LLM optional, heuristic fallback</text>
+  <text class="s" x="804" y="86">LLM client, or a stub in dev</text>
   <text class="l" x="804" y="116">1  score pages: nav, depth, inlinks</text>
   <text class="l" x="804" y="138">2  H2 sections from page type</text>
   <text class="l" x="804" y="160">3  LLM: summary, missing descs</text>

@@ -8,6 +8,7 @@ import { createDatabasePool } from '@llms-txt/db';
 import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
 import { createAnthropicLlmClient } from './llm/anthropic-llm-client';
+import { createStubLlmClient } from './llm/stub-llm-client';
 import { readWorkerConfig } from './config/worker-config';
 import { scheduleMonitorTick, startWorkerJobs } from './jobs/worker-jobs';
 
@@ -19,8 +20,8 @@ queue.on('error', (error) => logger.error('queue error', { error }));
 // One renderer for every run, so its concurrency limit holds across the worker. Chromium
 // starts on the first render.
 const headlessRenderer = new HeadlessRenderer();
-const llmClient = config.anthropicApiKey === null ? null : createAnthropicLlmClient(config.anthropicApiKey);
-if (llmClient === null) logger.warn('ANTHROPIC_API_KEY is not set; using heuristics instead of LLM assessment');
+const llmClient = config.llmClient.kind === 'stub' ? createStubLlmClient() : createAnthropicLlmClient(config.llmClient.apiKey);
+if (config.llmClient.kind === 'stub') logger.warn('LLM_CLIENT=stub: files are built without a model; not for production');
 
 await queue.start();
 await startWorkerJobs({

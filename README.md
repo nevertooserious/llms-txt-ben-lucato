@@ -43,10 +43,10 @@ ESLint enforces these layers too. In the crawler only `network/` may open a conn
 ## Quick start with Docker
 
 ```sh
-docker compose up --build                # http://localhost:3000, login user1 / pass1
+LLM_CLIENT=stub docker compose up --build  # http://localhost:3000, login user1 / pass1
 ```
 
-This starts Postgres (with `db/schema.sql` applied on first boot), the web app and the worker. No configuration is needed. To use Claude rather than heuristics, put `ANTHROPIC_API_KEY` in a `.env` file at the repository root and run the command again. `WEB_PORT` (default 3000) and `POSTGRES_PORT` (default 5433) change the host ports.
+This starts Postgres (with `db/schema.sql` applied on first boot), the web app and the worker. `LLM_CLIENT=stub` runs without a model or an API key: pages are kept with their meta descriptions, so the output shows the pipeline working rather than a real file. To use Claude, put `ANTHROPIC_API_KEY` in a `.env` file at the repository root and run `docker compose up --build`. `WEB_PORT` (default 3000) and `POSTGRES_PORT` (default 5433) change the host ports.
 
 A new database also gets a demo site with four versions, linked from the home page and at <http://localhost:3000/w/demo>. `db/demo-seed.sql` is applied only by this local stack. The site is not real, so "Check now" on it ends in a failed run and keeps the published file.
 
@@ -65,7 +65,7 @@ npm run dev:web                          # http://localhost:3000, login user1 / 
 npm run dev:worker
 ```
 
-Each process reads its configuration once at startup and stops with a message naming any missing or malformed variable. `DATABASE_URL` is required, and production also needs `ANTHROPIC_API_KEY` (worker); `LOG_LEVEL` (`debug`, `info`, `warn`, `error`), `PIPELINE_RUN_CONCURRENCY` and `CRAWL_PAGE_BUDGET` (worker) and `SUBMISSIONS_PER_IP_PER_HOUR`, `TRUSTED_PROXY_HOPS`, `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` (web) are optional. Logs are one JSON object per line; a run's lines carry its `pipelineRunId`.
+Each process reads its configuration once at startup and stops with a message naming any missing or malformed variable. `DATABASE_URL` is required, and the worker needs `ANTHROPIC_API_KEY` unless `LLM_CLIENT=stub`; `LOG_LEVEL` (`debug`, `info`, `warn`, `error`), `PIPELINE_RUN_CONCURRENCY` and `CRAWL_PAGE_BUDGET` (worker) and `SUBMISSIONS_PER_IP_PER_HOUR`, `TRUSTED_PROXY_HOPS`, `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` (web) are optional. Logs are one JSON object per line; a run's lines carry its `pipelineRunId`.
 
 ## Serving llms.txt from your own domain
 

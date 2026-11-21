@@ -64,6 +64,7 @@ services:
       PIPELINE_RUN_CONCURRENCY: ${PIPELINE_RUN_CONCURRENCY:-}
       CRAWL_PAGE_BUDGET: ${CRAWL_PAGE_BUDGET:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_CLIENT: ${LLM_CLIENT:-}
     # Chromium uses shared memory; Docker's default of 64 MB is too small.
     shm_size: 1gb
 

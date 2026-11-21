@@ -7,7 +7,7 @@ import type { PageRecord } from './page-record';
 /** One page as the generator sees it: the record plus crawl signals. */
 export interface GeneratorPage {
   record: PageRecord;
-  /** Null until the page is assessed, and always null when no LLM is configured. */
+  /** Null until the page is assessed. An unassessed page is not listed. */
   assessment: StoredPageAssessment | null;
   /** The URL as the site links it (pages.fetch_url); what the page's entry links when there is no .md variant. */
   fetchUrl: string;

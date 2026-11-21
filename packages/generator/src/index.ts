@@ -1,7 +1,7 @@
 // The generator: selects pages, assigns sections by page type, renders and validates.
 // Pure: the worker loads its inputs, makes the LLM calls through an LlmClient, and stores
-// the outputs. With no LLM configured, the summary falls back to the homepage's
-// description, there are no notes, and candidate pages are listed with what the crawl found for them.
+// the outputs. Only assessed pages are listed. A site with no summary yet falls back to
+// the homepage's description.
 export { siteNameFrom } from './entry-text';
 export { generateLlmsTxt, type GenerateLlmsTxtInput } from './rendering/generate-llms-txt';
 export {

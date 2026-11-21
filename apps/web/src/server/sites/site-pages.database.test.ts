@@ -10,6 +10,7 @@ import {
   publishLlmsTxtVersion,
   saveCrawledPage,
   saveExtractedPage,
+  savePageAssessment,
   withTransaction,
 } from '@llms-txt/db';
 import { decidePublication, generateLlmsTxt, listedEntries } from '@llms-txt/generator';
@@ -33,7 +34,7 @@ interface CrawledSite {
 const PATHS = ['/', '/docs/intro', '/docs/setup', '/blog/hello', '/pricing'];
 
 /** A site as a finished first run leaves it: pages stored and extracted, and version 1 published. */
-async function crawledSite(options: { isPublished?: boolean } = {}): Promise<CrawledSite> {
+async function crawledSite(options: { isPublished?: boolean; isAssessed?: boolean } = {}): Promise<CrawledSite> {
   const origin = `https://${randomUUID()}.example`;
   const url = (path: string) => (path === '/' ? origin : `${origin}${path}`);
   const publicSlug = randomUUID();
@@ -44,7 +45,18 @@ async function crawledSite(options: { isPublished?: boolean } = {}): Promise<Cra
     [siteId],
   );
   const pipelineRunId = run.rows[0]!.id;
-  for (const path of PATHS) await addPage({ siteId, pipelineRunId, url }, path);
+  for (const path of PATHS) {
+    await addPage({ siteId, pipelineRunId, url }, path);
+    if (path !== '/' && (options.isAssessed ?? true)) {
+      await savePageAssessment(databasePool, siteId, url(path), {
+        description: `What ${path} is about.`,
+        listingValue: 'primary',
+        exclusionReason: null,
+        pageType: 'other',
+        sourceHash: `source of ${path}`,
+      });
+    }
+  }
 
   if (options.isPublished ?? true) {
     const rendered = generateLlmsTxt({
@@ -159,6 +171,13 @@ describe('savePageExclusions', () => {
     const result = await savePageExclusions(site.siteId, { excludedUrls: [site.url('/pricing')], excludedUrlPrefixes: [] }, dependencies);
     expect(result).toEqual({ kind: 'applied_by_next_run' });
     expect(await listLlmsTxtVersions(databasePool, site.siteId)).toHaveLength(0);
+  });
+
+  it('only saves the choices for a site with no assessed pages, rather than publish an empty file', async () => {
+    const site = await crawledSite({ isAssessed: false });
+    const result = await savePageExclusions(site.siteId, { excludedUrls: [site.url('/pricing')], excludedUrlPrefixes: [] }, dependencies);
+    expect(result).toEqual({ kind: 'applied_by_next_run' });
+    expect(await listLlmsTxtVersions(databasePool, site.siteId)).toHaveLength(1);
   });
 });
 
