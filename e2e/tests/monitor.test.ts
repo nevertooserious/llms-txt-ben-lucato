@@ -8,7 +8,10 @@ import { createLogger } from '@llms-txt/runtime';
 import { readWorkerConfig } from '../../apps/worker/src/worker-config';
 import { startWorkerJobs } from '../../apps/worker/src/worker-jobs';
 import { POST as submitSiteRoute } from '../../apps/web/src/app/api/sites/route';
-import { POST as checkNowRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/checks/route';
+import { POST as checkNowRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/runs/route';
+import { GET as runRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/runs/[pipelineRunId]/route';
+import { GET as runFileRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/runs/[pipelineRunId]/llms.txt/route';
+import { GET as versionFileRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/versions/[versionNumber]/llms.txt/route';
 import { DELETE as unpinVersionRoute, PUT as pinVersionRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/published-version/route';
 import { DELETE as deleteSiteRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/route';
 import { GET as hostedLlmsTxtRoute } from '../../apps/web/src/app/w/[publicSlug]/llms.txt/route';
@@ -315,6 +318,60 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
     expect((await checkNowRoute(apiRequest('POST'), slugParams())).status).toBe(202);
     await waitForNewRun(before);
     expect((await monitorSchedule()).next_check_in_days).toBeCloseTo(7, 1);
+  });
+
+  it('reports each run and serves the file it published', async () => {
+    const runParams = (pipelineRunId: string) => ({ params: Promise.resolve({ publicSlug, pipelineRunId }) });
+    const fileRequest = (etag?: string) =>
+      new Request('http://app.test/llms.txt', { headers: etag ? { 'if-none-match': etag } : {} });
+    const runs = await databasePool.query<{ id: string; status: string; version_number: number | null }>(
+      `select runs.id, runs.status, versions.version_number
+         from pipeline_runs runs
+         left join llms_txt_versions versions on versions.pipeline_run_id = runs.id
+        where runs.site_id = $1
+        order by runs.created_at`,
+      [siteId],
+    );
+
+    const published = runs.rows.find((row) => row.version_number !== null)!;
+    const statusResponse = await runRoute(apiRequest('GET'), runParams(published.id));
+    expect(statusResponse.status).toBe(200);
+    const status = (await statusResponse.json()) as Record<string, unknown>;
+    expect(status).toMatchObject({
+      id: published.id,
+      status: 'succeeded',
+      versionNumber: published.version_number,
+      llmsTxtUrl: `/api/sites/${encodeURIComponent(publicSlug)}/runs/${published.id}/llms.txt`,
+    });
+    expect(status.pagesFetchedCount).toBeGreaterThan(0);
+
+    const versionParams = { params: Promise.resolve({ publicSlug, versionNumber: String(published.version_number) }) };
+    const versionFile = await versionFileRoute(fileRequest(), versionParams);
+    expect(versionFile.status).toBe(200);
+    expect(versionFile.headers.get('content-type')).toContain('text/plain');
+    const etag = versionFile.headers.get('etag')!;
+    const versionText = await versionFile.text();
+    expect(versionText).toContain('# Acme');
+    expect((await versionFileRoute(fileRequest(etag), versionParams)).status).toBe(304);
+    const runFile = await runFileRoute(fileRequest(), runParams(published.id));
+    expect(await runFile.text()).toBe(versionText);
+
+    // A run that changed nothing has no file of its own.
+    const unchanged = runs.rows.find((row) => row.status === 'unchanged')!;
+    const noFile = await runFileRoute(fileRequest(), runParams(unchanged.id));
+    expect(noFile.status).toBe(404);
+    expect(await noFile.json()).toMatchObject({ code: 'run_produced_no_version' });
+
+    // A run that is not this site's is not found, and neither is a malformed id.
+    for (const unknownRunId of [crypto.randomUUID(), 'not-a-run']) {
+      const notFound = await runRoute(apiRequest('GET'), runParams(unknownRunId));
+      expect(notFound.status).toBe(404);
+      expect(await notFound.json()).toMatchObject({ code: 'run_not_found' });
+    }
+    const missingVersion = await versionFileRoute(fileRequest(), {
+      params: Promise.resolve({ publicSlug, versionNumber: '999' }),
+    });
+    expect(await missingVersion.json()).toMatchObject({ code: 'version_not_found' });
   });
 
   it('a deleted site loses its file and its checks', async () => {

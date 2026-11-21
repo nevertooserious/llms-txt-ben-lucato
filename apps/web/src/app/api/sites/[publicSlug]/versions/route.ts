@@ -1,5 +1,6 @@
 import { listLlmsTxtVersions } from '@llms-txt/db';
 import { webServices } from '../../../../../server/web-services';
+import { apiError } from '../../../../../server/api-response';
 import { requestedSite } from '../../../../../server/requested-site';
 import type { LlmsTxtVersionSummaryView } from '../../../../../shared/site-view';
 
@@ -20,6 +21,6 @@ export async function GET(
     return Response.json(body, { headers: { 'cache-control': 'no-store' } });
   } catch (error) {
     services.logger.error('listing versions failed', { error });
-    return Response.json({ error: 'The version history could not be loaded.' }, { status: 500 });
+    return apiError(500, 'internal_error', 'The version history could not be loaded.');
   }
 }
