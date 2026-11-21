@@ -265,3 +265,6 @@ Not yet decided or designed.
 - **Restoring an excluded page:** a user cannot yet force back a page the assessment wrongly excluded.
 - **Partial link counts:** a page answered with a 304, or skipped because of a trusted `lastmod`, has no body, so its links are not seen. On such runs, inbound link counts and the frontier miss those links.
 - **Thresholds:** the page budget (200, `CRAWL_PAGE_BUDGET`) and the safety-gate failure share (0.5) have starting values that have not been tuned against real sites. The headless thresholds have starting values in `packages/crawler/src/page-signals/render-decision.ts`, tuned only against the fixture sites.
+
+
+// TODO blucato

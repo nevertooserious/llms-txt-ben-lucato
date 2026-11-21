@@ -25,9 +25,10 @@ export type CheckSiteNowOutcome =
  * "Check now": runs the same pipeline as a scheduled monitor check, ahead of scheduled
  * checks in the queue. A run already in progress for the site is joined. Otherwise a
  * site is checked at most once per cooldown, counted from its last run of any kind, so
- * no one can keep a site under constant crawling. Pressing it also renews the site's
- * monitoring, whatever the outcome: it shows the site is still used.
+ * no one can keep a site under constant crawling.
  */
+// TODO blucato should probably only allow one refresh per day
+// TODO blucato decide what to do with monitoring timeout of 30 days
 export async function checkSiteNow(
   siteId: string,
   dependencies: CheckSiteNowDependencies,

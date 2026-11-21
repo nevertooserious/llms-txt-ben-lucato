@@ -6,6 +6,7 @@ export function isVersionNumber(value: unknown): value is number {
 }
 
 /** A version number from a URL path, or null if the text is not one. */
+// TODO blucato should version number go through the API ?
 export function parseVersionNumber(text: string): number | null {
   if (!/^[1-9]\d{0,9}$/.test(text)) return null;
   const versionNumber = Number(text);

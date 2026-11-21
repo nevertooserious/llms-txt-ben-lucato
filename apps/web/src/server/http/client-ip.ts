@@ -4,6 +4,7 @@
  * `trustedProxyHops` entries can be believed. The client is the entry the outermost
  * trusted proxy appended. Null when the header is absent.
  */
+// TODO blucato explore how rate-limiting works
 export function clientIpFrom(headers: Headers, trustedProxyHops = 1): string | null {
   const entries = (headers.get('x-forwarded-for') ?? '')
     .split(',')
