@@ -1,4 +1,5 @@
 import { loadSiteIdBySlug, type Queryable } from '@llms-txt/db';
+import { apiError } from './api-response';
 
 /** For a route handler: the id of the site at `publicSlug`, or the 404 to send. */
 export async function requestedSite(
@@ -6,6 +7,6 @@ export async function requestedSite(
   publicSlug: string,
 ): Promise<{ siteId: string; response?: never } | { siteId?: never; response: Response }> {
   const siteId = await loadSiteIdBySlug(database, publicSlug);
-  if (siteId === null) return { response: Response.json({ error: 'There is no site here.' }, { status: 404 }) };
+  if (siteId === null) return { response: apiError(404, 'site_not_found', 'There is no site here.') };
   return { siteId };
 }

@@ -203,3 +203,63 @@ export async function loadLatestPipelineRunSummary(
     finishedAt: row.finished_at,
   };
 }
+
+/** One run of a site, with what it did and the version it published, if any. */
+export interface PipelineRunDetail extends PipelineRunSummary {
+  pagesDiscoveredCount: number;
+  pagesFetchedCount: number;
+  pagesChangedCount: number;
+  pagesFailedCount: number;
+  /** The version this run published. Null while it is active, and for a run that changed nothing or failed. */
+  versionNumber: number | null;
+}
+
+/** A run of this site, or null: a run of another site is not found. */
+export async function loadPipelineRunDetail(
+  database: Queryable,
+  siteId: string,
+  pipelineRunId: string,
+): Promise<PipelineRunDetail | null> {
+  const result = await database.query<{
+    id: string;
+    status: PipelineRunStatus;
+    current_stage: PipelineRunStage | null;
+    triggered_by: PipelineTrigger;
+    error_message: string | null;
+    created_at: Date;
+    started_at: Date | null;
+    finished_at: Date | null;
+    pages_discovered_count: number;
+    pages_fetched_count: number;
+    pages_changed_count: number;
+    pages_failed_count: number;
+    version_number: number | null;
+  }>(
+    `select runs.id, runs.status, runs.current_stage, runs.triggered_by, runs.error_message,
+            runs.created_at, runs.started_at, runs.finished_at,
+            runs.pages_discovered_count, runs.pages_fetched_count,
+            runs.pages_changed_count, runs.pages_failed_count,
+            versions.version_number
+       from pipeline_runs runs
+       left join llms_txt_versions versions on versions.pipeline_run_id = runs.id
+      where runs.site_id = $1 and runs.id = $2`,
+    [siteId, pipelineRunId],
+  );
+  const row = result.rows[0];
+  if (row === undefined) return null;
+  return {
+    id: row.id,
+    status: row.status,
+    currentStage: row.current_stage,
+    triggeredBy: row.triggered_by,
+    errorMessage: row.error_message,
+    createdAt: row.created_at,
+    startedAt: row.started_at,
+    finishedAt: row.finished_at,
+    pagesDiscoveredCount: row.pages_discovered_count,
+    pagesFetchedCount: row.pages_fetched_count,
+    pagesChangedCount: row.pages_changed_count,
+    pagesFailedCount: row.pages_failed_count,
+    versionNumber: row.version_number,
+  };
+}

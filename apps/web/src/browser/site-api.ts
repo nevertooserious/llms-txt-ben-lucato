@@ -35,7 +35,7 @@ export const deleteSite = (publicSlug: string) =>
   call<Record<string, never>>(publicSlug, '', { method: 'DELETE' });
 
 export const checkNow = (publicSlug: string) =>
-  call<{ pipelineRunId: string; joinedActiveRun: boolean }>(publicSlug, '/checks', { method: 'POST' });
+  call<{ pipelineRunId: string; joinedActiveRun: boolean }>(publicSlug, '/runs', { method: 'POST' });
 
 export const pinVersion = (publicSlug: string, versionNumber: number) =>
   call<{ versionNumber: number; isPinned: boolean }>(publicSlug, '/published-version', {

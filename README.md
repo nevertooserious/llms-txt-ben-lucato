@@ -90,6 +90,37 @@ location = /llms.txt {
 
 The last one is for Vercel, in `vercel.json`. Use a temporary redirect, so clients keep asking your domain.
 
+## REST API
+
+There is no authentication yet, so anyone who knows a site's slug can read, change or delete it. Do not expose a deployment you need to protect until basic auth is added.
+
+| Action | Request |
+|---|---|
+| Submit a site | `POST /api/sites` with `{"url": "https://example.com"}` |
+| Get a site | `GET /api/sites/{slug}` |
+| Delete a site | `DELETE /api/sites/{slug}` |
+| Re-trigger a site | `POST /api/sites/{slug}/runs` |
+| Check a run's status | `GET /api/sites/{slug}/runs/{runId}` |
+| Get the file a run published | `GET /api/sites/{slug}/runs/{runId}/llms.txt` |
+| List versions | `GET /api/sites/{slug}/versions` |
+| Get a version as JSON | `GET /api/sites/{slug}/versions/{n}` |
+| Get a version as text | `GET /api/sites/{slug}/versions/{n}/llms.txt` |
+| Pin a version | `PUT /api/sites/{slug}/published-version` with `{"versionNumber": 2}` |
+| Follow the latest version | `DELETE /api/sites/{slug}/published-version` |
+| Get the live file | `GET /w/{slug}/llms.txt` |
+
+```sh
+# Submit, then poll the run until it finishes.
+curl -si localhost:3000/api/sites -H 'content-type: application/json' -d '{"url":"https://example.com"}'
+# 202, with {"publicSlug", "pipelineRunId", "runUrl", "llmsTxtUrl"}
+curl -s localhost:3000/api/sites/<slug>/runs/<runId>
+# {"status": "running", "currentStage": "crawl", "pagesFetchedCount": 12, "versionNumber": null, ...}
+```
+
+A run's `status` is `queued`, `running`, `succeeded`, `unchanged` or `failed`. While it is active, the response has a `Retry-After` header. Re-triggering during a run returns that run, and re-triggering within five minutes of the last run answers 429 with `Retry-After`.
+
+Errors are JSON with a message and a stable code, such as `{"error": "This site has no such run.", "code": "run_not_found"}`. The codes are `invalid_request`, `invalid_url`, `invalid_version_number`, `site_not_found`, `run_not_found`, `version_not_found`, `run_in_progress`, `run_produced_no_version`, `rate_limited`, `cooldown_active` and `internal_error`. Plain-text versions have an `ETag` and answer `If-None-Match` with 304.
+
 ## Checks
 
 | Command | What it runs |

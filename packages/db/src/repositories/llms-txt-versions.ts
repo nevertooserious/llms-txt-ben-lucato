@@ -82,6 +82,34 @@ export async function loadLlmsTxtVersionContent(
   return result.rows[0]?.llms_txt_content ?? null;
 }
 
+export interface LlmsTxtVersionFile {
+  versionNumber: number;
+  llmsTxtContent: string;
+  llmsTxtContentHash: string;
+}
+
+/** One version's text and content hash, or null if the site has no such version. */
+export async function loadLlmsTxtVersionFile(
+  database: Queryable,
+  siteId: string,
+  versionNumber: number,
+): Promise<LlmsTxtVersionFile | null> {
+  const result = await database.query<{ version_number: number; llms_txt_content: string; llms_txt_content_hash: string }>(
+    `select version_number, llms_txt_content, llms_txt_content_hash
+       from llms_txt_versions
+      where site_id = $1 and version_number = $2`,
+    [siteId, versionNumber],
+  );
+  const row = result.rows[0];
+  return row === undefined
+    ? null
+    : {
+        versionNumber: row.version_number,
+        llmsTxtContent: row.llms_txt_content,
+        llmsTxtContentHash: row.llms_txt_content_hash,
+      };
+}
+
 export interface NewLlmsTxtVersion {
   siteId: string;
   /** Null for a version made by a user edit. */
