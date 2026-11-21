@@ -1,25 +1,16 @@
 import type { PipelineRunJob } from '@llms-txt/contracts';
-import {
-  loadGeneratorPages,
-  loadNewestVersion,
-  loadWorkspaceIdsForSite,
-  recordPipelineRunProgress,
-  saveSiteTitle,
-  type SiteForRun,
-} from '@llms-txt/db';
-import { NOTHING_TO_LIST_REASON, selectPages, siteNameFrom, type GenerateLlmsTxtInput } from '@llms-txt/generator';
+import { loadGeneratorPages, recordPipelineRunProgress, saveSiteTitle, type SiteForRun } from '@llms-txt/db';
+import { siteNameFrom, type GenerateLlmsTxtInput } from '@llms-txt/generator';
 import type { PipelineStageDependencies } from '../pipeline-dependencies';
-import { PipelineRunFailure } from '../pipeline-run-failure';
 import type { CrawlStageResult } from './crawl-stage';
 import { enrichPagesWithLlm } from './llm-enrichment';
 
-/** Everything a render needs except a workspace's overrides: the same for every workspace of the site. */
+/** Everything a render needs except the user's overrides. */
 export type SiteGenerationInput = Omit<GenerateLlmsTxtInput, 'overrides'>;
 
 /**
- * Settles what every workspace's file is rendered from: the site's name, its pages with
- * their assessments, and the summary. Throws when the site has nothing to list and has
- * never published.
+ * Settles what the file is rendered from: the site's name, its pages with their
+ * assessments, and the summary.
  */
 export async function generateStage(
   job: PipelineRunJob,
@@ -40,15 +31,6 @@ export async function generateStage(
   const { pages, siteSummary, siteNotes } = dependencies.llmClient
     ? await enrichPagesWithLlm({ databasePool, logger, llmClient: dependencies.llmClient, site, siteTitle, pages: loadedPages })
     : { pages: loadedPages, siteSummary: site.generatedSummary, siteNotes: site.generatedNotes };
-
-  // Judged for the site, before any workspace's exclusions: a user may empty their own
-  // file. A site that has published before is let through: its pages went one by one, on
-  // their own 404s, and the file should lose those links rather than keep them.
-  if (selectPages(pages, []).length === 0) {
-    const workspaceIds = await loadWorkspaceIdsForSite(databasePool, site.id);
-    const newestVersions = await Promise.all(workspaceIds.map((workspaceId) => loadNewestVersion(databasePool, workspaceId)));
-    if (newestVersions.every((version) => version === null)) throw new PipelineRunFailure(NOTHING_TO_LIST_REASON);
-  }
 
   return {
     siteTitle,

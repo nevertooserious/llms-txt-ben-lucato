@@ -34,7 +34,6 @@ export interface StartPipelineRunRequest {
   siteId: string;
   triggeredBy: PipelineTrigger;
   /** Null for monitor runs. */
-  requestedByWorkspaceId: string | null;
 }
 
 export type StartPipelineRunOutcome =
@@ -53,10 +52,10 @@ export async function startPipelineRun(
 ): Promise<StartPipelineRunOutcome> {
   const pipelineRunId = randomUUID();
   const inserted = await transaction.query(
-    `insert into pipeline_runs (id, site_id, requested_by_workspace_id, triggered_by, queue_job_id)
-     values ($1, $2, $3, $4, $1)
+    `insert into pipeline_runs (id, site_id, triggered_by, queue_job_id)
+     values ($1, $2, $3, $1)
      on conflict (site_id) where status in ('queued', 'running') do nothing`,
-    [pipelineRunId, request.siteId, request.requestedByWorkspaceId, request.triggeredBy],
+    [pipelineRunId, request.siteId, request.triggeredBy],
   );
   if (inserted.rowCount === 0) {
     const active = await transaction.query<{ id: string }>(

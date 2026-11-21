@@ -1,100 +1,169 @@
+import type { PageOverride } from '@llms-txt/contracts';
 import type { Queryable, Transaction } from '../connection/transaction';
 
-/** The site's id, creating the row on first submission. */
-export async function findOrCreateSite(database: Queryable, rootUrl: string): Promise<string> {
-  // The no-op update makes `returning` yield the existing row on conflict.
+export interface NewSite {
+  rootUrl: string;
+  publicSlug: string;
+  /** SHA-256 of the submitter's IP, for the per-IP rate limit. */
+  creatorIpHash: string | null;
+}
+
+/** A new, independent site: each submission of a URL gets its own. */
+export async function createSite(database: Queryable, site: NewSite): Promise<string> {
   const result = await database.query<{ id: string }>(
-    `insert into sites (root_url) values ($1)
-     on conflict (root_url) do update set root_url = excluded.root_url
+    `insert into sites (root_url, public_slug, creator_ip_hash)
+     values ($1, $2, $3)
      returning id`,
-    [rootUrl],
+    [site.rootUrl, site.publicSlug, site.creatorIpHash],
   );
   return result.rows[0]!.id;
+}
+
+/** The id of the site served at /w/{publicSlug}, or null. */
+export async function loadSiteIdBySlug(database: Queryable, publicSlug: string): Promise<string | null> {
+  const result = await database.query<{ id: string }>('select id from sites where public_slug = $1', [publicSlug]);
+  return result.rows[0]?.id ?? null;
+}
+
+/**
+ * Deletes a site with its pages, overrides, runs and versions. A run in progress loses
+ * its row, so its next write fails and it cannot publish. False if there was no such site.
+ */
+export async function deleteSite(database: Queryable, siteId: string): Promise<boolean> {
+  const deleted = await database.query('delete from sites where id = $1', [siteId]);
+  return deleted.rowCount === 1;
+}
+
+/** Sites created from one IP in the last `withinSeconds`, for the submission rate limit. */
+export async function countRecentSitesFromIp(
+  database: Queryable,
+  creatorIpHash: string,
+  withinSeconds: number,
+): Promise<number> {
+  const result = await database.query<{ count: number }>(
+    `select count(*)::integer as count from sites
+      where creator_ip_hash = $1 and created_at > now() - make_interval(secs => $2)`,
+    [creatorIpHash, withinSeconds],
+  );
+  return result.rows[0]?.count ?? 0;
+}
+
+/** The published llms.txt served at /w/{publicSlug}/llms.txt, or null if there is none yet. */
+export async function loadPublishedLlmsTxt(database: Queryable, publicSlug: string): Promise<string | null> {
+  const result = await database.query<{ llms_txt_content: string }>(
+    `select versions.llms_txt_content
+       from sites
+       join llms_txt_versions versions on versions.id = sites.published_version_id
+      where sites.public_slug = $1`,
+    [publicSlug],
+  );
+  return result.rows[0]?.llms_txt_content ?? null;
+}
+
+/** The user's edits to a site's pages, applied as inputs on every render. */
+export async function loadPageOverrides(database: Queryable, siteId: string): Promise<PageOverride[]> {
+  const result = await database.query<{ normalised_url: string; description_override: string | null; is_excluded: boolean }>(
+    `select pages.normalised_url, overrides.description_override, overrides.is_excluded
+       from page_overrides overrides
+       join pages on pages.id = overrides.page_id
+      where pages.site_id = $1
+      order by pages.normalised_url`,
+    [siteId],
+  );
+  return result.rows.map((row) => ({
+    normalisedUrl: row.normalised_url,
+    descriptionOverride: row.description_override,
+    isExcluded: row.is_excluded,
+  }));
+}
+
+/** What the site screen shows besides the latest run. */
+export interface SiteOverview {
+  rootUrl: string;
+  siteTitle: string | null;
+  /** In the past once monitoring has lapsed; null for a site that never had it. */
+  monitoringEnabledUntil: Date | null;
+  nextMonitorCheckAt: Date | null;
+  isPublishedVersionPinned: boolean;
+  publishedVersion: {
+    versionNumber: number;
+    llmsTxtContent: string;
+    listedPageCount: number;
+    createdAt: Date;
+  } | null;
+}
+
+export async function loadSiteOverview(database: Queryable, siteId: string): Promise<SiteOverview | null> {
+  const result = await database.query<{
+    root_url: string;
+    site_title: string | null;
+    monitoring_enabled_until: Date | null;
+    next_monitor_check_at: Date | null;
+    is_published_version_pinned: boolean;
+    version_number: number | null;
+    llms_txt_content: string | null;
+    listed_page_count: number | null;
+    version_created_at: Date | null;
+  }>(
+    `select sites.root_url, sites.site_title, sites.monitoring_enabled_until, sites.next_monitor_check_at,
+            sites.is_published_version_pinned,
+            versions.version_number, versions.llms_txt_content, versions.listed_page_count,
+            versions.created_at as version_created_at
+       from sites
+       left join llms_txt_versions versions on versions.id = sites.published_version_id
+      where sites.id = $1`,
+    [siteId],
+  );
+  const row = result.rows[0];
+  if (row === undefined) return null;
+  return {
+    rootUrl: row.root_url,
+    siteTitle: row.site_title,
+    monitoringEnabledUntil: row.monitoring_enabled_until,
+    nextMonitorCheckAt: row.next_monitor_check_at,
+    isPublishedVersionPinned: row.is_published_version_pinned,
+    publishedVersion:
+      row.version_number === null
+        ? null
+        : {
+            versionNumber: row.version_number,
+            llmsTxtContent: row.llms_txt_content!,
+            listedPageCount: row.listed_page_count!,
+            createdAt: row.version_created_at!,
+          },
+  };
 }
 
 /**
  * Takes up to `limit` sites whose monitor check is due, locking them so two ticks never
  * take the same site, and moves each one's next check on by its interval. A due site
- * with no workspace whose monitoring is unexpired is unscheduled instead and not
- * returned. Returns the ids of the sites to check.
+ * whose monitoring has expired is unscheduled instead and not returned. Returns the ids
+ * of the sites to check.
  */
 export async function claimDueMonitorChecks(transaction: Transaction, limit: number): Promise<string[]> {
   const result = await transaction.query<{ id: string; is_monitored: boolean }>(
     `with due as (
-       select id from sites
+       select id, coalesce(monitoring_enabled_until > now(), false) as is_monitored
+         from sites
         where next_monitor_check_at <= now()
         order by next_monitor_check_at
         limit $1
         for update skip locked
-     ), assessed as (
-       select due.id,
-              exists (select 1 from site_workspaces
-                       where site_id = due.id and monitoring_enabled_until > now()) as is_monitored
-         from due
      )
      update sites
-        set next_monitor_check_at = case when assessed.is_monitored then now() + sites.monitor_check_interval end,
-            last_monitor_check_at = case when assessed.is_monitored then now() else sites.last_monitor_check_at end
-       from assessed
-      where sites.id = assessed.id
-     returning sites.id, assessed.is_monitored`,
+        set next_monitor_check_at = case when due.is_monitored then now() + sites.monitor_check_interval end,
+            last_monitor_check_at = case when due.is_monitored then now() else sites.last_monitor_check_at end
+       from due
+      where sites.id = due.id
+     returning sites.id, due.is_monitored`,
     [limit],
   );
   return result.rows.filter((row) => row.is_monitored).map((row) => row.id);
 }
 
-/**
- * Holds the site row until the transaction ends. A submission holds the same lock from
- * findOrCreateSite, so a run can finish knowing no workspace is about to join it.
- */
-export async function lockSiteRow(transaction: Transaction, siteId: string): Promise<void> {
-  await transaction.query('select 1 from sites where id = $1 for update', [siteId]);
-}
-
-export type SiteRootAdoption =
-  /** No site had the resolved root: this site now does. */
-  | { kind: 'renamed'; siteId: string }
-  /** Another site already had it: the workspaces and this run moved there. */
-  | { kind: 'merged'; siteId: string }
-  /** As `merged`, but that site has a run in progress, so this run has nothing left to do. */
-  | { kind: 'merged_into_active_run'; siteId: string };
-
-/**
- * Records where a site really lives, once its first crawl has followed the homepage
- * redirect. When another row already holds that root, this site's workspaces and its
- * schedule move there, so the two addresses share one crawl. The emptied row stays: a
- * later submission of the old address finds it and is merged the same way.
- */
-export async function adoptResolvedSiteRoot(
-  transaction: Transaction,
-  change: { siteId: string; pipelineRunId: string; resolvedRootUrl: string },
-): Promise<SiteRootAdoption> {
-  // Locked in id order, so two merges of the same pair cannot deadlock.
-  const locked = await transaction.query<{ id: string; next_monitor_check_at: Date | null }>(
-    `select id, next_monitor_check_at from sites where id = $1 or root_url = $2 order by id for update`,
-    [change.siteId, change.resolvedRootUrl],
-  );
-  const target = locked.rows.find((row) => row.id !== change.siteId);
-  if (target === undefined) {
-    await transaction.query('update sites set root_url = $2 where id = $1', [change.siteId, change.resolvedRootUrl]);
-    return { kind: 'renamed', siteId: change.siteId };
-  }
-
-  await transaction.query('update site_workspaces set site_id = $2 where site_id = $1', [change.siteId, target.id]);
-  const source = locked.rows.find((row) => row.id === change.siteId);
-  await transaction.query(
-    'update sites set next_monitor_check_at = coalesce(next_monitor_check_at, $2) where id = $1',
-    [target.id, source?.next_monitor_check_at ?? null],
-  );
-  await transaction.query('update sites set next_monitor_check_at = null where id = $1', [change.siteId]);
-
-  const active = await transaction.query(
-    `select 1 from pipeline_runs where site_id = $1 and status in ('queued', 'running')`,
-    [target.id],
-  );
-  if ((active.rowCount ?? 0) > 0) return { kind: 'merged_into_active_run', siteId: target.id };
-  await transaction.query('update pipeline_runs set site_id = $2 where id = $1', [change.pipelineRunId, target.id]);
-  return { kind: 'merged', siteId: target.id };
+/** Records where a site really lives, once its first crawl has followed the homepage redirect. */
+export async function saveResolvedRootUrl(database: Queryable, siteId: string, resolvedRootUrl: string): Promise<void> {
+  await database.query('update sites set root_url = $2 where id = $1', [siteId, resolvedRootUrl]);
 }
 
 /** How long a headless-rendering decision stands before a crawl makes it again. */

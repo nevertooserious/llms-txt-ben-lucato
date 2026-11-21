@@ -1,4 +1,4 @@
-import type { GeneratorPage, WorkspacePageOverride } from '@llms-txt/contracts';
+import type { GeneratorPage, PageOverride } from '@llms-txt/contracts';
 import { listingCandidates } from './listing-candidates';
 import { homepageOf, isDocumentationType } from './page-kinds';
 import { scorePage } from './score-page';
@@ -18,7 +18,7 @@ export interface SelectedPage {
 }
 
 /**
- * Takes the listing candidates, minus pages a workspace excluded or an assessment judged
+ * Takes the listing candidates, minus pages the user excluded or an assessment judged
  * not to belong; keeps one page per canonical URL; drops pages that score too low; then
  * fills the sections in score order within the limits. Pages that score the same keep
  * the order of the site's navigation, then the order the crawl first saw links to them,
@@ -28,7 +28,7 @@ export interface SelectedPage {
  */
 export function selectPages(
   pages: readonly GeneratorPage[],
-  overrides: readonly WorkspacePageOverride[],
+  overrides: readonly PageOverride[],
   limits: SelectionLimits = DEFAULT_SELECTION_LIMITS,
 ): SelectedPage[] {
   const overridesByUrl = new Map(overrides.map((override) => [override.normalisedUrl, override]));

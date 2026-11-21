@@ -1,5 +1,4 @@
 import type { PipelineRunJob } from '@llms-txt/contracts';
-import { finishPipelineRun } from '@llms-txt/db';
 import type { FinishedPipelineRun, PipelineStageDependencies } from './pipeline-dependencies';
 import { crawlStage } from './stages/crawl-stage';
 import { generateStage } from './stages/generate-stage';
@@ -17,12 +16,7 @@ export async function runPipelineStages(
   job: PipelineRunJob,
   dependencies: PipelineStageDependencies,
 ): Promise<FinishedPipelineRun> {
-  const loaded = await loadSiteStage(job, dependencies);
-  if (loaded.kind === 'merged_into_active_run') {
-    const status = 'unchanged';
-    return { status, isRecorded: await finishPipelineRun(dependencies.databasePool, job.pipelineRunId, { status }) };
-  }
-  const { site, storedPages } = loaded;
+  const { site, storedPages } = await loadSiteStage(job, dependencies);
   const crawled = await crawlStage(job, dependencies, site, storedPages);
   const generationInput = await generateStage(job, dependencies, site, crawled);
   return publishStage(job, dependencies, site.id, generationInput);

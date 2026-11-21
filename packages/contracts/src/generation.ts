@@ -1,4 +1,4 @@
-// What the generator is given: every page of the site, and one workspace's edits.
+// What the generator is given: every page of the site, and the user's edits.
 
 import type { CrawlSignals } from './crawl';
 import type { StoredPageAssessment } from './page-assessment';
@@ -15,8 +15,8 @@ export interface GeneratorPage {
   markdownVariantUrl: string | null;
 }
 
-/** A workspace's edit to one page. Applied as an input on every render. */
-export interface WorkspacePageOverride {
+/** The user's edit to one page. Applied as an input on every render. */
+export interface PageOverride {
   normalisedUrl: string;
   descriptionOverride: string | null;
   isExcluded: boolean;

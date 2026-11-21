@@ -10,7 +10,7 @@ export interface PipelineDependencies extends PipelineStageDependencies {
 }
 
 /**
- * One site's run: crawl -> extract -> generate, then publish per workspace.
+ * One site's run: crawl -> extract -> generate, then publish.
  *
  * The run's lifecycle is guarded: the job only proceeds if it claims a queued run, and
  * the final status is written only if the run is still running, so a run the reaper

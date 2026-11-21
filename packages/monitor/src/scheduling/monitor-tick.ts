@@ -37,7 +37,6 @@ export async function runMonitorTick(dependencies: MonitorTickDependencies): Pro
       const outcome = await startPipelineRun(transaction, queue, {
         siteId,
         triggeredBy: 'monitor',
-        requestedByWorkspaceId: null,
       });
       if (outcome.kind === 'started') started += 1;
     }

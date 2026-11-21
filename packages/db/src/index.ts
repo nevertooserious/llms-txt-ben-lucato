@@ -29,36 +29,25 @@ export {
   type StalePipelineRunThresholds,
 } from './repositories/pipeline-runs';
 export {
-  adoptResolvedSiteRoot,
   claimDueMonitorChecks,
-  findOrCreateSite,
+  countRecentSitesFromIp,
+  createSite,
+  deleteSite,
+  loadPageOverrides,
+  loadPublishedLlmsTxt,
   loadSiteForRun,
-  lockSiteRow,
+  loadSiteIdBySlug,
+  loadSiteOverview,
   saveGeneratedSummary,
+  saveResolvedRootUrl,
   saveSiteCrawlOutcome,
   saveSiteTitle,
+  type NewSite,
   type SiteCrawlOutcome,
   type SiteForRun,
-  type SiteRootAdoption,
+  type SiteOverview,
 } from './repositories/sites';
-export {
-  countRecentWorkspacesFromIp,
-  createWorkspace,
-  deleteWorkspace,
-  loadPublishedLlmsTxt,
-  loadWorkspaceAccess,
-  loadWorkspaceIdsForSite,
-  loadWorkspaceOverrides,
-  loadWorkspaceOverview,
-  type NewWorkspace,
-  type WorkspaceAccess,
-  type WorkspaceOverview,
-} from './repositories/workspaces';
-export {
-  enableWorkspaceMonitoring,
-  type MonitorSchedule,
-  type WorkspaceMonitoringChange,
-} from './repositories/monitor-schedule';
+export { enableSiteMonitoring, type MonitorSchedule } from './repositories/monitor-schedule';
 export {
   loadGeneratorPages,
   loadStoredPages,

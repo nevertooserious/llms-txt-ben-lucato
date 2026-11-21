@@ -1,0 +1,71 @@
+// The JSON the site screen polls: GET /api/sites/{publicSlug}. Shared by the
+// route handler and the browser; dates are ISO 8601 strings.
+
+export type PipelineRunStatus = 'queued' | 'running' | 'succeeded' | 'unchanged' | 'failed';
+
+export interface PipelineRunView {
+  id: string;
+  status: PipelineRunStatus;
+  currentStage: 'crawl' | 'extract' | 'generate' | null;
+  triggeredBy: 'submission' | 'monitor' | 'user_check_now';
+  errorMessage: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+}
+
+export interface SiteView {
+  publicSlug: string;
+  rootUrl: string;
+  siteTitle: string | null;
+  /** Path of the hosted file, relative to the web app's origin. */
+  hostedLlmsTxtPath: string;
+  monitoring: {
+    isEnabled: boolean;
+    enabledUntil: string | null;
+    nextCheckAt: string | null;
+  };
+  latestRun: PipelineRunView | null;
+  publishedVersion: {
+    versionNumber: number;
+    llmsTxtContent: string;
+    listedPageCount: number;
+    createdAt: string;
+    validation: { isValid: boolean; problems: string[] };
+  } | null;
+  /** True when the user chose the published version, so new versions do not go live. */
+  isPublishedVersionPinned: boolean;
+  /** Newest first. */
+  versions: LlmsTxtVersionSummaryView[];
+}
+
+/** One entry of GET /api/sites/{publicSlug}/versions, newest first. */
+export interface LlmsTxtVersionSummaryView {
+  versionNumber: number;
+  listedPageCount: number;
+  addedPageCount: number;
+  removedPageCount: number;
+  changedPageCount: number;
+  createdBy: 'pipeline' | 'user_edit';
+  createdAt: string;
+}
+
+export function isActiveRunStatus(status: PipelineRunStatus): boolean {
+  return status === 'queued' || status === 'running';
+}
+
+/** Where the site is in the process. Extraction happens during the crawl, so it is done once generating starts. */
+export function runStatusLabel(run: Pick<PipelineRunView, 'status' | 'currentStage'>): string {
+  switch (run.status) {
+    case 'queued':
+      return 'Queued';
+    case 'running':
+      return run.currentStage === 'generate' ? 'Extracted' : 'Crawling';
+    case 'succeeded':
+      return 'Generated';
+    case 'unchanged':
+      return 'Generated, no changes';
+    case 'failed':
+      return 'Failed';
+  }
+}

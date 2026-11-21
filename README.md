@@ -36,7 +36,7 @@ Each package's `src/` is grouped by layer, and `src/index.ts` is its only entry 
 | `packages/monitor` | `decisions/` (pure: page reconciliation, safety gate, sitemap trust), `scheduling/` (the tick) |
 | `packages/db` | `connection/` (pool, transactions), `repositories/` (one module per table), `queue/` (the pipeline-run queue) |
 | `apps/worker` | `main.ts` (composition root), `config/`, `jobs/` (queue consumers), `llm/` (Anthropic client), `pipeline/` (the run's lifecycle, and one module per stage in `pipeline/stages/`) |
-| `apps/web` | `app/` (Next.js routes only), `features/` (React components, by screen), `browser/` (API client, local storage), `server/` (`sites/`, `workspaces/`, `http/`, `composition/`), `shared/` (types and pure helpers for both sides) |
+| `apps/web` | `app/` (Next.js routes only), `features/` (React components, by screen: `home/`, `site/`), `browser/` (API client, local storage), `server/` (`sites/`, `http/`, `composition/`), `shared/` (types and pure helpers for both sides) |
 
 ESLint enforces these layers too. In the crawler only `network/` may open a connection, so every request is made beside the SSRF guard. In `packages/db` only `connection/` imports `pg`. The worker's pipeline is handed its dependencies and does not import the worker's wiring. In the web app, routes in `app/` call `server/` and render `features/`; server and browser code share only `shared/`. The web app imports across its folders with the `@/` alias (`@/server/...`).
 
@@ -48,7 +48,7 @@ docker compose up --build                # http://localhost:3000
 
 This starts Postgres (with `db/schema.sql` applied on first boot), the web app and the worker. No configuration is needed. To use Claude rather than heuristics, put `ANTHROPIC_API_KEY` in a `.env` file at the repository root and run the command again. `WEB_PORT` (default 3000) and `POSTGRES_PORT` (default 5433) change the host ports.
 
-A new database also gets a demo site with four versions, linked from the home page and at <http://localhost:3000/w/demo#token=demo-workspace-token>. Its token is public, so `db/demo-seed.sql` is applied only by this local stack. The site is not real, so "Check now" on it ends in a failed run and keeps the published file.
+A new database also gets a demo site with four versions, linked from the home page and at <http://localhost:3000/w/demo>. `db/demo-seed.sql` is applied only by this local stack. The site is not real, so "Check now" on it ends in a failed run and keeps the published file.
 
 The schema and demo are applied only to an empty database, so to change the schema or restore the demo run `docker compose down --volumes`, which deletes all local data. The crawler's SSRF guard refuses private addresses, so this stack cannot crawl a site running on your machine.
 
@@ -69,7 +69,7 @@ Each process reads its configuration once at startup and stops with a message na
 
 ## Serving llms.txt from your own domain
 
-The spec puts the file at `/llms.txt` on your site. Each workspace has a stable hosted URL, `https://<app>/w/<slug>/llms.txt`, shown on its page, which serves the latest version unless you pin another on that page. Point your own path at it with a proxy, which keeps your domain in the response, or a redirect.
+The spec puts the file at `/llms.txt` on your site. Each site has a stable hosted URL, `https://<app>/w/<slug>/llms.txt`, shown on its page, which serves the latest version unless you pin another on that page. Point your own path at it with a proxy, which keeps your domain in the response, or a redirect.
 
 ```nginx
 # nginx: proxy

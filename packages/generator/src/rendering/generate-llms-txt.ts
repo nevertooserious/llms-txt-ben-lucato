@@ -3,7 +3,7 @@ import {
   machineReadableResourceKindOf,
   type GeneratorPage,
   type MachineReadableResourceKind,
-  type WorkspacePageOverride,
+  type PageOverride,
 } from '@llms-txt/contracts';
 import {
   alternativeTitlesOf,
@@ -37,7 +37,7 @@ export interface GenerateLlmsTxtInput {
   /** The site's own files for machines (llms-full.txt, a section's llms.txt, an OpenAPI description). */
   machineReadableResourceUrls?: readonly string[];
   pages: GeneratorPage[];
-  overrides: WorkspacePageOverride[];
+  overrides: PageOverride[];
   limits?: SelectionLimits;
 }
 

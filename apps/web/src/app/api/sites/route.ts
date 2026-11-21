@@ -29,9 +29,7 @@ export async function POST(request: Request): Promise<Response> {
       case 'submitted':
         return Response.json(
           {
-            workspaceId: outcome.workspaceId,
             publicSlug: outcome.publicSlug,
-            accessToken: outcome.accessToken,
             pipelineRunId: outcome.pipelineRunId,
           },
           { status: 202 },

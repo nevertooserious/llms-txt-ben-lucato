@@ -113,7 +113,7 @@ describe('generateLlmsTxt with page assessments', () => {
     expect(llmsTxt).toContain(`- [Start](${ORIGIN}/resources/start): Written from the content.`);
   });
 
-  it('lets a workspace override win over the assessed description', () => {
+  it('lets a user override win over the assessed description', () => {
     const docs = page('/docs', { pageType: 'docs', assessment: assessed({}) });
     const llmsTxt = generate({
       pages: [homepage, docs],
