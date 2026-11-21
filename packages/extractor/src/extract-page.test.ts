@@ -245,12 +245,12 @@ describe('extractPage rules', () => {
       expect(redescribed.listingFieldsHash).not.toBe(original.listingFieldsHash);
     });
 
-    it('leaves content out of listing_fields_hash when the page has a description', () => {
+    it('includes content in listing_fields_hash when the page has a description', () => {
       const head = '<title>Install</title><meta name="description" content="How to install Lumen.">';
       const before = extract(page(head, '<main><p>Run the installer.</p></main>'));
       const after = extract(page(head, '<main><p>Download the binary.</p></main>'));
       expect(after.contentDigest).not.toBe(before.contentDigest);
-      expect(after.listingFieldsHash).toBe(before.listingFieldsHash);
+      expect(after.listingFieldsHash).not.toBe(before.listingFieldsHash);
     });
 
     it('includes content in listing_fields_hash when the page has no description', () => {

@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps that file up to date as the site changes.
 
-Status: the extractor, the crawler, the run lifecycle, the worker's run of the stages, the generator and the monitor's scheduling are implemented. The generator's LLM calls are not wired in yet, so it uses the heuristic fallbacks (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
+Status: the extractor, the crawler, the run lifecycle, the worker's run of the stages, the generator and the monitor's scheduling are implemented. The generator's LLM calls are wired in behind `ANTHROPIC_API_KEY`, but have not yet run against the live API; without a key the worker uses heuristics (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
 
 ## Contents
 
@@ -73,11 +73,15 @@ A pure function from HTML to a `PageRecord`. No I/O, so it is tested against sav
 
 ### Generator
 
-- **Selection:** scores pages on navigation presence, crawl depth and inbound links (plus a lift for pages the site's own llms.txt lists), then keeps one page per canonical URL. Left out: the homepage (it is the H1), `noindex` and excluded pages, pagination (`/page/2`, `?page=2`), and pages whose declared language differs from the homepage's (locale duplicates such as `/de/`). Ties are broken by URL, comparing digit runs as numbers.
-- **Sections:** derived from `page_type`, in a fixed order: Docs, API, Guides, Product, Pricing, About, Blog, Pages (for `other`). The LLM does not choose sections. Legal pages always go under `Optional`.
+- **Selection:** the file lists durable, structural pages that explain the site and how to use it, not its stream of content. Three steps. Deterministic filters first, so nothing is paid for pages that cannot be listed: the homepage (it is the H1), `noindex` pages, pagination (`/page/2`, `?page=2`), and pages whose declared language differs from the homepage's (locale duplicates such as `/de/`). Then the page assessment (below) and workspace exclusions remove what does not belong. Last, pages are scored on navigation presence, crawl depth and inbound links (plus a lift for pages the site's own llms.txt lists), and one page per canonical URL is kept. Ties are broken by URL, comparing digit runs as numbers.
+- **Page assessment:** Claude Haiku reads each candidate page and returns a one-line description, a listing value (`primary`, `optional` or `exclude`), a reason for any exclusion (`error_page`, `utility`, `thin`, `archive`, `individual_content`, `duplicate`) and a corrected page type. So a "not found" page served with a 200, a login page or a single blog post is left out. The model is told to choose `optional` when unsure.
+- **Sections:** derived from the assessed page type (the extractor's when there is no assessment), in a fixed order: Docs, API, Guides, Product, Pricing, About, Blog, Pages (for `other`). The LLM picks among these types but cannot create a section. `optional` and legal pages go under `Optional`.
 - **Limits:** at most 15 entries per section, 5 for Blog, and 60 outside `Optional`; the overflow goes under `Optional`, which holds at most 40. A flood of blog posts therefore cannot crowd out core pages. Starting values, in `packages/generator/src/select-pages.ts`.
 - **Entries:** the `.md` variant when there is one, else the URL as the site links it. The site name is dropped from titles (`Docs | Acme` becomes `Docs`), a page with no title gets one from its URL, and descriptions are cut to 300 characters.
-- **LLM use:** writes the site summary, and a description only for pages that have no usable one of their own. Both are cached, because an LLM words the same thing differently each time. If the LLM is unavailable, heuristics are used and the file is still valid: the summary is the homepage's description, and a page without one is listed without a description. Not wired in yet, so these heuristics are what runs today.
+- **Site summary:** Claude Opus writes it from the homepage and the listed pages. It is rewritten only when the homepage's title or description, or the titles of listed navigation pages, change, and the model is given its previous summary and told to keep the wording unless something is now wrong. So a new blog post does not reword it.
+- **LLM caching:** both results are stored against a hash of their inputs (including the model and prompt version) and never requested again for unchanged inputs, because an LLM words the same thing differently each time.
+- **LLM failures:** the SDK retries transient errors. If the API is still unavailable, a page with an older assessment or a site with an older summary keeps it. A new page cannot be judged without one, so the run fails and the published file stays. A page the model refuses or answers unusably is left out and tried on the next run. Page text is passed as untrusted data, and output is forced to one line of plain text with links and markdown removed.
+- **No API key:** for local development and tests only, the worker skips the LLM: every candidate page is listed with its own description, and the summary is the homepage's description.
 - **Rendering:** deterministic, followed by validation against the spec. Output that fails validation is a bug, so it fails the run rather than being published.
 - **Per workspace:** the file is rendered once per workspace, applying that workspace's overrides.
 
@@ -154,7 +158,7 @@ Discovery runs on every check to find new URLs. Then every known page is checked
 
 ### What counts as a change
 
-The change signal is `listing_fields_hash`: a hash of what feeds the page's llms.txt entry. That is the extracted title and description, plus `content_digest` only when the page has no usable description of its own. `content_digest` hashes headings and body text with dates, numbers and whitespace stripped, so "updated 3 days ago" is not a change.
+The change signal is `listing_fields_hash`: a hash of what feeds the page's llms.txt entry. That is the extracted title and description plus `content_digest`, because the entry's description is written from the content. `content_digest` hashes headings and body text with dates, numbers and whitespace stripped, so "updated 3 days ago" is not a change.
 
 ### Pages that go missing
 
@@ -223,7 +227,7 @@ Checked against llmstxt.org.
 | Adaptive check interval | A fixed interval plus "check now" is simpler and easier to demonstrate |
 | `llms-full.txt` | Not found in the spec; it would duplicate large content per version |
 | Server-sent events | Polling `pipeline_runs` is enough for progress |
-| LLM-chosen sections, and title, summary and section overrides | Sections come from page type; overrides are limited to description and exclude |
+| LLM-invented sections, and title, summary and section overrides | Sections are a fixed list that the assessed page type maps to; overrides are limited to description and exclude |
 | Raw HTML storage | Saved fixtures cover extractor testing |
 | A separate queue broker | pg-boss in Postgres handles this load without another service |
 
@@ -237,6 +241,7 @@ Not yet decided or designed.
 - **Soft 404s:** sites that answer a deleted URL with 200 and a "not found" body are not handled. Proposal: an extractor check that counts the same as a real 404.
 - **Slow removal:** with a 7-day interval, waiting for two checks can leave a dead link in the file for two weeks. Proposal: schedule a follow-up check 24 hours after any run that sees a first 404.
 - **Stale sitemap:** if `lastmod` is trusted and a deleted page is still listed with an unchanged date, no request is made and the deletion is missed.
-- **Page selection:** the rules in section 2 are a first cut; locale duplicates without a declared language, and the limits themselves, are untested against real sites.
+- **Page selection:** the rules in section 2 are a first cut; locale duplicates without a declared language, the limits and the assessment prompt are untested against real sites.
+- **Restoring an excluded page:** a user cannot yet force back a page the assessment wrongly excluded.
 - **Partial link counts:** a page answered with a 304, or skipped because of a trusted `lastmod`, has no body, so its links are not seen. On such runs, inbound link counts and the frontier miss those links.
 - **Thresholds:** the page budget (200, `CRAWL_PAGE_BUDGET`) and the safety-gate failure share (0.5) have starting values that have not been tuned against real sites. The headless thresholds have starting values in `packages/crawler/src/render-decision.ts`, tuned only against the fixture sites.

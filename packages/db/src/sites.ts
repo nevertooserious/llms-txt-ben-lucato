@@ -105,6 +105,7 @@ export interface SiteForRun {
   rootUrl: string;
   siteTitle: string | null;
   generatedSummary: string | null;
+  generatedSummarySourceHash: string | null;
   /** Null when undecided, or decided over 30 days ago, so the crawl decides again. */
   requiresHeadlessRendering: boolean | null;
   sitemapLastModifiedIsTrusted: boolean;
@@ -116,10 +117,12 @@ export async function loadSiteForRun(database: Queryable, siteId: string): Promi
     root_url: string;
     site_title: string | null;
     generated_summary: string | null;
+    generated_summary_source_hash: string | null;
     requires_headless_rendering: boolean | null;
     sitemap_lastmod_is_trusted: boolean;
   }>(
-    `select id, root_url, site_title, generated_summary, sitemap_lastmod_is_trusted,
+    `select id, root_url, site_title, generated_summary, generated_summary_source_hash,
+            sitemap_lastmod_is_trusted,
             case when headless_rendering_decided_at > now() - ${HEADLESS_DECISION_MAX_AGE}
                  then requires_headless_rendering end as requires_headless_rendering
        from sites
@@ -133,6 +136,7 @@ export async function loadSiteForRun(database: Queryable, siteId: string): Promi
     rootUrl: row.root_url,
     siteTitle: row.site_title,
     generatedSummary: row.generated_summary,
+    generatedSummarySourceHash: row.generated_summary_source_hash,
     requiresHeadlessRendering: row.requires_headless_rendering,
     sitemapLastModifiedIsTrusted: row.sitemap_lastmod_is_trusted,
   };
@@ -158,6 +162,18 @@ export async function saveSiteCrawlOutcome(
             sitemap_lastmod_is_trusted = $4
       where id = $1`,
     [siteId, outcome.requiresHeadlessRendering, outcome.decidedHeadlessRendering, outcome.sitemapLastModifiedIsTrusted],
+  );
+}
+
+/** The generator's site-level output: the summary and the hash of its inputs. */
+export async function saveGeneratedSummary(
+  database: Queryable,
+  siteId: string,
+  summary: { text: string; sourceHash: string },
+): Promise<void> {
+  await database.query(
+    'update sites set generated_summary = $2, generated_summary_source_hash = $3 where id = $1',
+    [siteId, summary.text, summary.sourceHash],
   );
 }
 

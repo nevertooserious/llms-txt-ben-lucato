@@ -18,6 +18,8 @@ export interface WorkerConfig {
   crawlPageBudget: number;
   /** Above this share of failed fetches a run fails and publishes nothing. A starting value. */
   maxFailedFetchShare: number;
+  /** Null runs the generator on its heuristics, for local development and tests. */
+  anthropicApiKey: string | null;
 }
 
 export function readWorkerConfig(environment: Environment = process.env): WorkerConfig {
@@ -31,5 +33,6 @@ export function readWorkerConfig(environment: Environment = process.env): Worker
     maxMonitorChecksPerTick: 100,
     crawlPageBudget: positiveInteger(environment, 'CRAWL_PAGE_BUDGET', 200),
     maxFailedFetchShare: 0.5,
+    anthropicApiKey: environment.ANTHROPIC_API_KEY?.trim() || null,
   };
 }

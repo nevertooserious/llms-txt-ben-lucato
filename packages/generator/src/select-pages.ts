@@ -58,9 +58,30 @@ export function scorePage(page: GeneratorPage): number {
 }
 
 /**
- * Leaves out the homepage (it is the H1), noindex and excluded pages, pagination, and
- * pages in another language than the site's; keeps one page per canonical URL; then
- * fills the sections in score order within the limits.
+ * The pages that could be listed, by rules that need no LLM: not the homepage (it is the
+ * H1), noindex pages, pagination, or pages in another language than the site's. These
+ * are the pages worth paying to assess.
+ */
+export function listingCandidates(pages: readonly GeneratorPage[]): GeneratorPage[] {
+  const siteLanguage = primaryLanguageOf(pages);
+  return pages.filter(
+    (page) =>
+      page.record.pageType !== 'home' &&
+      page.crawlSignals.crawlDepth > 0 &&
+      !page.crawlSignals.hasNoindexDirective &&
+      !isPaginationUrl(page.record.normalisedUrl) &&
+      !isOtherLanguage(page, siteLanguage),
+  );
+}
+
+export function homepageOf(pages: readonly GeneratorPage[]): GeneratorPage | undefined {
+  return pages.find((page) => page.crawlSignals.crawlDepth === 0) ?? pages.find((page) => page.record.pageType === 'home');
+}
+
+/**
+ * Takes the listing candidates, minus pages a workspace excluded or an assessment judged
+ * not to belong; keeps one page per canonical URL; then fills the sections in score
+ * order within the limits. An assessment's page type replaces the extractor's.
  */
 export function selectPages(
   pages: readonly GeneratorPage[],
@@ -68,16 +89,10 @@ export function selectPages(
   limits: SelectionLimits = DEFAULT_SELECTION_LIMITS,
 ): SelectedPage[] {
   const overridesByUrl = new Map(overrides.map((override) => [override.normalisedUrl, override]));
-  const siteLanguage = primaryLanguageOf(pages);
 
-  const candidates = pages.filter(
+  const candidates = listingCandidates(pages).filter(
     (page) =>
-      page.record.pageType !== 'home' &&
-      page.crawlSignals.crawlDepth > 0 &&
-      !page.crawlSignals.hasNoindexDirective &&
-      overridesByUrl.get(page.record.normalisedUrl)?.isExcluded !== true &&
-      !isPaginationUrl(page.record.normalisedUrl) &&
-      !isOtherLanguage(page, siteLanguage),
+      overridesByUrl.get(page.record.normalisedUrl)?.isExcluded !== true && page.assessment?.listingValue !== 'exclude',
   );
 
   const ranked = keepOnePerCanonicalUrl(candidates)
@@ -89,8 +104,11 @@ export function selectPages(
   let optionalCount = 0;
   const selected: SelectedPage[] = [];
   for (const { page, score } of ranked) {
-    const pageType = page.record.pageType;
-    let sectionName = pageType === 'legal' || pageType === 'home' ? OPTIONAL_SECTION_NAME : SECTION_NAMES[pageType];
+    const pageType = page.assessment?.pageType ?? page.record.pageType;
+    let sectionName =
+      pageType === 'legal' || pageType === 'home' || page.assessment?.listingValue === 'optional'
+        ? OPTIONAL_SECTION_NAME
+        : SECTION_NAMES[pageType];
     if (sectionName !== OPTIONAL_SECTION_NAME) {
       const sectionLimit = pageType === 'blog' ? limits.maxBlogEntries : limits.maxEntriesPerSection;
       const sectionCount = sectionCounts.get(sectionName) ?? 0;

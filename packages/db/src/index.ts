@@ -34,6 +34,7 @@ export {
   findOrCreateSite,
   loadSiteForRun,
   lockSiteRow,
+  saveGeneratedSummary,
   saveSiteCrawlOutcome,
   saveSiteTitle,
   type SiteCrawlOutcome,
@@ -64,6 +65,7 @@ export {
   saveCrawledPage,
   saveExtractedPage,
   saveLinkSignals,
+  savePageAssessment,
   type CrawledPageWrite,
   type StoredPage,
 } from './pages';

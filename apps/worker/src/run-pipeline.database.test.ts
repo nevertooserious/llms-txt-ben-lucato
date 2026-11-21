@@ -9,7 +9,7 @@ import {
   withTransaction,
   type PipelineRunQueue,
 } from '@llms-txt/db';
-import type { GenerateLlmsTxtInput } from '@llms-txt/generator';
+import { generateLlmsTxt, LlmOutputRejectedError, type GenerateLlmsTxtInput, type LlmClient } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
 import { runPipeline } from './run-pipeline';
 
@@ -102,6 +102,7 @@ async function run(
   crawl: ReturnType<typeof fakeCrawl>,
   resolveRootUrl: (rootUrl: string) => Promise<string> = async (rootUrl) => rootUrl,
   pool: typeof databasePool = databasePool,
+  llmClient: LlmClient | null = null,
 ) {
   const outcome = await withTransaction(databasePool, (transaction) =>
     startPipelineRun(transaction, queue, { siteId, triggeredBy: 'monitor', requestedByWorkspaceId: null }),
@@ -115,8 +116,9 @@ async function run(
       heartbeatIntervalMs: 60_000,
       settings: { crawlPageBudget: 50, maxFailedFetchShare: 0.5 },
       crawl,
-      renderLlmsTxt,
+      renderLlmsTxt: llmClient === null ? renderLlmsTxt : generateLlmsTxt,
       resolveRootUrl,
+      llmClient,
     },
   );
   const result = await databasePool.query<{ status: string; error_message: string | null }>(
@@ -133,6 +135,104 @@ async function versions(workspaceId: string) {
   );
   return result.rows;
 }
+
+/** A stand-in LLM that excludes not-found and blog-post pages and counts its calls. */
+function fakeLlmClient() {
+  const calls = { assessPage: 0, writeSiteSummary: 0 };
+  const behaviour = { failWith: null as Error | null };
+  const client: LlmClient = {
+    async assessPage(input) {
+      calls.assessPage += 1;
+      if (behaviour.failWith !== null) throw behaviour.failWith;
+      if (input.url.endsWith('/gone')) {
+        return { description: '', listingValue: 'exclude', exclusionReason: 'error_page', pageType: 'other' };
+      }
+      if (input.url.includes('/blog/')) {
+        return { description: 'One post.', listingValue: 'exclude', exclusionReason: 'individual_content', pageType: 'blog' };
+      }
+      return { description: `Assessed ${input.title}.`, listingValue: 'primary', exclusionReason: null, pageType: 'docs' };
+    },
+    async writeSiteSummary() {
+      calls.writeSiteSummary += 1;
+      if (behaviour.failWith !== null) throw behaviour.failWith;
+      return 'Acme, summarised.';
+    },
+  };
+  return { client, calls, behaviour };
+}
+
+const identity = async (rootUrl: string) => rootUrl;
+
+describe('runPipeline with an LLM', () => {
+  const pages = [
+    { path: '/', title: 'Acme' },
+    { path: '/docs', title: 'Docs' },
+    { path: '/gone', title: 'Page not found' },
+    { path: '/blog/launch', title: 'We launched' },
+  ];
+
+  it('lists only the pages the assessment keeps, with its descriptions and summary', async () => {
+    const { siteId, workspaceId, rootUrl } = await newSiteWithWorkspace();
+    const llm = fakeLlmClient();
+    expect((await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client)).status).toBe('succeeded');
+    const content = (await versions(workspaceId))[0]!.llms_txt_content;
+    expect(content).toContain('> Acme, summarised.');
+    expect(content).toContain(`- [Docs](${rootUrl}/docs): Assessed Docs.`);
+    expect(content).not.toContain('/gone');
+    expect(content).not.toContain('/blog/launch');
+    const stored = await databasePool.query(
+      `select listing_value, exclusion_reason from pages where site_id = $1 and normalised_url = $2`,
+      [siteId, `${rootUrl}/gone`],
+    );
+    expect(stored.rows[0]).toEqual({ listing_value: 'exclude', exclusion_reason: 'error_page' });
+  });
+
+  it('does not ask again for unchanged pages, and publishes nothing new', async () => {
+    const { siteId, workspaceId } = await newSiteWithWorkspace();
+    const llm = fakeLlmClient();
+    await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client);
+    expect(llm.calls).toEqual({ assessPage: 3, writeSiteSummary: 1 });
+    expect((await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client)).status).toBe('unchanged');
+    expect(llm.calls).toEqual({ assessPage: 3, writeSiteSummary: 1 });
+    expect(await versions(workspaceId)).toHaveLength(1);
+  });
+
+  it('fails the run and keeps the file when the LLM is down for a new page', async () => {
+    const { siteId, workspaceId } = await newSiteWithWorkspace();
+    const llm = fakeLlmClient();
+    await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client);
+    llm.behaviour.failWith = new Error('overloaded');
+    const failed = await run(siteId, fakeCrawl([...pages, { path: '/pricing', title: 'Pricing' }]), identity, databasePool, llm.client);
+    expect(failed.status).toBe('failed');
+    expect(failed.error_message).toMatch(/could not be reached/);
+    expect(await versions(workspaceId)).toHaveLength(1);
+  });
+
+  it('keeps an older assessment when the LLM is down for a changed page', async () => {
+    const { siteId, workspaceId, rootUrl } = await newSiteWithWorkspace();
+    const llm = fakeLlmClient();
+    await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client);
+    llm.behaviour.failWith = new Error('overloaded');
+    const changed = pages.map((page) => (page.path === '/docs' ? { ...page, title: 'Docs v2' } : page));
+    expect((await run(siteId, fakeCrawl(changed), identity, databasePool, llm.client)).status).not.toBe('failed');
+    expect((await versions(workspaceId)).at(-1)!.llms_txt_content).toContain(`(${rootUrl}/docs): Assessed Docs.`);
+  });
+
+  it('leaves out a new page the model will not assess, and still publishes', async () => {
+    const { siteId, workspaceId, rootUrl } = await newSiteWithWorkspace();
+    const llm = fakeLlmClient();
+    const assessPage = llm.client.assessPage;
+    llm.client.assessPage = async (input) => {
+      if (input.url.endsWith('/docs')) throw new LlmOutputRejectedError('the model stopped with refusal');
+      return assessPage(input);
+    };
+    const withPricing = [...pages, { path: '/pricing', title: 'Pricing' }];
+    expect((await run(siteId, fakeCrawl(withPricing), identity, databasePool, llm.client)).status).toBe('succeeded');
+    const content = (await versions(workspaceId))[0]!.llms_txt_content;
+    expect(content).toContain(`${rootUrl}/pricing`);
+    expect(content).not.toContain(`${rootUrl}/docs`);
+  });
+});
 
 describe('runPipeline', () => {
   it('publishes a first version listing the extracted pages, titled from the homepage', async () => {

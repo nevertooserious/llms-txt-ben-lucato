@@ -1,6 +1,7 @@
 import type { GeneratorPage, WorkspacePageOverride } from '@llms-txt/contracts';
 import {
   DEFAULT_SELECTION_LIMITS,
+  homepageOf,
   OPTIONAL_SECTION_NAME,
   SECTION_NAMES,
   selectPages,
@@ -8,12 +9,6 @@ import {
   type SelectionLimits,
 } from './select-pages';
 import { validateLlmsTxt } from './validate-llms-txt';
-
-/** The only LLM calls the generator makes. Results are cached by the caller. Not wired in yet. */
-export interface LlmClient {
-  writeSiteSummary(input: { siteTitle: string; pages: GeneratorPage[] }): Promise<string>;
-  writePageDescription(input: { title: string; contentMarkdown: string }): Promise<string>;
-}
 
 export interface GenerateLlmsTxtInput {
   siteTitle: string;
@@ -67,7 +62,9 @@ function renderEntry(entry: SelectedPage, siteTitle: string): string {
   const { page } = entry;
   const title = entryTitle(page, siteTitle);
   const url = encodeEntryUrl(page.markdownVariantUrl ?? page.fetchUrl);
-  const description = truncate(singleLine(entry.descriptionOverride ?? page.record.description ?? ''));
+  const description = truncate(
+    singleLine(entry.descriptionOverride ?? page.assessment?.description ?? page.record.description ?? ''),
+  );
   return `- [${escapeTitle(title)}](${url})${description === '' ? '' : `: ${description}`}`;
 }
 
@@ -87,10 +84,6 @@ export function entryTitle(page: GeneratorPage, siteTitle: string): string {
   const lastSegment = new URL(page.record.normalisedUrl).pathname.split('/').filter(Boolean).pop() ?? '';
   const words = decodeSafely(lastSegment).replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').trim();
   return words === '' ? new URL(page.record.normalisedUrl).host : words.charAt(0).toUpperCase() + words.slice(1);
-}
-
-function homepageOf(pages: readonly GeneratorPage[]): GeneratorPage | undefined {
-  return pages.find((page) => page.crawlSignals.crawlDepth === 0) ?? pages.find((page) => page.record.pageType === 'home');
 }
 
 /** Collapses whitespace, newlines included, so text cannot break out of its line. */
