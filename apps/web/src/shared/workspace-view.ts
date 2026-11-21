@@ -35,6 +35,14 @@ export interface WorkspaceView {
   } | null;
 }
 
+/** One entry of GET /api/workspaces/{publicSlug}/versions, newest first. */
+export interface LlmsTxtVersionSummaryView {
+  versionNumber: number;
+  listedPageCount: number;
+  createdBy: 'pipeline' | 'user_edit';
+  createdAt: string;
+}
+
 export function isActiveRunStatus(status: PipelineRunStatus): boolean {
   return status === 'queued' || status === 'running';
 }
