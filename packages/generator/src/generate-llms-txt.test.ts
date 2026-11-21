@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { GeneratorPage, PageType } from '@llms-txt/contracts';
+import type { GeneratorPage, PageType, StoredPageAssessment } from '@llms-txt/contracts';
 import { listedEntries } from './decide-publication';
 import { generateLlmsTxt, type GenerateLlmsTxtInput } from './generate-llms-txt';
 import { compareText, isPaginationUrl } from './select-pages';
@@ -19,6 +19,7 @@ interface PageOptions {
   languageCode?: string | null;
   markdownVariantUrl?: string | null;
   fetchUrl?: string;
+  assessment?: StoredPageAssessment;
 }
 
 function page(path: string, options: PageOptions = {}): GeneratorPage {
@@ -35,6 +36,7 @@ function page(path: string, options: PageOptions = {}): GeneratorPage {
       contentDigest: 'digest',
       listingFieldsHash: 'hash',
     },
+    assessment: options.assessment ?? null,
     fetchUrl: options.fetchUrl ?? normalisedUrl,
     crawlSignals: {
       crawlDepth: options.crawlDepth ?? (path === '/' ? 0 : 1),
@@ -62,6 +64,53 @@ function sections(llmsTxt: string): Record<string, string[]> {
   }
   return result;
 }
+
+describe('generateLlmsTxt with page assessments', () => {
+  const assessed = (overrides: Partial<StoredPageAssessment>): StoredPageAssessment => ({
+    description: 'Written from the content.',
+    listingValue: 'primary',
+    exclusionReason: null,
+    pageType: 'docs',
+    sourceHash: 'source',
+    ...overrides,
+  });
+
+  it('leaves out pages judged not to belong, such as a not-found page served with a 200', () => {
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/docs', { pageType: 'docs', assessment: assessed({}) }),
+        page('/gone', { assessment: assessed({ listingValue: 'exclude', exclusionReason: 'error_page' }) }),
+        page('/blog/launch', {
+          pageType: 'blog',
+          assessment: assessed({ listingValue: 'exclude', exclusionReason: 'individual_content', pageType: 'blog' }),
+        }),
+      ],
+    });
+    expect(sections(llmsTxt)).toEqual({ Docs: [`${ORIGIN}/docs`] });
+  });
+
+  it('uses the assessed description and page type, and puts optional pages under Optional', () => {
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/resources/start', { title: 'Start', pageType: 'other', assessment: assessed({ pageType: 'guide' }) }),
+        page('/partners', { pageType: 'about', assessment: assessed({ listingValue: 'optional', pageType: 'about' }) }),
+      ],
+    });
+    expect(sections(llmsTxt)).toEqual({ Guides: [`${ORIGIN}/resources/start`], Optional: [`${ORIGIN}/partners`] });
+    expect(llmsTxt).toContain(`- [Start](${ORIGIN}/resources/start): Written from the content.`);
+  });
+
+  it('lets a workspace override win over the assessed description', () => {
+    const docs = page('/docs', { pageType: 'docs', assessment: assessed({}) });
+    const llmsTxt = generate({
+      pages: [homepage, docs],
+      overrides: [{ normalisedUrl: docs.record.normalisedUrl, descriptionOverride: 'My words.', isExcluded: false }],
+    });
+    expect(llmsTxt).toContain(': My words.');
+  });
+});
 
 describe('generateLlmsTxt', () => {
   it('renders the H1, the summary and the sections, in the spec’s order', () => {

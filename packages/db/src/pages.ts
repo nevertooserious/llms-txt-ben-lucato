@@ -1,10 +1,14 @@
 import type {
+  AssessedPageType,
   DiscoverySource,
   FetchMethod,
   GeneratorPage,
   LinkSignals,
+  PageExclusionReason,
+  PageListingValue,
   PageRecord,
   PageType,
+  StoredPageAssessment,
 } from '@llms-txt/contracts';
 import type { Queryable } from './transaction';
 
@@ -13,7 +17,7 @@ import type { Queryable } from './transaction';
 //
 //   saveCrawledPage, saveLinkSignals   crawler columns and lifecycle
 //   saveExtractedPage                  extractor columns
-//   (generator columns: not written yet)
+//   savePageAssessment                 generator columns
 
 /** Everything the run needs to know about a stored page before it is fetched again. */
 export interface StoredPage {
@@ -196,6 +200,30 @@ export async function saveExtractedPage(database: Queryable, siteId: string, rec
   );
 }
 
+/** Writes the generator's column group: one page's LLM assessment and the hash of its inputs. */
+export async function savePageAssessment(
+  database: Queryable,
+  siteId: string,
+  normalisedUrl: string,
+  assessment: StoredPageAssessment,
+): Promise<void> {
+  await database.query(
+    `update pages
+        set generated_description = $3, assessed_page_type = $4, listing_value = $5,
+            exclusion_reason = $6, assessment_source_hash = $7
+      where site_id = $1 and normalised_url = $2`,
+    [
+      siteId,
+      normalisedUrl,
+      assessment.description,
+      assessment.pageType,
+      assessment.listingValue,
+      assessment.exclusionReason,
+      assessment.sourceHash,
+    ],
+  );
+}
+
 /** The generator's input: every listed page that has been extracted. */
 export async function loadGeneratorPages(database: Queryable, siteId: string): Promise<GeneratorPage[]> {
   const result = await database.query<{
@@ -215,11 +243,17 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
     inbound_link_count: number;
     has_noindex_directive: boolean;
     markdown_variant_url: string | null;
+    generated_description: string | null;
+    assessed_page_type: AssessedPageType | null;
+    listing_value: PageListingValue | null;
+    exclusion_reason: PageExclusionReason | null;
+    assessment_source_hash: string | null;
   }>(
     `select normalised_url, fetch_url, canonical_url, extracted_title, extracted_description, page_type,
             language_code, content_markdown, content_digest, listing_fields_hash, crawl_depth,
             discovered_via, is_in_site_navigation, inbound_link_count, has_noindex_directive,
-            markdown_variant_url
+            markdown_variant_url, generated_description, assessed_page_type, listing_value,
+            exclusion_reason, assessment_source_hash
        from pages
       where site_id = $1 and removed_at is null and last_extracted_at is not null
       order by normalised_url`,
@@ -237,6 +271,17 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
       contentDigest: row.content_digest,
       listingFieldsHash: row.listing_fields_hash,
     },
+    // The schema's check constraint writes these four columns together.
+    assessment:
+      row.assessment_source_hash === null
+        ? null
+        : {
+            description: row.generated_description!,
+            listingValue: row.listing_value!,
+            exclusionReason: row.exclusion_reason,
+            pageType: row.assessed_page_type!,
+            sourceHash: row.assessment_source_hash,
+          },
     fetchUrl: row.fetch_url,
     crawlSignals: {
       crawlDepth: row.crawl_depth,

@@ -1,5 +1,13 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { DISCOVERY_SOURCES, FETCH_METHODS, PAGE_TYPES, PIPELINE_TRIGGERS } from '@llms-txt/contracts';
+import {
+  ASSESSED_PAGE_TYPES,
+  DISCOVERY_SOURCES,
+  FETCH_METHODS,
+  PAGE_EXCLUSION_REASONS,
+  PAGE_LISTING_VALUES,
+  PAGE_TYPES,
+  PIPELINE_TRIGGERS,
+} from '@llms-txt/contracts';
 import { createDatabasePool } from './database-pool';
 
 // Runs against a database with db/schema.sql applied (the CI `schema` job).
@@ -31,6 +39,9 @@ describe('contracts enums match the check constraints in the database', () => {
     ['pages', 'page_type', PAGE_TYPES],
     ['pages', 'fetch_method', FETCH_METHODS],
     ['pages', 'discovered_via', DISCOVERY_SOURCES],
+    ['pages', 'assessed_page_type', ASSESSED_PAGE_TYPES],
+    ['pages', 'listing_value', PAGE_LISTING_VALUES],
+    ['pages', 'exclusion_reason', PAGE_EXCLUSION_REASONS],
     ['pipeline_runs', 'triggered_by', PIPELINE_TRIGGERS],
   ])('%s.%s', async (tableName, columnName, values) => {
     expect(await checkConstraintValues(tableName, columnName)).toEqual([...values]);

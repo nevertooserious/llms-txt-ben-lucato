@@ -29,18 +29,15 @@ export function computeContentDigest(contentText: string): string {
 }
 
 /**
- * The monitor's change signal: what feeds the page's llms.txt entry. content_digest
- * counts only when there is no description, because then the entry's description is
- * generated from the content.
+ * The monitor's change signal: what feeds the page's llms.txt entry. That includes
+ * content_digest, because the entry's description is written from the content.
  */
 export function computeListingFieldsHash(fields: {
   title: string | null;
   description: string | null;
   contentDigest: string;
 }): string {
-  return sha256(
-    JSON.stringify([fields.title, fields.description, fields.description === null ? fields.contentDigest : null]),
-  );
+  return sha256(JSON.stringify([fields.title, fields.description, fields.contentDigest]));
 }
 
 function sha256(text: string): string {

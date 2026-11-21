@@ -38,9 +38,8 @@
   <text class="f" x="34" y="182">next_monitor_check_at</text>
   <text class="f" x="34" y="200">last_monitor_check_at</text>
   <text class="f" x="34" y="218">sitemap_lastmod_is_trusted</text>
-  <text class="f" x="34" y="236">discovery_fingerprints (jsonb)</text>
-  <text class="f" x="34" y="254">requires_headless_rendering</text>
-  <text class="f" x="34" y="272">headless_rendering_decided_at</text>
+  <text class="f" x="34" y="236">requires_headless_rendering</text>
+  <text class="f" x="34" y="254">headless_rendering_decided_at</text>
 
   <!-- site_workspaces -->
   <rect class="b" x="20" y="330" width="280" height="156" rx="6"/>
@@ -86,9 +85,9 @@
 
   <rect class="c3" x="384" y="393" width="3" height="50"/>
   <text class="g" x="394" y="404">generator</text>
-  <text class="f" x="466" y="404">importance_score</text>
-  <text class="f" x="466" y="422">generated_description</text>
-  <text class="f" x="466" y="440">generated_description_source_digest</text>
+  <text class="f" x="466" y="404">generated_description, listing_value</text>
+  <text class="f" x="466" y="422">assessed_page_type, exclusion_reason</text>
+  <text class="f" x="466" y="440">assessment_source_hash</text>
 
   <text class="g" x="394" y="466">lifecycle</text>
   <text class="f" x="466" y="466">first_seen_pipeline_run_id</text>

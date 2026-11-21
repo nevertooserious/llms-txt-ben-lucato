@@ -7,7 +7,8 @@ import type { PipelineStageDependencies } from './pipeline-stages';
 import { runPipeline } from './run-pipeline';
 import type { WorkerConfig } from './worker-config';
 
-export interface WorkerJobDependencies extends Pick<PipelineStageDependencies, 'crawl' | 'resolveRootUrl' | 'renderLlmsTxt'> {
+export interface WorkerJobDependencies
+  extends Pick<PipelineStageDependencies, 'crawl' | 'resolveRootUrl' | 'renderLlmsTxt' | 'llmClient'> {
   queue: PgBoss;
   databasePool: DatabasePool;
   logger: Logger;
@@ -39,6 +40,7 @@ export async function startWorkerJobs(dependencies: WorkerJobDependencies): Prom
         crawl: dependencies.crawl,
         resolveRootUrl: dependencies.resolveRootUrl,
         renderLlmsTxt: dependencies.renderLlmsTxt,
+        llmClient: dependencies.llmClient,
       });
     },
   );

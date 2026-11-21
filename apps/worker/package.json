@@ -9,6 +9,7 @@
     "typecheck": "tsc --project ."
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.12.0",
     "@llms-txt/contracts": "*",
     "@llms-txt/crawler": "*",
     "@llms-txt/db": "*",

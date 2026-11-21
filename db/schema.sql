@@ -36,8 +36,9 @@ create table sites (
   -- Generator: the blockquote summary at the top of llms.txt. Cached, because an LLM
   -- words it differently every time it is asked; regenerated only when the inputs change.
   generated_summary                text,
-  -- SHA-256 of the inputs the summary was written from (site title + the selected
-  -- pages' titles and descriptions).
+  -- SHA-256 of what should change the summary: the model, prompt version, site title,
+  -- the homepage's title and description, and the listed navigation pages' titles.
+  -- Narrow on purpose, so routine new content does not reword the summary.
   generated_summary_source_hash    text,
 
   -- Monitor state. A fixed interval; users can also trigger a check by hand.
@@ -50,8 +51,6 @@ create table sites (
   -- until lastmod is present and has been seen to agree with real content changes;
   -- set back to false if a page's content changed while its lastmod did not.
   sitemap_lastmod_is_trusted       boolean not null default false,
-  -- Fingerprints from discovery, e.g. {"sitemaps": {"<url>": {"etag": "...", "hash": "..."}}, "nav_hash": "..."}.
-  discovery_fingerprints           jsonb not null default '{}'::jsonb,
   -- Crawler: whether the site only has content after JavaScript runs, so every page is
   -- fetched with the headless browser. Null until a crawl decides it by fetching the
   -- homepage both ways; the worker passes null again once the decision is 30 days old,
@@ -207,17 +206,26 @@ create table pages (
   -- not count as a change.
   content_digest                       text,
   -- The monitor's change signal: SHA-256 of what feeds this page's llms.txt entry.
-  -- That is extracted_title + extracted_description, plus content_digest only when
-  -- the page has no usable description of its own and needs a generated one.
+  -- That is extracted_title + extracted_description + content_digest, because the
+  -- entry's description is written from the page's content.
   listing_fields_hash                  text,
   last_extracted_at                    timestamptz,
 
-  -- Generator: cached decisions.
-  importance_score                     real,
-  -- Written only when the page has no usable extracted_description.
+  -- Generator: the LLM's cached assessment of the page. Written together, and asked
+  -- for again only when assessment_source_hash no longer matches the page's inputs.
+  -- A page's importance is computed at selection, not stored.
   generated_description                text,
-  -- The content_digest that generated_description was written from.
-  generated_description_source_digest  text,
+  -- Corrects page_type, which the extractor guesses from the URL. Never 'home'.
+  assessed_page_type                   text check (assessed_page_type in
+                                         ('docs', 'api', 'guide', 'blog', 'product', 'pricing',
+                                          'about', 'legal', 'other')),
+  listing_value                        text check (listing_value in ('primary', 'optional', 'exclude')),
+  -- Set exactly when listing_value is 'exclude'.
+  exclusion_reason                     text check (exclusion_reason in
+                                         ('error_page', 'utility', 'thin', 'archive',
+                                          'individual_content', 'duplicate')),
+  -- SHA-256 of the model, prompt version and page inputs the assessment was made from.
+  assessment_source_hash               text,
 
   -- Lifecycle.
   first_seen_pipeline_run_id           uuid references pipeline_runs (id) on delete set null,
@@ -226,7 +234,15 @@ create table pages (
   -- overrides survive a page that comes back.
   removed_at                           timestamptz,
 
-  constraint pages_site_normalised_url_key unique (site_id, normalised_url)
+  constraint pages_site_normalised_url_key unique (site_id, normalised_url),
+  constraint pages_assessment_written_together check (
+    (assessment_source_hash is null) = (generated_description is null)
+    and (assessment_source_hash is null) = (assessed_page_type is null)
+    and (assessment_source_hash is null) = (listing_value is null)
+  ),
+  constraint pages_exclusion_reason_matches_listing_value check (
+    (exclusion_reason is not null) = (listing_value is not distinct from 'exclude')
+  )
 );
 
 -- The generator's read: live pages for a site.
