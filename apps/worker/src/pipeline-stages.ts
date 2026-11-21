@@ -24,7 +24,7 @@ import {
   type StoredPage,
 } from '@llms-txt/db';
 import { extractPage } from '@llms-txt/extractor';
-import { decidePublication, type GenerateLlmsTxtInput, type LlmClient } from '@llms-txt/generator';
+import { decidePublication, siteNameFrom, type GenerateLlmsTxtInput, type LlmClient } from '@llms-txt/generator';
 import {
   assessSitemapLastModifiedTrust,
   evaluateSafetyGate,
@@ -205,8 +205,11 @@ export async function runPipelineStages(
     currentStage: 'generate',
     pagesChangedCount: changedUrls.size,
   });
-  const renderedSiteTitle = siteTitle ?? new URL(site.rootUrl).host;
   const loadedPages = await loadGeneratorPages(databasePool, site.id);
+  const renderedSiteTitle = siteNameFrom(siteTitle ?? new URL(site.rootUrl).host, loadedPages);
+  if (siteTitle !== null && renderedSiteTitle !== siteTitle) {
+    await saveSiteTitle(databasePool, site.id, renderedSiteTitle);
+  }
   const { pages: generatorPages, siteSummary } = dependencies.llmClient
     ? await enrichPagesWithLlm({
         databasePool,
