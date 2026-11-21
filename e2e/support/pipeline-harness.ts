@@ -58,7 +58,6 @@ export interface StoredPageRow {
   extracted_title: string | null;
   page_type: string | null;
   discovered_via: string | null;
-  consecutive_not_found_count: number;
   removed_at: Date | null;
   markdown_variant_url: string | null;
 }
@@ -187,7 +186,7 @@ export class PipelineHarness {
   async storedPage(submitted: SubmittedSite, path: string): Promise<StoredPageRow | undefined> {
     const result = await this.databasePool.query<StoredPageRow>(
       `select http_status_code, fetch_method, extracted_title, page_type, discovered_via,
-              consecutive_not_found_count, removed_at, markdown_variant_url
+              removed_at, markdown_variant_url
          from pages where site_id = $1 and normalised_url = $2`,
       [submitted.siteId, urlOf(submitted.site, path)],
     );

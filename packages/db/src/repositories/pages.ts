@@ -32,8 +32,9 @@ export interface StoredPage {
   /** ISO 8601. */
   sitemapLastModifiedAt: string | null;
   markdownVariantUrl: string | null;
+  /** The page's links when it was last read; null if it has not been read yet. */
+  outboundLinkUrls: string[] | null;
   hasNoindexDirective: boolean;
-  consecutiveNotFoundCount: number;
   /** ISO 8601; null while the page is listed. */
   removedAt: string | null;
   contentDigest: string | null;
@@ -52,15 +53,15 @@ export async function loadStoredPages(database: Queryable, siteId: string): Prom
     discovered_via: DiscoverySource;
     sitemap_last_modified_at: Date | null;
     markdown_variant_url: string | null;
+    outbound_link_urls: string[] | null;
     has_noindex_directive: boolean;
-    consecutive_not_found_count: number;
     removed_at: Date | null;
     content_digest: string | null;
     listing_fields_hash: string | null;
   }>(
     `select normalised_url, fetch_url, http_status_code, http_etag, http_last_modified, fetch_method,
             crawl_depth, discovered_via, sitemap_last_modified_at, markdown_variant_url,
-            has_noindex_directive, consecutive_not_found_count, removed_at, content_digest,
+            outbound_link_urls, has_noindex_directive, removed_at, content_digest,
             listing_fields_hash
        from pages
       where site_id = $1`,
@@ -77,8 +78,8 @@ export async function loadStoredPages(database: Queryable, siteId: string): Prom
     discoveredVia: row.discovered_via,
     sitemapLastModifiedAt: row.sitemap_last_modified_at?.toISOString() ?? null,
     markdownVariantUrl: row.markdown_variant_url,
+    outboundLinkUrls: row.outbound_link_urls,
     hasNoindexDirective: row.has_noindex_directive,
-    consecutiveNotFoundCount: row.consecutive_not_found_count,
     removedAt: row.removed_at?.toISOString() ?? null,
     contentDigest: row.content_digest,
     listingFieldsHash: row.listing_fields_hash,
@@ -98,8 +99,9 @@ export interface CrawledPageWrite {
   /** ISO 8601. */
   sitemapLastModifiedAt: string | null;
   markdownVariantUrl: string | null;
+  /** The links this fetch read; null keeps the stored ones (a 304 or an error). */
+  outboundLinkUrls: string[] | null;
   hasNoindexDirective: boolean;
-  consecutiveNotFoundCount: number;
   /** ISO 8601. */
   removedAt: string | null;
 }
@@ -115,9 +117,9 @@ export async function saveCrawledPage(
     `insert into pages (
        site_id, normalised_url, fetch_url, http_status_code, http_etag, http_last_modified,
        last_fetched_at, fetch_method, crawl_depth, discovered_via, sitemap_last_modified_at,
-       markdown_variant_url, has_noindex_directive, consecutive_not_found_count, removed_at,
-       first_seen_pipeline_run_id, last_seen_pipeline_run_id)
-     values ($1, $2, $3, $4, $5, $6, now(), $7, $8, $9, $10, $11, $12, $13, $14, $15, $15)
+       markdown_variant_url, has_noindex_directive, removed_at,
+       first_seen_pipeline_run_id, last_seen_pipeline_run_id, outbound_link_urls)
+     values ($1, $2, $3, $4, $5, $6, now(), $7, $8, $9, $10, $11, $12, $13, $14, $14, $15)
      on conflict (site_id, normalised_url) do update set
        fetch_url = excluded.fetch_url,
        http_status_code = excluded.http_status_code,
@@ -130,9 +132,9 @@ export async function saveCrawledPage(
        sitemap_last_modified_at = excluded.sitemap_last_modified_at,
        markdown_variant_url = excluded.markdown_variant_url,
        has_noindex_directive = excluded.has_noindex_directive,
-       consecutive_not_found_count = excluded.consecutive_not_found_count,
        removed_at = excluded.removed_at,
-       last_seen_pipeline_run_id = excluded.last_seen_pipeline_run_id`,
+       last_seen_pipeline_run_id = excluded.last_seen_pipeline_run_id,
+       outbound_link_urls = coalesce(excluded.outbound_link_urls, pages.outbound_link_urls)`,
     [
       siteId,
       page.normalisedUrl,
@@ -146,18 +148,17 @@ export async function saveCrawledPage(
       page.sitemapLastModifiedAt,
       page.markdownVariantUrl,
       page.hasNoindexDirective,
-      page.consecutiveNotFoundCount,
       page.removedAt,
       pipelineRunId,
+      page.outboundLinkUrls,
     ],
   );
 }
 
 /**
  * Writes the link signals the crawl only knows at its end. Pages not listed keep theirs.
- * first_link_position is written once and kept: a later check reads fewer pages (304s
- * have no links to read), so its numbering is not comparable with the first crawl's,
- * and an order that moved between checks would republish a file nothing changed in.
+ * The crawl computes them from every page's current links, so unchanged links give
+ * unchanged values however few pages a check re-read.
  */
 export async function saveLinkSignals(
   database: Queryable,
@@ -172,7 +173,7 @@ export async function saveLinkSignals(
             inbound_link_count = signals.inbound_link_count,
             navigation_label = signals.navigation_label,
             navigation_position = signals.navigation_position,
-            first_link_position = coalesce(pages.first_link_position, signals.first_link_position)
+            first_link_position = signals.first_link_position
        from unnest($2::text[], $3::boolean[], $4::integer[], $5::text[], $6::integer[], $7::integer[])
             as signals (normalised_url, is_in_site_navigation, inbound_link_count, navigation_label,
                         navigation_position, first_link_position)

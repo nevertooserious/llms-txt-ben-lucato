@@ -15,6 +15,7 @@ import { HeadlessRenderer } from '../network/headless-renderer';
 import { HttpFetcher, type FetchOutcome, type FetchRequest } from '../network/http-fetcher';
 import { cleanUrlForFetch, isInScope, isOnRelatedHost, normaliseUrl } from '../discovery/normalise-url';
 import { parseSitemap } from '../discovery/parse-sitemap';
+import { computeLinkGraphSignals } from './link-graph';
 import { readPageSignals, type PageSignals } from '../page-signals/read-page-signals';
 import { looksLikeJavaScriptShell, renderedPageIsBetter, renderingAddsContent } from '../page-signals/render-decision';
 import {
@@ -170,11 +171,16 @@ class SiteCrawl {
   private readonly frontier = new Map<string, FrontierEntry>();
   private readonly pending = new Set<string>();
   private readonly fetchedUrls = new Set<string>();
-  private readonly inboundLinkSources = new Map<string, Set<string>>();
+  /** The links of each page read in this crawl, in page order. */
+  private readonly outboundLinksRead = new Map<string, string[]>();
+  /** Pages that only forward with a meta refresh, and where to. */
+  private readonly metaRefreshTargets = new Map<string, string>();
+  /** Known pages that answered 304 or 404/410, which decide whether their stored links count. */
+  private readonly notModifiedUrls = new Set<string>();
+  private readonly notFoundUrls = new Set<string>();
+  private homepageWasRead = false;
   /** The first homepage navigation link to each URL: its text and where it comes among them. */
   private readonly navigationLinks = new Map<string, { label: string | null; position: number }>();
-  /** Each linked URL's place in the order the crawl first saw links, from 0. */
-  private readonly firstLinkPositions = new Map<string, number>();
   /** robots.txt rules of the site's other hosts, by origin, loaded when first needed. */
   private readonly relatedHostRobots = new Map<string, RobotsRules>();
   /** The related-host URLs the homepage navigation links, up to MAX_RELATED_HOST_PAGES. */
@@ -254,7 +260,7 @@ class SiteCrawl {
       stopReason: this.homepageIsDisallowedByRobots && this.emittedUrls.length === 0 ? 'homepage_disallowed_by_robots' : stopReason,
       pagesFetchedCount: this.emittedUrls.length,
       pagesWithContentCount: this.pagesWithContentCount,
-      linkSignals: Object.fromEntries(this.emittedUrls.map((url) => [url, this.linkSignalsFor(url)])),
+      linkSignals: this.finalLinkSignals(),
       unchangedPerSitemapUrls: this.unchangedPerSitemapUrls,
       failedFetches: this.failedFetches,
       requiresHeadlessRendering: this.requiresHeadlessRendering ?? false,
@@ -436,6 +442,13 @@ class SiteCrawl {
         allowRelatedHost: true,
       });
     }
+    // The links of a page that answers 304 are not read again, so they are queued here.
+    for (const knownPage of this.knownPages.values()) {
+      if (knownPage.isRemoved) continue;
+      for (const link of knownPage.outboundLinkUrls ?? []) {
+        this.addToFrontier(link, knownPage.crawlDepth + 1, 'page_link', null);
+      }
+    }
   }
 
   /** robots.txt rules for a URL on this site's host. robots.txt itself is always allowed. */
@@ -546,10 +559,17 @@ class SiteCrawl {
       const signals = readPageSignals(page.html, page.finalUrl, page.headers);
       if (this.followMetaRefresh(entry, finalUrl, signals)) return;
       hasNoindexDirective = signals.isNoindex;
-      if (!entry.isOnRelatedHost) {
+      if (entry.isOnRelatedHost) {
+        // Its links are not followed: an empty list, so it can still answer 304 next time.
+        this.outboundLinksRead.set(entry.url, []);
+      } else {
         this.followLinks(entry, signals);
         markdownVariantUrl = await this.probeMarkdownVariant(page.finalUrl);
       }
+    } else if (page.httpStatusCode === 304) {
+      this.notModifiedUrls.add(entry.url);
+    } else if (page.httpStatusCode === 404 || page.httpStatusCode === 410) {
+      this.notFoundUrls.add(entry.url);
     }
     this.emittedUrls.push(entry.url);
     if (isSuccess || page.httpStatusCode === 304) this.pagesWithContentCount += 1;
@@ -564,16 +584,20 @@ class SiteCrawl {
       crawlSignals: { crawlDepth: entry.crawlDepth, discoveredVia: entry.discoveredVia, hasNoindexDirective },
       markdownVariantUrl,
       sitemapLastModified: entry.sitemapLastModified,
+      outboundLinkUrls: this.outboundLinksRead.get(entry.url) ?? null,
     });
   }
 
   /**
    * A known page whose sitemap <lastmod> is the same as last time, on a site whose
    * lastmod has proved reliable. The homepage is always fetched: navigation comes from it.
+   * So is a page with no stored links, which has to be read once to have them.
    */
   private isUnchangedPerSitemap(entry: FrontierEntry): boolean {
     if (this.options.sitemapLastModifiedIsTrusted !== true || entry.crawlDepth === 0) return false;
-    const stored = this.knownPages.get(entry.url)?.sitemapLastModifiedAt ?? null;
+    const knownPage = this.knownPages.get(entry.url);
+    if (knownPage?.outboundLinkUrls === null) return false;
+    const stored = knownPage?.sitemapLastModifiedAt ?? null;
     if (stored === null || entry.sitemapLastModified === null) return false;
     const storedTime = Date.parse(stored);
     return !Number.isNaN(storedTime) && storedTime === Date.parse(entry.sitemapLastModified);
@@ -581,11 +605,11 @@ class SiteCrawl {
 
   /**
    * Validators for a conditional GET of a known page. Not for the homepage, whose links
-   * discovery needs; a 304 has no body to read them from.
+   * discovery needs, or a page with no stored links; a 304 has no body to read them from.
    */
   private conditionalRequestHeaders(entry: FrontierEntry): Pick<FetchRequest, 'ifNoneMatch' | 'ifModifiedSince'> {
     const knownPage = this.knownPages.get(entry.url);
-    if (knownPage === undefined || entry.crawlDepth === 0) return {};
+    if (knownPage === undefined || knownPage.outboundLinkUrls === null || entry.crawlDepth === 0) return {};
     return {
       ...(knownPage.httpEtag !== null && { ifNoneMatch: knownPage.httpEtag }),
       ...(knownPage.httpLastModified !== null && { ifModifiedSince: knownPage.httpLastModified }),
@@ -708,20 +732,18 @@ class SiteCrawl {
       if (navigationLink !== undefined && !this.navigationLinks.has(targetUrl)) {
         this.navigationLinks.set(targetUrl, navigationLink);
       }
-      const sources = this.inboundLinkSources.get(entry.url);
-      if (sources !== undefined) {
-        const targetSources = this.inboundLinkSources.get(targetUrl) ?? new Set<string>();
-        for (const source of sources) targetSources.add(source);
-        this.inboundLinkSources.set(targetUrl, targetSources);
-      }
+      this.metaRefreshTargets.set(entry.url, targetUrl);
     }
     return true;
   }
 
   private followLinks(entry: FrontierEntry, signals: PageSignals): void {
     const isHomepage = entry.crawlDepth === 0;
+    const outboundLinks = new Set<string>();
+    this.outboundLinksRead.set(entry.url, []);
 
     if (isHomepage) {
+      this.homepageWasRead = true;
       for (const [position, navigationLink] of signals.navigationLinks.entries()) {
         const url = normaliseUrl(navigationLink.url);
         if (url === null) continue;
@@ -751,12 +773,10 @@ class SiteCrawl {
       if (url === null || url === sourceUrl) continue;
       // Links to a related-host page count toward it, but only the navigation queues one.
       if (!isInScope(url, this.rootUrl) && this.frontier.get(url)?.isOnRelatedHost !== true) continue;
-      let sources = this.inboundLinkSources.get(url);
-      if (sources === undefined) this.inboundLinkSources.set(url, (sources = new Set()));
-      sources.add(sourceUrl);
-      if (!this.firstLinkPositions.has(url)) this.firstLinkPositions.set(url, this.firstLinkPositions.size);
+      outboundLinks.add(url);
       this.addToFrontier(link, entry.crawlDepth + 1, 'page_link', null);
     }
+    this.outboundLinksRead.set(sourceUrl, [...outboundLinks]);
   }
 
   /**
@@ -833,14 +853,43 @@ class SiteCrawl {
     });
   }
 
-  private linkSignalsFor(url: string): LinkSignals {
-    return {
-      isInSiteNavigation: this.navigationLinks.has(url),
-      inboundLinkCount: this.inboundLinkSources.get(url)?.size ?? 0,
-      navigationLabel: this.navigationLinks.get(url)?.label ?? null,
-      navigationPosition: this.navigationLinks.get(url)?.position ?? null,
-      firstLinkPosition: this.firstLinkPositions.get(url) ?? null,
-    };
+  /**
+   * The site's links as they stand: what this crawl read, and the stored links of every
+   * other known page. A page that was not reached or could not be fetched keeps its links;
+   * one that answered 404/410, is removed, or now only forwards contributes none.
+   */
+  private currentLinksByPage(): Map<string, readonly string[]> {
+    const linksByPage = new Map<string, readonly string[]>();
+    for (const knownPage of this.knownPages.values()) {
+      if (knownPage.outboundLinkUrls === null || this.notFoundUrls.has(knownPage.normalisedUrl)) continue;
+      if (knownPage.isRemoved && !this.notModifiedUrls.has(knownPage.normalisedUrl)) continue;
+      linksByPage.set(knownPage.normalisedUrl, knownPage.outboundLinkUrls);
+    }
+    for (const [url, links] of this.outboundLinksRead) linksByPage.set(url, links);
+    for (const url of this.metaRefreshTargets.keys()) linksByPage.delete(url);
+    return linksByPage;
+  }
+
+  /**
+   * Navigation comes from the homepage, so without a read of it a page not fetched in this
+   * crawl is left out and keeps the signals it has.
+   */
+  private finalLinkSignals(): Record<string, LinkSignals> {
+    const graphSignals = computeLinkGraphSignals(this.rootUrl, this.currentLinksByPage(), this.metaRefreshTargets);
+    const urls = new Set(this.emittedUrls);
+    if (this.homepageWasRead) for (const url of this.knownPages.keys()) urls.add(url);
+    return Object.fromEntries(
+      [...urls].map((url) => [
+        url,
+        {
+          isInSiteNavigation: this.navigationLinks.has(url),
+          inboundLinkCount: graphSignals.get(url)?.inboundLinkCount ?? 0,
+          navigationLabel: this.navigationLinks.get(url)?.label ?? null,
+          navigationPosition: this.navigationLinks.get(url)?.position ?? null,
+          firstLinkPosition: graphSignals.get(url)?.firstLinkPosition ?? null,
+        },
+      ]),
+    );
   }
 }
 

@@ -75,8 +75,8 @@ async function addPage(site: { siteId: string; pipelineRunId: string; url: (path
     discoveredVia: 'navigation',
     sitemapLastModifiedAt: null,
     markdownVariantUrl: null,
+    outboundLinkUrls: null,
     hasNoindexDirective: false,
-    consecutiveNotFoundCount: 0,
     removedAt: null,
   });
   await saveExtractedPage(databasePool, site.siteId, {

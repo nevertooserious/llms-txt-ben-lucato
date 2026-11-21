@@ -225,11 +225,8 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
     });
   });
 
-  it('a page that answers 404 stays listed after one check and is removed after the second', async () => {
+  it('a page that answers 404 is removed by that check', async () => {
     changingSite.pages['/blog/launch'] = { ...changingSite.pages['/blog/launch']!, status: 404, isLinked: false };
-
-    expect(await scheduledCheck()).toMatchObject({ status: 'unchanged' });
-    expect(await hostedLlmsTxt()).toContain(`${site.origin}/blog/launch`);
 
     expect(await scheduledCheck()).toMatchObject({ status: 'succeeded' });
     expect(await hostedLlmsTxt()).not.toContain(`${site.origin}/blog/launch`);
