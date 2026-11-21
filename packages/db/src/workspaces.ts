@@ -87,3 +87,57 @@ export async function loadWorkspaceOverrides(database: Queryable, workspaceId: s
     isExcluded: row.is_excluded,
   }));
 }
+
+/** What the workspace screen shows besides the latest run. */
+export interface WorkspaceOverview {
+  rootUrl: string;
+  siteTitle: string | null;
+  /** Null when monitoring was never turned on; in the past once it has lapsed. */
+  monitoringEnabledUntil: Date | null;
+  nextMonitorCheckAt: Date | null;
+  publishedVersion: {
+    versionNumber: number;
+    llmsTxtContent: string;
+    listedPageCount: number;
+    createdAt: Date;
+  } | null;
+}
+
+export async function loadWorkspaceOverview(database: Queryable, workspaceId: string): Promise<WorkspaceOverview | null> {
+  const result = await database.query<{
+    root_url: string;
+    site_title: string | null;
+    monitoring_enabled_until: Date | null;
+    next_monitor_check_at: Date | null;
+    version_number: number | null;
+    llms_txt_content: string | null;
+    listed_page_count: number | null;
+    version_created_at: Date | null;
+  }>(
+    `select sites.root_url, sites.site_title, workspaces.monitoring_enabled_until, sites.next_monitor_check_at,
+            versions.version_number, versions.llms_txt_content, versions.listed_page_count,
+            versions.created_at as version_created_at
+       from site_workspaces workspaces
+       join sites on sites.id = workspaces.site_id
+       left join llms_txt_versions versions on versions.id = workspaces.published_version_id
+      where workspaces.id = $1`,
+    [workspaceId],
+  );
+  const row = result.rows[0];
+  if (row === undefined) return null;
+  return {
+    rootUrl: row.root_url,
+    siteTitle: row.site_title,
+    monitoringEnabledUntil: row.monitoring_enabled_until,
+    nextMonitorCheckAt: row.next_monitor_check_at,
+    publishedVersion:
+      row.version_number === null
+        ? null
+        : {
+            versionNumber: row.version_number,
+            llmsTxtContent: row.llms_txt_content!,
+            listedPageCount: row.listed_page_count!,
+            createdAt: row.version_created_at!,
+          },
+  };
+}

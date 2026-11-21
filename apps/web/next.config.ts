@@ -9,7 +9,7 @@ loadEnvConfig(path.resolve(process.cwd(), '../..'), process.env.NODE_ENV !== 'pr
 
 const nextConfig: NextConfig = {
   // Workspace packages export TypeScript source; Next compiles them.
-  transpilePackages: ['@llms-txt/contracts', '@llms-txt/db', '@llms-txt/runtime'],
+  transpilePackages: ['@llms-txt/contracts', '@llms-txt/db', '@llms-txt/generator', '@llms-txt/runtime'],
   // Loaded by Node at run time rather than bundled.
   serverExternalPackages: ['pg-boss'],
   // Stop `next dev` from writing apps/web/AGENTS.md when it detects a coding agent.

@@ -1,3 +1,4 @@
+import type { PipelineTrigger } from '@llms-txt/contracts';
 import type { Queryable, Transaction } from './transaction';
 
 // pipeline_runs status changes. Each is a conditional update that names the status it
@@ -151,4 +152,67 @@ export async function reapStalePipelineRuns(
     [thresholds.heartbeatStaleAfterSeconds, thresholds.queuedStaleAfterSeconds],
   );
   return result.rowCount ?? 0;
+}
+
+export type PipelineRunStatus = 'queued' | 'running' | FinishedPipelineRunStatus;
+
+/** A run as the frontend shows it: status, stage and the progress counters. */
+export interface PipelineRunSummary {
+  id: string;
+  status: PipelineRunStatus;
+  currentStage: PipelineRunStage | null;
+  triggeredBy: PipelineTrigger;
+  pagesDiscoveredCount: number;
+  pagesFetchedCount: number;
+  pagesChangedCount: number;
+  pagesFailedCount: number;
+  errorMessage: string | null;
+  createdAt: Date;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+}
+
+/** The site's most recently created run, for the frontend to poll, or null if it has none. */
+export async function loadLatestPipelineRunSummary(
+  database: Queryable,
+  siteId: string,
+): Promise<PipelineRunSummary | null> {
+  const result = await database.query<{
+    id: string;
+    status: PipelineRunStatus;
+    current_stage: PipelineRunStage | null;
+    triggered_by: PipelineTrigger;
+    pages_discovered_count: number;
+    pages_fetched_count: number;
+    pages_changed_count: number;
+    pages_failed_count: number;
+    error_message: string | null;
+    created_at: Date;
+    started_at: Date | null;
+    finished_at: Date | null;
+  }>(
+    `select id, status, current_stage, triggered_by, pages_discovered_count, pages_fetched_count,
+            pages_changed_count, pages_failed_count, error_message, created_at, started_at, finished_at
+       from pipeline_runs
+      where site_id = $1
+      order by created_at desc
+      limit 1`,
+    [siteId],
+  );
+  const row = result.rows[0];
+  if (row === undefined) return null;
+  return {
+    id: row.id,
+    status: row.status,
+    currentStage: row.current_stage,
+    triggeredBy: row.triggered_by,
+    pagesDiscoveredCount: row.pages_discovered_count,
+    pagesFetchedCount: row.pages_fetched_count,
+    pagesChangedCount: row.pages_changed_count,
+    pagesFailedCount: row.pages_failed_count,
+    errorMessage: row.error_message,
+    createdAt: row.created_at,
+    startedAt: row.started_at,
+    finishedAt: row.finished_at,
+  };
 }

@@ -184,7 +184,8 @@ Entries are regenerated only for changed pages. The file is rendered per workspa
 - **Generate:** URL input, then progress polled from `pipeline_runs` (pages discovered, fetched, changed).
 - **Result:** rendered preview next to raw text, spec validation status, copy and download.
 - **Editing:** override a page's description or exclude a page.
-- **API:** `POST /api/sites` submits a URL. `PUT /api/workspaces/{public_slug}/monitoring` with `{"enabled": true | false}` turns monitoring on, renews it or turns it off. `POST /api/workspaces/{public_slug}/checks` is "check now". Both workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
+- **Secret link:** `/w/{public_slug}#token=…`. The token is in the fragment, which browsers never send, and the browser keeps the links it created so the home page can list them.
+- **API:** `POST /api/sites` submits a URL. `GET /api/workspaces/{public_slug}` is what the workspace screen polls: the latest run, the published file with its validation result, and monitoring. `PUT /api/workspaces/{public_slug}/monitoring` with `{"enabled": true | false}` turns monitoring on, renews it or turns it off. `POST /api/workspaces/{public_slug}/checks` is "check now". The workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
 - **Hosted URL:** a stable `/w/{public_slug}/llms.txt`. The spec puts llms.txt at the site's own root, so the site owner redirects or proxies to this URL. The README has to explain how.
 - **Monitoring:** opt-in per workspace with an expiry, a "check now" button, and version history with diffs.
 
