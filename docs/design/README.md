@@ -162,7 +162,7 @@ The change signal is `listing_fields_hash`: a hash of what feeds the page's llms
 |---|---|
 | The page's URL returns 404 or 410 once | `consecutive_not_found_count` becomes 1; the page stays listed |
 | It returns 404 or 410 on the next check too | `removed_at` is set and the page is dropped from the file; the row is kept so overrides survive |
-| It still loads but is gone from the sitemap and navigation | Not removed; its importance score falls, so it may move to `## Optional` or below the cut-off |
+| It still loads but is gone from the sitemap and navigation | Not removed; the score computed at selection falls, so it may move to `## Optional` or below the cut-off |
 | The fetch fails (timeout, 5xx, blocked) | The stored row is reused; the failure counts toward the safety gate |
 | A removed page returns 200 again | The counter resets, `removed_at` is cleared, and it is listed again |
 
@@ -187,7 +187,7 @@ Entries are regenerated only for changed pages. The file is rendered per workspa
 - **Editing:** override a page's description or exclude a page.
 - **Secret link:** `/w/{public_slug}#token=…`. The token is in the fragment, which browsers never send, and the browser keeps the links it created so the home page can list them.
 - **API:** `POST /api/sites` submits a URL. `GET /api/workspaces/{public_slug}` is what the workspace screen polls: the latest run, the published file with its validation result, and monitoring. `PUT /api/workspaces/{public_slug}/monitoring` with `{"enabled": true | false}` turns monitoring on, renews it or turns it off. `POST /api/workspaces/{public_slug}/checks` is "check now". The workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
-- **Hosted URL:** a stable `/w/{public_slug}/llms.txt`. The spec puts llms.txt at the site's own root, so the site owner redirects or proxies to this URL. The README has to explain how.
+- **Hosted URL:** a stable `/w/{public_slug}/llms.txt`. The spec puts llms.txt at the site's own root, so the site owner redirects or proxies to this URL. The [root README](../../README.md#serving-llmstxt-from-your-own-domain) explains how.
 - **Monitoring:** opt-in per workspace with an expiry, a "check now" button, and version history with diffs.
 
 ## 7. Security and abuse limits
