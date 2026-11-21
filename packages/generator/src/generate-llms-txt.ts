@@ -21,6 +21,10 @@ export interface GenerateLlmsTxtInput {
 
 /** Descriptions are cut to this length at a word boundary, so an entry stays one readable line. */
 const MAXIMUM_DESCRIPTION_LENGTH = 300;
+/** What sites put between a page's name and the site's name in a title. */
+const TITLE_SEPARATORS = [' | ', ' - ', ' – ', ' — ', ' · ', ' :: '];
+/** One other page sharing part of a title could be chance; two look like a template. */
+const MINIMUM_PAGES_SHARING_SITE_NAME = 2;
 
 /**
  * Deterministic: the same input always renders the same text.
@@ -69,15 +73,54 @@ function renderEntry(entry: SelectedPage, siteTitle: string): string {
 }
 
 /**
- * The page's title without the site name most sites append (`Docs | Acme`). A page with
- * no title, or titled only with the site name, gets one from the URL's last path segment.
+ * The site's name, from a homepage title that may also carry a tagline or page name
+ * (`The guide – Acme`). The part at either end counts as the name only when at least
+ * MINIMUM_PAGES_SHARING_SITE_NAME other pages carry it too; otherwise the title is kept.
+ */
+export function siteNameFrom(homepageTitle: string, pages: readonly GeneratorPage[]): string {
+  const title = singleLine(homepageTitle);
+  const otherTitles = pages
+    .filter((page) => page.crawlSignals.crawlDepth > 0)
+    .map((page) => singleLine(page.record.title ?? ''))
+    .filter((pageTitle) => pageTitle !== '' && pageTitle !== title);
+
+  let siteName = title;
+  let mostPagesSharing = MINIMUM_PAGES_SHARING_SITE_NAME - 1;
+  for (const separator of TITLE_SEPARATORS) {
+    if (!title.includes(separator)) continue;
+    const lastPart = title.slice(title.lastIndexOf(separator) + separator.length).trim();
+    const firstPart = title.slice(0, title.indexOf(separator)).trim();
+    for (const candidate of [lastPart, firstPart]) {
+      if (candidate === '') continue;
+      const pagesSharing = otherTitles.filter((pageTitle) => carriesSiteName(pageTitle, candidate)).length;
+      if (pagesSharing > mostPagesSharing) {
+        siteName = candidate;
+        mostPagesSharing = pagesSharing;
+      }
+    }
+  }
+  return siteName;
+}
+
+function carriesSiteName(title: string, siteName: string): boolean {
+  return TITLE_SEPARATORS.some(
+    (separator) => title.endsWith(`${separator}${siteName}`) || title.startsWith(`${siteName}${separator}`),
+  );
+}
+
+/**
+ * The page's title without the site name most sites add (`Docs | Acme`, `Acme | Docs`). A
+ * page with no title, or titled only with the site name, gets one from the URL's last
+ * path segment.
  */
 export function entryTitle(page: GeneratorPage, siteTitle: string): string {
   const title = singleLine(page.record.title ?? '');
   if (title !== '' && siteTitle !== '') {
-    for (const separator of [' | ', ' - ', ' – ', ' — ', ' · ', ' :: ']) {
+    for (const separator of TITLE_SEPARATORS) {
       const suffix = `${separator}${siteTitle}`;
       if (title.length > suffix.length && title.endsWith(suffix)) return title.slice(0, -suffix.length).trim();
+      const prefix = `${siteTitle}${separator}`;
+      if (title.length > prefix.length && title.startsWith(prefix)) return title.slice(prefix.length).trim();
     }
   }
   if (title !== '' && title !== siteTitle) return title;

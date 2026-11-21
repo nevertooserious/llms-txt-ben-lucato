@@ -2,7 +2,7 @@
 // Pure: the worker loads its inputs, makes the LLM calls through an LlmClient, and stores
 // the outputs. With no LLM configured, the summary falls back to the homepage's
 // description and every candidate page is listed with its own description.
-export { entryTitle, generateLlmsTxt, type GenerateLlmsTxtInput } from './generate-llms-txt';
+export { entryTitle, generateLlmsTxt, siteNameFrom, type GenerateLlmsTxtInput } from './generate-llms-txt';
 export {
   buildPageAssessmentPrompt,
   buildSiteSummaryInput,
