@@ -34,10 +34,29 @@ export function parseRobotsTxt(robotsTxtUrl: string, robotsTxt: string): RobotsR
     status: 'parsed',
     // undefined means the URL is on another host. The crawler only asks about its own
     // host's URLs; refuse anything else rather than guess.
-    isAllowed: (url) => robots.isAllowed(url, ROBOTS_USER_AGENT_TOKEN) ?? false,
+    isAllowed: (url) => robots.isAllowed(withSchemeOf(robotsTxtUrl, url), ROBOTS_USER_AGENT_TOKEN) ?? false,
     crawlDelaySeconds: crawlDelay === undefined || !Number.isFinite(crawlDelay) || crawlDelay < 0 ? null : crawlDelay,
     sitemapUrls: robots.getSitemaps(),
   };
+}
+
+/**
+ * The URL under the scheme robots.txt was fetched with, when it is on the same host and
+ * both use their default port. A site that redirects `https://host/docs` to
+ * `http://host/docs/` and back passes through the other scheme of the same host, and its
+ * own rules are the ones we have for it; without this the hop would count as another
+ * host's URL and be refused.
+ */
+function withSchemeOf(robotsTxtUrl: string, url: string): string {
+  try {
+    const target = new URL(url);
+    const robots = new URL(robotsTxtUrl);
+    if (target.hostname !== robots.hostname || target.port !== '' || robots.port !== '') return url;
+    target.protocol = robots.protocol;
+    return target.href;
+  } catch {
+    return url;
+  }
 }
 
 /** No usable robots.txt (4xx, or too many redirects): everything is allowed. */

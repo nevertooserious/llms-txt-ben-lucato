@@ -178,6 +178,8 @@ class SiteCrawl {
   private insertionOrder = 0;
   private readonly fetchRootUrl: string;
   private readonly deadline: number;
+  /** robots.txt disallows the homepage or a redirect on the way to it. */
+  private homepageIsDisallowedByRobots = false;
 
   constructor(private readonly options: CrawlSiteOptions) {
     const rootUrl = normaliseUrl(options.rootUrl);
@@ -207,7 +209,7 @@ class SiteCrawl {
     await this.loadRobotsTxt();
     if (this.robots.status === 'unreachable') return this.result('robots_txt_unreachable', decidedBefore);
 
-    this.addToFrontier(this.fetchRootUrl, 0, 'navigation', null);
+    if (!this.addToFrontier(this.fetchRootUrl, 0, 'navigation', null)) this.homepageIsDisallowedByRobots = true;
     await this.seedFromSitemaps();
     await this.seedFromExistingLlmsTxt();
     this.seedFromKnownPages();
@@ -228,7 +230,8 @@ class SiteCrawl {
   private result(stopReason: CrawlStopReason, decidedBefore: boolean): CrawlResult {
     return {
       robotsTxtStatus: this.robots.status,
-      stopReason,
+      // Said only when nothing else was fetched either: it is then why the run has no pages.
+      stopReason: this.homepageIsDisallowedByRobots && this.emittedUrls.length === 0 ? 'homepage_disallowed_by_robots' : stopReason,
       pagesFetchedCount: this.emittedUrls.length,
       pagesWithContentCount: this.pagesWithContentCount,
       linkSignals: Object.fromEntries(this.emittedUrls.map((url) => [url, this.linkSignalsFor(url)])),
@@ -511,7 +514,9 @@ class SiteCrawl {
 
   /** Fetches one page the way the site needs. Null when there is nothing to keep. */
   private async fetchPage(entry: FrontierEntry): Promise<FetchedPage | null> {
-    if (this.requiresHeadlessRendering === true) return this.renderPage(entry.fetchUrl);
+    if (this.requiresHeadlessRendering === true) {
+      return this.renderPage(entry.fetchUrl, { isHomepage: entry.crawlDepth === 0 });
+    }
 
     const outcome = await this.politeFetch({
       url: entry.fetchUrl,
@@ -522,6 +527,7 @@ class SiteCrawl {
     if (outcome.kind === 'failed') {
       // Not an HTML page, or a redirect into a disallowed path: not part of the site's
       // llms.txt, and not a failure of the site either.
+      if (outcome.reason === 'disallowed_by_robots' && entry.crawlDepth === 0) this.homepageIsDisallowedByRobots = true;
       if (outcome.reason === 'unsupported_content_type' || outcome.reason === 'disallowed_by_robots') return null;
       this.recordFailure(entry.fetchUrl, outcome.reason, outcome.message);
       return null;
@@ -571,7 +577,7 @@ class SiteCrawl {
     return plainPage;
   }
 
-  private async renderPage(url: string, { recordFailure = true } = {}): Promise<FetchedPage | null> {
+  private async renderPage(url: string, { recordFailure = true, isHomepage = false } = {}): Promise<FetchedPage | null> {
     this.renderer ??= new HeadlessRenderer({
       networkPolicy: this.options.networkPolicy,
       resolveHostname: this.options.resolveHostname,
@@ -580,6 +586,7 @@ class SiteCrawl {
     // The browser's requests to this host obey robots.txt too, as a crawler's should.
     const outcome = await this.renderer.render(url, { isUrlAllowed: this.isRedirectAllowed });
     if (outcome.kind === 'failed') {
+      if (isHomepage && outcome.reason === 'disallowed_by_robots') this.homepageIsDisallowedByRobots = true;
       if (recordFailure && outcome.reason !== 'disallowed_by_robots' && outcome.reason !== 'unsupported_content_type') {
         this.recordFailure(url, outcome.reason, outcome.message);
       }
