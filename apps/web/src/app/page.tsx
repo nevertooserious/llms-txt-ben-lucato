@@ -1,3 +1,4 @@
+import { readDemoSiteEnabled } from '@/server/composition/web-config';
 import { loadDemoSitePath } from '@/server/sites/demo-site';
 import { webServices } from '@/server/composition/web-services';
 import { HomeScreen } from '@/features/home/home-screen';
@@ -7,8 +8,8 @@ export const dynamic = 'force-dynamic';
 
 /** The home page must still render if the demo cannot be looked up. */
 async function demoSitePath(): Promise<string | null> {
-  // Set only by docker-compose.yml. Checked first, so no other deployment touches the database here.
-  if (process.env.DEMO_SITE_ENABLED !== 'true') return null;
+  // Checked first, so no other deployment touches the database here.
+  if (!readDemoSiteEnabled()) return null;
   const services = webServices();
   try {
     return await loadDemoSitePath(services.databasePool);

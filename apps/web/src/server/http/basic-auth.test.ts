@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { basicAuthCredentials, isAuthorised, isPublicPath } from './basic-auth';
+import { readBasicAuthCredentials } from '../composition/web-config';
+import { isAuthorised, isPublicPath } from './basic-auth';
 
 const credentials = { username: 'user1', password: 'pass1' };
 const header = (text: string) => `Basic ${Buffer.from(text).toString('base64')}`;
 
-describe('basicAuthCredentials', () => {
+describe('readBasicAuthCredentials', () => {
   it('defaults to user1 / pass1, including when the variables are empty', () => {
-    expect(basicAuthCredentials({})).toEqual(credentials);
-    expect(basicAuthCredentials({ BASIC_AUTH_USERNAME: '', BASIC_AUTH_PASSWORD: '' })).toEqual(credentials);
+    expect(readBasicAuthCredentials({})).toEqual(credentials);
+    expect(readBasicAuthCredentials({ BASIC_AUTH_USERNAME: '', BASIC_AUTH_PASSWORD: '' })).toEqual(credentials);
   });
 
   it('reads the environment', () => {
-    expect(basicAuthCredentials({ BASIC_AUTH_USERNAME: 'a', BASIC_AUTH_PASSWORD: 'b' })).toEqual({
+    expect(readBasicAuthCredentials({ BASIC_AUTH_USERNAME: 'a', BASIC_AUTH_PASSWORD: 'b' })).toEqual({
       username: 'a',
       password: 'b',
     });
