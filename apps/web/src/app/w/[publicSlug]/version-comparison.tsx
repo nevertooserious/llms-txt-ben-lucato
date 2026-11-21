@@ -14,10 +14,13 @@ export function VersionComparison({
   publicSlug,
   accessToken,
   publishedVersionNumber,
+  newestVersionNumber,
 }: {
   publicSlug: string;
   accessToken: string;
   publishedVersionNumber: number;
+  /** Differs from the published version while an older one is pinned. */
+  newestVersionNumber: number;
 }) {
   const [versions, setVersions] = useState<LlmsTxtVersionSummaryView[] | null>(null);
   // Null until the user picks: the comparison then follows the two newest versions.
@@ -28,7 +31,7 @@ export function VersionComparison({
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (publishedVersionNumber < 2) return;
+    if (newestVersionNumber < 2) return;
     let isCancelled = false;
     fetchVersionSummaries(publicSlug, accessToken)
       .then((loaded) => {
@@ -40,7 +43,7 @@ export function VersionComparison({
     return () => {
       isCancelled = true;
     };
-  }, [publicSlug, accessToken, publishedVersionNumber]);
+  }, [publicSlug, accessToken, newestVersionNumber]);
 
   const fromVersion = chosenFromVersion ?? versions?.[1]?.versionNumber ?? null;
   const toVersion = chosenToVersion ?? versions?.[0]?.versionNumber ?? null;
@@ -91,7 +94,7 @@ export function VersionComparison({
         {versions?.map((version) => (
           <option key={version.versionNumber} value={version.versionNumber}>
             {`v${version.versionNumber} · ${version.listedPageCount} pages · ${new Date(version.createdAt).toLocaleString()}`}
-            {version.versionNumber === publishedVersionNumber ? ' · latest' : ''}
+            {version.versionNumber === publishedVersionNumber ? ' · live' : ''}
           </option>
         ))}
       </select>
@@ -106,7 +109,7 @@ export function VersionComparison({
         </h2>
       </header>
 
-      {publishedVersionNumber < 2 ? (
+      {newestVersionNumber < 2 ? (
         <p className="empty-state">There is one version so far. A new one appears here when the site changes.</p>
       ) : versions === null ? (
         loadError ? <p className="notice notice-danger">{loadError}</p> : <p className="hint">Loading versions…</p>

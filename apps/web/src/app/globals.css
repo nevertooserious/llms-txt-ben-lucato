@@ -687,3 +687,30 @@ a:hover {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+.version-list {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.version-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-rule);
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+.version-row strong {
+  color: var(--color-text);
+}
+.version-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}

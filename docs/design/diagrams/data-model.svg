@@ -42,7 +42,7 @@
   <text class="f" x="34" y="254">headless_rendering_decided_at</text>
 
   <!-- site_workspaces -->
-  <rect class="b" x="20" y="330" width="280" height="156" rx="6"/>
+  <rect class="b" x="20" y="330" width="280" height="174" rx="6"/>
   <text class="t" x="34" y="352">site_workspaces</text>
   <text class="n" x="286" y="352" text-anchor="end">one per submission</text>
   <line class="sep" x1="20" y1="362" x2="300" y2="362"/>
@@ -51,7 +51,8 @@
   <text class="f" x="34" y="418">public_slug (unique)</text>
   <text class="f" x="34" y="436">monitoring_enabled_until</text>
   <text class="f" x="34" y="454">published_version_id</text>
-  <text class="f" x="34" y="472">creator_ip_hash</text>
+  <text class="f" x="34" y="472">is_published_version_pinned</text>
+  <text class="f" x="34" y="490">creator_ip_hash</text>
 
   <!-- pages -->
   <rect class="b" x="380" y="40" width="360" height="494" rx="6"/>
@@ -150,9 +151,9 @@
   <line class="ln" x1="560" y1="558" x2="560" y2="534" marker-end="url(#ar)"/>
   <text class="l" x="568" y="551">overrides a page</text>
 
-  <polyline class="ln" points="160,486 160,600 380,600" marker-end="url(#ar)"/>
+  <polyline class="ln" points="160,504 160,600 380,600" marker-end="url(#ar)"/>
   <text class="l" x="270" y="594" text-anchor="middle">has many</text>
 
-  <polyline class="ptr" points="100,486 100,666 952,666 952,524" marker-end="url(#arp)"/>
+  <polyline class="ptr" points="100,504 100,666 952,666 952,524" marker-end="url(#arp)"/>
   <text class="l" x="526" y="660" text-anchor="middle">published_version_id: the version served for that workspace</text>
 </svg>

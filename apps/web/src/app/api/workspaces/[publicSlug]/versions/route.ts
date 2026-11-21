@@ -4,7 +4,7 @@ import { authoriseWorkspaceRequest } from '../../../../../server/workspace-acces
 import type { LlmsTxtVersionSummaryView } from '../../../../../shared/workspace-view';
 
 // The workspace's version history, newest first, without the file contents. GET with the
-// workspace's secret token as a bearer token: only the latest version is public.
+// workspace's secret token as a bearer token: only the live version is public.
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ publicSlug: string }> },

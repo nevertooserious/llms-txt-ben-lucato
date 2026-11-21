@@ -37,3 +37,12 @@ export const deleteWorkspace =(publicSlug: string, accessToken: string) =>
 
 export const checkNow = (publicSlug: string, accessToken: string) =>
   call<{ pipelineRunId: string; joinedActiveRun: boolean }>(publicSlug, accessToken, '/checks', { method: 'POST' });
+
+export const pinVersion = (publicSlug: string, accessToken: string, versionNumber: number) =>
+  call<{ versionNumber: number; isPinned: boolean }>(publicSlug, accessToken, '/published-version', {
+    method: 'PUT',
+    body: JSON.stringify({ versionNumber }),
+  });
+
+export const followLatestVersion = (publicSlug: string, accessToken: string) =>
+  call<Record<string, never>>(publicSlug, accessToken, '/published-version', { method: 'DELETE' });

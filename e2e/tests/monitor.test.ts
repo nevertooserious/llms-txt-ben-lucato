@@ -9,6 +9,7 @@ import { readWorkerConfig } from '../../apps/worker/src/worker-config';
 import { startWorkerJobs } from '../../apps/worker/src/worker-jobs';
 import { POST as submitSiteRoute } from '../../apps/web/src/app/api/sites/route';
 import { POST as checkNowRoute } from '../../apps/web/src/app/api/workspaces/[publicSlug]/checks/route';
+import { DELETE as unpinVersionRoute, PUT as pinVersionRoute } from '../../apps/web/src/app/api/workspaces/[publicSlug]/published-version/route';
 import { DELETE as deleteWorkspaceRoute } from '../../apps/web/src/app/api/workspaces/[publicSlug]/route';
 import { GET as hostedLlmsTxtRoute } from '../../apps/web/src/app/w/[publicSlug]/llms.txt/route';
 import { webServices } from '../../apps/web/src/server/web-services';
@@ -266,6 +267,67 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
     expect(tooSoon.status).toBe(429);
     expect(Number(tooSoon.headers.get('retry-after'))).toBeGreaterThan(0);
     expect((await checkNowRoute(apiRequest('POST', undefined, 'not-the-token'), slugParams())).status).toBe(401);
+  });
+
+  it('a pinned version stays live while checks record newer ones, until it is unpinned', async () => {
+    const pin = (body: unknown, token?: string | null) => pinVersionRoute(apiRequest('PUT', body, token), slugParams());
+    const versionCount = (await versions()).length;
+    const newestBefore = await hostedLlmsTxt();
+
+    expect((await pin({ versionNumber: 2 }, 'not-the-token')).status).toBe(401);
+    expect((await pin({ versionNumber: 2 }, null)).status).toBe(401);
+    expect((await pin({ versionNumber: 'two' })).status).toBe(400);
+    expect((await pin({ versionNumber: 2 ** 31 })).status).toBe(400);
+    expect((await pin({ versionNumber: 999 })).status).toBe(404);
+    expect(await hostedLlmsTxt()).toBe(newestBefore);
+
+    expect((await pin({ versionNumber: 2 })).status).toBe(200);
+    const pinned = await hostedLlmsTxt();
+    expect(pinned).toContain('[Plans and pricing]');
+    expect(pinned).not.toContain('/guides/setup');
+
+    // A change is recorded as a new version, and does not go live.
+    changingSite.pages['/docs']!.description = 'Written while pinned.';
+    expect(await scheduledCheck()).toMatchObject({ status: 'succeeded' });
+    expect(await versions()).toHaveLength(versionCount + 1);
+    expect(await hostedLlmsTxt()).toBe(pinned);
+
+    // Nothing changed since that version, so no duplicate is recorded.
+    expect(await scheduledCheck()).toMatchObject({ status: 'unchanged' });
+    expect(await versions()).toHaveLength(versionCount + 1);
+    expect(await hostedLlmsTxt()).toBe(pinned);
+
+    expect((await unpinVersionRoute(apiRequest('DELETE', undefined, 'not-the-token'), slugParams())).status).toBe(401);
+    expect(await hostedLlmsTxt()).toBe(pinned);
+
+    // Unpinning serves the newest version, and later changes go live again.
+    expect((await unpinVersionRoute(apiRequest('DELETE'), slugParams())).status).toBe(204);
+    expect(await hostedLlmsTxt()).toContain('Written while pinned.');
+    changingSite.pages['/docs']!.description = 'Written after unpinning.';
+    expect(await scheduledCheck()).toMatchObject({ status: 'succeeded' });
+    expect(await hostedLlmsTxt()).toContain('Written after unpinning.');
+  });
+
+  it('expired monitoring stops scheduled checks, keeps the file, and "check now" renews it', async () => {
+    const servedBefore = await hostedLlmsTxt();
+    await databasePool.query(
+      `update site_workspaces set monitoring_enabled_until = now() - interval '1 minute' where public_slug = $1`,
+      [publicSlug],
+    );
+    await databasePool.query(`update sites set next_monitor_check_at = now() - interval '1 second' where id = $1`, [siteId]);
+
+    const before = await runIds();
+    await runMonitorTick();
+    expect(await runIds()).toEqual(before);
+    expect((await monitorSchedule()).next_check_in_days).toBeNull();
+    expect(await hostedLlmsTxt()).toBe(servedBefore);
+
+    await databasePool.query(`update pipeline_runs set created_at = created_at - interval '1 hour' where site_id = $1`, [
+      siteId,
+    ]);
+    expect((await checkNowRoute(apiRequest('POST'), slugParams())).status).toBe(202);
+    await waitForNewRun(before);
+    expect((await monitorSchedule()).next_check_in_days).toBeCloseTo(7, 1);
   });
 
   it('a site is deleted only with the workspace token, and its file and checks stop', async () => {

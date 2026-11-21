@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps it up to date as the site changes. The design is in [`docs/design/README.md`](docs/design/README.md).
 
-Status: the extractor, the crawler, the run lifecycle (submission, queueing, reaper, monitor tick), the run itself (crawl, extract, reconcile, publish), the generator and monitoring (on from submission, scheduled checks, "check now") are implemented. So is the UI for generating a file (submit a URL, watch the run, preview, copy, download, the hosted URL) for monitoring ("check now") and for deleting a site. With `ANTHROPIC_API_KEY` set, Claude Haiku assesses each candidate page (description, whether it belongs, page type) and Claude Opus writes the site summary. These calls have not yet run against the live API. Without a key the worker uses heuristics, which is meant only for local development and tests.
+Status: the extractor, the crawler, the run lifecycle (submission, queueing, reaper, monitor tick), the run itself (crawl, extract, reconcile, publish), the generator and monitoring (on from submission, scheduled checks, "check now") are implemented. So is the UI for generating a file (submit a URL, watch the run, preview, copy, download, the hosted URL) for monitoring ("check now"), for choosing which version is live, and for deleting a site. With `ANTHROPIC_API_KEY` set, Claude Haiku assesses each candidate page (description, whether it belongs, page type) and Claude Opus writes the site summary. These calls have not yet run against the live API. Without a key the worker uses heuristics, which is meant only for local development and tests.
 
 ## Layout
 
@@ -50,7 +50,7 @@ Each process reads its configuration once at startup and stops with a message na
 
 ## Serving llms.txt from your own domain
 
-The spec puts the file at `/llms.txt` on your site. Each workspace has a stable hosted URL, `https://<app>/w/<slug>/llms.txt`, shown on its page, which always serves the latest version. Point your own path at it with a proxy, which keeps your domain in the response, or a redirect.
+The spec puts the file at `/llms.txt` on your site. Each workspace has a stable hosted URL, `https://<app>/w/<slug>/llms.txt`, shown on its page, which serves the latest version unless you pin another on that page. Point your own path at it with a proxy, which keeps your domain in the response, or a redirect.
 
 ```nginx
 # nginx: proxy

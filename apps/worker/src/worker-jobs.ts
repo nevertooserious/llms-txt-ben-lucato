@@ -17,6 +17,13 @@ export interface WorkerJobDependencies
   pollingIntervalSeconds?: number;
 }
 
+export const MONITOR_TICK_CRON = '*/5 * * * *';
+
+/** Has pg-boss send the monitor tick on a schedule. Replaces any earlier schedule. */
+export async function scheduleMonitorTick(queue: PgBoss, cron: string = MONITOR_TICK_CRON): Promise<void> {
+  await queue.schedule(QUEUE_NAMES.monitorTick, cron);
+}
+
 /**
  * Creates the queues and starts consuming both job types: pipeline runs, and the
  * monitor tick that reaps stale runs and enqueues due checks. The cron schedule that

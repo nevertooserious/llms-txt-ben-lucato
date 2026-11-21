@@ -72,9 +72,11 @@ export {
 export {
   listLlmsTxtVersions,
   loadLlmsTxtVersionContent,
-  loadPublishedVersion,
+  loadNewestVersion,
+  pinPublishedVersion,
   publishLlmsTxtVersion,
+  unpinPublishedVersion,
   type LlmsTxtVersionSummary,
   type NewLlmsTxtVersion,
-  type PublishedVersion,
+  type NewestVersion,
 } from './llms-txt-versions';
