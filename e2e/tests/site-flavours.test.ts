@@ -178,9 +178,11 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
       const listed = sections(llmsTxt);
       expect(Object.keys(listed)).toEqual(['Blog']);
       expect(listed.Blog).toHaveLength(3);
-      // Numbered URLs sort as numbers when nothing else tells them apart.
-      expect(listed.Blog![0]).toMatch(/\/posts\/1$/);
-      expect(listed.Blog![1]).toMatch(/\/posts\/2$/);
+      // The post the navigation links comes first. Numbered URLs sort as numbers when
+      // nothing else tells them apart.
+      expect(listed.Blog![0]).toMatch(/\/posts\/90$/);
+      expect(listed.Blog![1]).toMatch(/\/posts\/1$/);
+      expect(listed.Blog![2]).toMatch(/\/posts\/2$/);
     });
 
     it('leaves out pages with a noindex directive', async () => {
