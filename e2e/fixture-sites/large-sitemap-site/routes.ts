@@ -1,7 +1,8 @@
 import type { IncomingMessage } from 'node:http';
 import type { FixtureRoutes } from '../../support/fixture-site-server';
 
-// A sitemap index of three sitemaps, 500 posts each: far more than any page budget.
+// A sitemap index of three sitemaps, 500 posts each: far more than any page budget. The
+// homepage's navigation links one post from deep in the first sitemap.
 
 const SITEMAP_COUNT = 3;
 const POSTS_PER_SITEMAP = 500;
@@ -33,9 +34,12 @@ export const routes: FixtureRoutes = {
       return;
     }
 
+    const navigation = requestUrl.pathname === '/' ? '<nav><a href="/posts/90">Pinned post</a></nav>' : '';
     const title = requestUrl.pathname === '/' ? 'Prolific Blog' : `Post ${requestUrl.pathname.split('/').pop()}`;
     response
       .writeHead(200, { 'content-type': 'text/html' })
-      .end(`<!doctype html><html><head><title>${title}</title></head><body><main><h1>${title}</h1><p>One of very many posts.</p></main></body></html>`);
+      .end(
+        `<!doctype html><html><head><title>${title}</title></head><body>${navigation}<main><h1>${title}</h1><p>One of very many posts.</p></main></body></html>`,
+      );
   },
 };

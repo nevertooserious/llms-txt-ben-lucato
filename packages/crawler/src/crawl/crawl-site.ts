@@ -477,6 +477,11 @@ class SiteCrawl {
     if (existing !== undefined) {
       existing.crawlDepth = Math.min(existing.crawlDepth, crawlDepth);
       existing.sitemapLastModified ??= sitemapLastModified;
+      // A page the sitemap listed first is still a navigation page once the homepage links
+      // it, and must not wait behind the rest of the sitemap.
+      if (this.pending.has(url) && SOURCE_PRIORITY[discoveredVia] < SOURCE_PRIORITY[existing.discoveredVia]) {
+        existing.discoveredVia = discoveredVia;
+      }
       return false;
     }
     this.frontier.set(url, {
@@ -872,6 +877,7 @@ export function htmlUrlForMarkdownLink(href: string, llmsTxtUrl: string): string
     return null;
   }
   if (url.pathname.endsWith('/index.html.md')) url.pathname = url.pathname.slice(0, -'index.html.md'.length);
+  else if (url.pathname.endsWith('/index.md')) url.pathname = url.pathname.slice(0, -'index.md'.length);
   else if (url.pathname.endsWith('.md')) url.pathname = url.pathname.slice(0, -'.md'.length);
   return url.href;
 }

@@ -38,6 +38,7 @@ describe('htmlUrlForMarkdownLink', () => {
   it.each([
     ['/guides/setup.md', 'https://example.com/guides/setup'],
     ['/docs/index.html.md', 'https://example.com/docs/'],
+    ['/posts/a-post/index.md', 'https://example.com/posts/a-post/'],
     ['/plain', 'https://example.com/plain'],
     ['https://other.example/x.md', 'https://other.example/x'],
   ])('%s -> %s', (href, expected) => {
