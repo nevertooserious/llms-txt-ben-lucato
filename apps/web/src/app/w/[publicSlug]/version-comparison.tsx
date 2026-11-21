@@ -82,11 +82,6 @@ export function VersionComparison({
     };
   }, [fromContent, toContent]);
 
-  function swap() {
-    setChosenFromVersion(toVersion);
-    setChosenToVersion(fromVersion);
-  }
-
   const versionSelect = (label: string, value: number | null, onChange: (versionNumber: number) => void) => (
     <label className="version-select">
       <span className="label">{label}</span>
@@ -104,9 +99,7 @@ export function VersionComparison({
   return (
     <>
       <header className="cell-header">
-        <h2 className="cell-title">
-          <span className="index">04</span>Compare versions
-        </h2>
+        <h2 className="cell-title">Compare versions</h2>
       </header>
 
       {newestVersionNumber < 2 ? (
@@ -117,9 +110,6 @@ export function VersionComparison({
         <>
           <div className="version-controls">
             {versionSelect('From version', fromVersion, setChosenFromVersion)}
-            <button type="button" className="button" onClick={swap}>
-              ⇄ Swap
-            </button>
             {versionSelect('To version', toVersion, setChosenToVersion)}
           </div>
 

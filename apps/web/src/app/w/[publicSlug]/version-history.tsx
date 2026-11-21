@@ -32,9 +32,7 @@ export function VersionHistory({ view, accessToken, onChanged }: VersionHistoryP
   return (
     <>
       <header className="cell-header">
-        <h2 className="cell-title">
-          <span className="index">05</span>Versions
-        </h2>
+        <h2 className="cell-title">Versions</h2>
         {view.isPublishedVersionPinned && (
           <div className="toolbar">
             <button

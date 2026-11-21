@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { accessTokenFor, forgetWorkspace, saveWorkspace } from '../../../browser/saved-workspaces';
 import { isActiveRunStatus, type WorkspaceView } from '../../../shared/workspace-view';
+import { DeleteSiteControl } from './delete-site-control';
 import { LlmsTxtResult } from './llms-txt-result';
 import { MonitoringPanel } from './monitoring-panel';
 import { RunProgress } from './run-progress';
@@ -98,19 +99,27 @@ export function WorkspaceScreen({ publicSlug }: { publicSlug: string }) {
   return (
     <main>
       <section className="site-heading">
-        <span className="label">Workspace · {publicSlug}</span>
-        <h1>{view.siteTitle ?? siteHost}</h1>
-        <a href={view.rootUrl} target="_blank" rel="noreferrer noopener">
-          {view.rootUrl} ↗
-        </a>
+        <div className="site-heading-row">
+          <div>
+            <a className="back-link" href="/">
+              ← All sites
+            </a>
+            <h1 className="site-url-heading">
+              <a href={view.rootUrl} target="_blank" rel="noreferrer noopener">
+                {view.rootUrl} ↗
+              </a>
+            </h1>
+          </div>
+          <DeleteSiteControl publicSlug={publicSlug} accessToken={accessToken} onDeleted={handleDeleted} />
+        </div>
         {loadError && <p className="notice notice-danger">{loadError.message} Retrying…</p>}
       </section>
       <div className="ledger">
-        <section className="cell cell-wide">
+        <section className="cell cell-half">
           <RunProgress run={view.latestRun} hasPublishedVersion={view.publishedVersion !== null} />
         </section>
-        <section className="cell cell-narrow">
-          <MonitoringPanel view={view} accessToken={accessToken} onChanged={refresh} onDeleted={handleDeleted} />
+        <section className="cell cell-half">
+          <MonitoringPanel view={view} accessToken={accessToken} onChanged={refresh} />
         </section>
         <section className="cell">
           <LlmsTxtResult view={view} siteHost={siteHost} />
