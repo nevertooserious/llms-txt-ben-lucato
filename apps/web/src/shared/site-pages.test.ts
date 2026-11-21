@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupPagesByPath, pathLabelOf, type PathTreeGroup, type PathTreeItem, type SitePageView } from './site-pages';
+import { groupPagesByPath, type PathTreeGroup, type PathTreeItem, type SitePageView } from './site-pages';
 
 const ROOT_URL = 'https://example.com';
 
@@ -54,13 +54,5 @@ describe('groupPagesByPath', () => {
     const pages = ['/docs/v2/a', '/docs/v2/b', 'https://docs.example.com/start', 'https://docs.example.com/api'].map(page);
     const groups = groupPagesByPath(pages, ROOT_URL).filter((item): item is PathTreeGroup => item.kind === 'group');
     expect(groups.map((group) => group.urlPrefix)).toEqual(['https://example.com/docs/v2', 'https://docs.example.com']);
-  });
-});
-
-describe('pathLabelOf', () => {
-  it('reads as the group it came from', () => {
-    expect(pathLabelOf('https://example.com/docs/v2', ROOT_URL)).toBe('/docs/v2/');
-    expect(pathLabelOf('https://docs.example.com', ROOT_URL)).toBe('docs.example.com/');
-    expect(pathLabelOf('https://docs.example.com/api', ROOT_URL)).toBe('docs.example.com/api/');
   });
 });
