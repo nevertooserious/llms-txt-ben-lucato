@@ -14,6 +14,10 @@ export interface WorkerConfig {
   queuedStaleAfterSeconds: number;
   /** Most monitor checks enqueued per tick. */
   maxMonitorChecksPerTick: number;
+  /** Most pages one run fetches. A starting value; see docs/design/README.md, section 10. */
+  crawlPageBudget: number;
+  /** Above this share of failed fetches a run fails and publishes nothing. A starting value. */
+  maxFailedFetchShare: number;
 }
 
 export function readWorkerConfig(environment: Environment = process.env): WorkerConfig {
@@ -25,5 +29,7 @@ export function readWorkerConfig(environment: Environment = process.env): Worker
     heartbeatStaleAfterSeconds: 120,
     queuedStaleAfterSeconds: 6 * 3600,
     maxMonitorChecksPerTick: 100,
+    crawlPageBudget: positiveInteger(environment, 'CRAWL_PAGE_BUDGET', 200),
+    maxFailedFetchShare: 0.5,
   };
 }

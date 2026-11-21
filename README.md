@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps it up to date as the site changes. The design is in [`docs/design/README.md`](docs/design/README.md).
 
-Status: the extractor, the crawler and the run lifecycle (submission, queueing, reaper, monitor tick) are implemented; the pipeline stages inside a run and the generator are stubs.
+Status: the extractor, the crawler, the run lifecycle (submission, queueing, reaper, monitor tick) and the run itself (crawl, extract, reconcile, publish) are implemented. The generator's rendering is a stub, so runs fail at the generate stage until it lands.
 
 ## Layout
 
@@ -36,7 +36,7 @@ npm run dev:web                          # http://localhost:3000
 npm run dev:worker
 ```
 
-Each process reads its configuration once at startup and stops with a message naming any missing or malformed variable. `DATABASE_URL` is required; `LOG_LEVEL` (`debug`, `info`, `warn`, `error`), `PIPELINE_RUN_CONCURRENCY` (worker) and `SUBMISSIONS_PER_IP_PER_HOUR` (web) are optional. Logs are one JSON object per line; a run's lines carry its `pipelineRunId`.
+Each process reads its configuration once at startup and stops with a message naming any missing or malformed variable. `DATABASE_URL` is required; `LOG_LEVEL` (`debug`, `info`, `warn`, `error`), `PIPELINE_RUN_CONCURRENCY` and `CRAWL_PAGE_BUDGET` (worker) and `SUBMISSIONS_PER_IP_PER_HOUR` (web) are optional. Logs are one JSON object per line; a run's lines carry its `pipelineRunId`.
 
 ## Checks
 

@@ -1,3 +1,4 @@
+import type { WorkspacePageOverride } from '@llms-txt/contracts';
 import type { Queryable } from './transaction';
 
 export interface NewWorkspace {
@@ -43,4 +44,29 @@ export async function loadPublishedLlmsTxt(database: Queryable, publicSlug: stri
     [publicSlug],
   );
   return result.rows[0]?.llms_txt_content ?? null;
+}
+
+export async function loadWorkspaceIdsForSite(database: Queryable, siteId: string): Promise<string[]> {
+  const result = await database.query<{ id: string }>(
+    'select id from site_workspaces where site_id = $1 order by created_at',
+    [siteId],
+  );
+  return result.rows.map((row) => row.id);
+}
+
+/** A workspace's edits, applied as inputs on every render. */
+export async function loadWorkspaceOverrides(database: Queryable, workspaceId: string): Promise<WorkspacePageOverride[]> {
+  const result = await database.query<{ normalised_url: string; description_override: string | null; is_excluded: boolean }>(
+    `select pages.normalised_url, overrides.description_override, overrides.is_excluded
+       from workspace_page_overrides overrides
+       join pages on pages.id = overrides.page_id
+      where overrides.workspace_id = $1
+      order by pages.normalised_url`,
+    [workspaceId],
+  );
+  return result.rows.map((row) => ({
+    normalisedUrl: row.normalised_url,
+    descriptionOverride: row.description_override,
+    isExcluded: row.is_excluded,
+  }));
 }

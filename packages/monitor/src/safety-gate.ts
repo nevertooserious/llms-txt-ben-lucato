@@ -1,0 +1,29 @@
+import type { CrawlResult } from '@llms-txt/contracts';
+
+// The safety gate (docs/design/README.md, section 5): a run whose fetches mostly failed
+// says more about the site's health, or about our access to it, than about its content,
+// so it publishes nothing and records no removals.
+
+export type SafetyGateVerdict =
+  | { passed: true; failedFetchShare: number }
+  | { passed: false; failedFetchShare: number; reason: string };
+
+export function evaluateSafetyGate(
+  crawl: Pick<CrawlResult, 'stopReason' | 'pagesFetchedCount' | 'failedFetches'>,
+  maxFailedFetchShare: number,
+): SafetyGateVerdict {
+  const attempts = crawl.pagesFetchedCount + crawl.failedFetches.length;
+  const failedFetchShare = attempts === 0 ? 0 : crawl.failedFetches.length / attempts;
+
+  if (crawl.stopReason === 'robots_txt_unreachable') {
+    return { passed: false, failedFetchShare, reason: 'robots.txt could not be fetched, so the site was not crawled.' };
+  }
+  if (crawl.pagesFetchedCount === 0) {
+    return { passed: false, failedFetchShare, reason: 'No page of the site could be fetched.' };
+  }
+  if (failedFetchShare > maxFailedFetchShare) {
+    const percent = Math.round(failedFetchShare * 100);
+    return { passed: false, failedFetchShare, reason: `${percent}% of fetches failed; nothing was published.` };
+  }
+  return { passed: true, failedFetchShare };
+}

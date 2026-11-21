@@ -73,12 +73,12 @@
   <text class="f" x="466" y="208">is_in_site_navigation</text>
   <text class="f" x="466" y="226">sitemap_last_modified_at</text>
   <text class="f" x="466" y="244">consecutive_not_found_count</text>
-  <text class="f" x="466" y="262">canonical_url, markdown_variant_url</text>
+  <text class="f" x="466" y="262">markdown_variant_url</text>
   <text class="f" x="466" y="280">has_noindex_directive, fetch_url</text>
 
   <rect class="c2" x="384" y="295" width="3" height="86"/>
   <text class="g" x="394" y="306">extractor</text>
-  <text class="f" x="466" y="306">extracted_title</text>
+  <text class="f" x="466" y="306">extracted_title, canonical_url</text>
   <text class="f" x="466" y="324">extracted_description</text>
   <text class="f" x="466" y="342">page_type, language_code</text>
   <text class="f" x="466" y="360">content_markdown, content_digest</text>

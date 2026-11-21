@@ -184,9 +184,6 @@ create table pages (
   -- Consecutive direct fetches that returned 404 or 410. removed_at is set at 2.
   -- Not being reached by a crawl does not count; only the page's own response does.
   consecutive_not_found_count          integer not null default 0,
-  -- What the page declares in <link rel="canonical">, if anything. Used to drop
-  -- duplicates when selecting pages; several rows may share one value.
-  canonical_url                        text,
   -- URL of a markdown version of the page (same URL + ".md"), if one exists. The
   -- spec recommends linking these in preference to the HTML page.
   markdown_variant_url                 text,
@@ -195,6 +192,9 @@ create table pages (
   has_noindex_directive                boolean not null default false,
 
   -- Extractor: the PageRecord.
+  -- What the page declares in <link rel="canonical">, if anything. Used to drop
+  -- duplicates when selecting pages; several rows may share one value.
+  canonical_url                        text,
   extracted_title                      text,
   extracted_description                text,
   page_type                            text check (page_type in

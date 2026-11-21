@@ -1,17 +1,9 @@
-import { NotImplementedError, type PipelineRunJob } from '@llms-txt/contracts';
-import {
-  claimPipelineRun,
-  finishPipelineRun,
-  recordPipelineRunHeartbeat,
-  type DatabasePool,
-  type FinishedPipelineRunStatus,
-} from '@llms-txt/db';
-import type { Logger } from '@llms-txt/runtime';
+import type { PipelineRunJob } from '@llms-txt/contracts';
+import { claimPipelineRun, finishPipelineRun, recordPipelineRunHeartbeat } from '@llms-txt/db';
+import { PipelineRunFailure, runPipelineStages, type PipelineStageDependencies } from './pipeline-stages';
 
-export interface PipelineDependencies {
-  databasePool: DatabasePool;
-  /** Already carries the run's and the site's ids. */
-  logger: Logger;
+/** The stage dependencies, with a logger that already carries the run's and the site's ids. */
+export interface PipelineDependencies extends PipelineStageDependencies {
   heartbeatIntervalMs: number;
 }
 
@@ -39,12 +31,14 @@ export async function runPipeline(job: PipelineRunJob, dependencies: PipelineDep
   }, dependencies.heartbeatIntervalMs);
 
   try {
-    const status = await runStages(job, dependencies);
+    const status = await runPipelineStages(job, dependencies);
     const finished = await finishPipelineRun(databasePool, job.pipelineRunId, { status });
     if (finished) logger.info('run finished', { status });
     else logger.warn('run finished after the reaper failed it; its result was not recorded', { status });
   } catch (error) {
-    logger.error('run failed', { error });
+    // A PipelineRunFailure is an expected outcome (the site was unreachable, say); anything else is a bug.
+    if (error instanceof PipelineRunFailure) logger.warn('run failed', { reason: error.message });
+    else logger.error('run failed', { error });
     await finishPipelineRun(databasePool, job.pipelineRunId, {
       status: 'failed',
       errorMessage: error instanceof Error ? error.message : String(error),
@@ -52,11 +46,4 @@ export async function runPipeline(job: PipelineRunJob, dependencies: PipelineDep
   } finally {
     clearInterval(heartbeat);
   }
-}
-
-/** The stages themselves. */
-async function runStages(job: PipelineRunJob, dependencies: PipelineDependencies): Promise<FinishedPipelineRunStatus> {
-  void job;
-  void dependencies;
-  throw new NotImplementedError('runStages');
 }

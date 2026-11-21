@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps that file up to date as the site changes.
 
-Status: the extractor, the crawler and the run lifecycle are implemented. The pipeline stages inside a run and the generator are typed stubs (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
+Status: the extractor, the crawler, the run lifecycle and the worker's run of the stages are implemented. The generator's rendering is a typed stub (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
 
 ## Contents
 
@@ -36,6 +36,8 @@ Stack: TypeScript throughout, Next.js for the web app, a Node worker with Playwr
 ![Pipeline contracts](diagrams/pipeline-contracts.svg)
 
 Each stage has one typed input and one typed output, so each can be tested alone with fixtures.
+
+A run is driven by the worker (`apps/worker/src/pipeline-stages.ts`) as load, decide, write. It loads the site and its stored pages, runs the stages, passes their output through pure decision functions, and saves what those return. The rules that are easiest to get wrong are those functions, tested without a database: `reconcilePage` (what a fetch does to a stored page, section 5), `evaluateSafetyGate`, `assessSitemapLastModifiedTrust` (in `packages/monitor`) and `decidePublication` (in `packages/generator`). Extraction happens inside the crawl: each page is extracted and saved as the crawler hands it over. So the run's progress shows two stages, crawl and generate.
 
 ### Crawler
 
@@ -156,7 +158,11 @@ A page is never removed because a crawl failed to reach it.
 
 ### Safety gate
 
-Failed fetches include errors, blocks and bot-challenge pages. If they exceed a threshold share of the run, the run fails and the published version is left alone.
+Failed fetches include errors, blocks and bot-challenge pages. If they are over half of the run's fetches, or nothing could be fetched, or robots.txt was unreachable, the run fails and the published version is left alone. Pages fetched successfully are saved as they arrive, because those facts hold either way. 404 and 410 responses are held back until the run passes the gate, so a failed run never counts toward removing a page.
+
+### Trusting sitemap `lastmod`
+
+A page fetched in full that has both an old and a new `lastmod`, and an old and a new content digest, is one observation. A single page whose content changed while its `lastmod` did not withdraws trust. Trust is given once a run has at least five observations, no misses, and at least one content change that its `lastmod` flagged.
 
 ### Publishing
 
@@ -217,4 +223,4 @@ Not yet decided or designed.
 - **Stale sitemap:** if `lastmod` is trusted and a deleted page is still listed with an unchanged date, no request is made and the deletion is missed.
 - **Page selection:** rules for large and awkward sites, as noted in section 2.
 - **Partial link counts:** a page answered with a 304, or skipped because of a trusted `lastmod`, has no body, so its links are not seen. On such runs, inbound link counts and the frontier miss those links.
-- **Thresholds:** the page budget and the safety-gate failure share have no values yet. The headless thresholds have starting values in `packages/crawler/src/render-decision.ts`, tuned only against the fixture sites.
+- **Thresholds:** the page budget (200, `CRAWL_PAGE_BUDGET`) and the safety-gate failure share (0.5) have starting values that have not been tuned against real sites. The headless thresholds have starting values in `packages/crawler/src/render-decision.ts`, tuned only against the fixture sites.
