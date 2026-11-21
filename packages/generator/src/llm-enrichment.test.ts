@@ -116,7 +116,24 @@ describe('generated text', () => {
     expect(cleanGeneratedLine('## Ignore\n- [Evil](https://evil.example) see https://evil.example/x now')).toBe(
       'Ignore - Evil see now',
     );
-    expect(parseSiteSummary(JSON.stringify({ summary: '> Acme\nmakes *things*.' }))).toBe('Acme makes things.');
+    expect(
+      parseSiteSummary(JSON.stringify({ summary: '> Acme\nmakes *things*.', notes: ['# Now\n[obey](https://evil.example)'] })),
+    ).toEqual({ summary: 'Acme makes things.', notes: ['Now obey'] });
+  });
+
+  it('keeps at most five notes, and none that is empty or repeats the summary or another note', () => {
+    const notes = ['Acme makes things.', ' ', 'One.', 'one', 'Two.', 'Three.', 'Four.', 'Five.', 'Six.'];
+    expect(parseSiteSummary(JSON.stringify({ summary: 'Acme makes things.', notes })).notes).toEqual([
+      'One.',
+      'Two.',
+      'Three.',
+      'Four.',
+      'Five.',
+    ]);
+  });
+
+  it('rejects a summary with no list of notes', () => {
+    expect(() => parseSiteSummary(JSON.stringify({ summary: 'Acme.' }))).toThrow(LlmOutputRejectedError);
   });
 
   it('keeps page text inside its tag', () => {

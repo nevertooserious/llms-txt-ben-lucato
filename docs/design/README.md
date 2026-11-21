@@ -47,6 +47,7 @@ Owns all network I/O. It hands each fetched page (404s, 410s and 304s included, 
 - **Discovery:** robots.txt, sitemaps, any existing llms.txt, and homepage navigation seed a prioritised breadth-first crawl under a page budget. Sitemaps come from robots.txt's `Sitemap:` lines, else `/sitemap.xml`, in every format the sitemaps protocol allows: XML, gzipped XML, plain text, RSS and Atom, up to 50 MB each. At most 10 sitemap files are read, and at most four sitemap URLs are kept per page of budget. llms.txt is looked for under the root URL, then at the host root. Its links usually point at `.md` variants, so they are mapped back to the HTML page. Within a depth, navigation links come first, then llms.txt, then sitemap, then other page links.
 - **Navigation:** links inside `<nav>`, `<header>` or `role="navigation"` on the homepage. For each page they link, the crawler records the link's text (`navigation_label`, when it is 40 characters or fewer) and where the link comes among them (`navigation_position`). The generator uses the label to name a page or a section, and the position to keep the site's own order.
 - **Conventions first:** where an open convention covers a behaviour (RFC 9309 for robots.txt, the sitemaps protocol, RFC 9110 for status codes and `Retry-After`, RFC 3986 for URLs, robots meta tags and `X-Robots-Tag`), the crawler follows it, and the choices below only fill the gaps.
+- **Machine-readable files:** the site's own files for machines are listed beside its pages: `llms-full.txt`, an `llms.txt` for one part of the site, and an OpenAPI description (`openapi` or `swagger`, `.json` or `.yaml`). The crawler looks for `llms-full.txt` under the root URL, and takes any link to a file of those names from the site's llms.txt or from a page it reads. Each is requested once the pages are read, at most 20 a crawl, and kept if it answers 200 with something other than HTML, since an app shell answers every path. Only the first 64 KiB is read, and the content is not used. The files found are stored and requested again on every crawl, because a page that answers 304 has no links to find them by. A file is dropped when it no longer answers. If one answers with an error, or the crawl runs out of time, the crawl says it cannot tell and the stored list stands. The llms.txt at the site's root is not listed: the generated file stands in for it. An MCP server is not looked for, because nothing in a page reliably says where one is.
 - **Known pages:** the worker passes the site's stored pages back in. Each is queued alongside what discovery finds, so a page nothing links to any more is still re-checked and its 404 is seen. A known page with an ETag or Last-Modified is fetched with a conditional GET, and a 304 is passed on with an empty body. On a site whose sitemap `lastmod` is trusted, a known page whose `lastmod` has not moved is not requested at all. The homepage is always fetched in full, because discovery starts from its links.
 - **Which URL is requested:** the URL as the site linked it, with only RFC 3986's safe normalisation, and fragment and tracking parameters dropped. Rows are keyed on the more aggressive normalised URL (section 3), so `/about` and `/about/` are one page, but the crawler never requests a form the site did not link. The requested form is stored as `pages.fetch_url`, and a re-check asks for it.
 - **Fetching, per site:** plain HTTP by default. On a site's first crawl the homepage is fetched both ways and compared, by visible text length and link count. If the browser finds much more (at least 200 more characters and 1.5 times the text, or links to 5 more pages of the site that are also half as many again as the plain HTML links), every page of the site is rendered. Links are counted as distinct pages in the crawl's scope, so a menu a script repeats, or a strip of links to other sites, does not make a server-rendered site pay for rendering. A homepage with no executable script skips the comparison. The answer is stored in `sites.requires_headless_rendering` and re-decided after 30 days.
@@ -87,9 +88,11 @@ A pure function from HTML to a `PageRecord`. No I/O, so it is tested against sav
 - **Entry titles:** the page's title without the site name at either end (`Docs | Acme` and `Acme | Docs` become `Docs`), without any other name two or more pages' titles end with (`| Acme Foundation`), and without the page's own host. When nothing is left, or what is left is the homepage's title, a sentence or longer than 80 characters, the entry takes the navigation's label for the page, then a title made from the URL in title case. Of entries that would share a title, the highest-scoring keeps it and the others take those alternatives.
 - **Entry descriptions without an assessment:** text a site's templates repeat says nothing about a page. A meta description is dropped when it is the homepage's, when three or more pages with different content share it, or when it is a fragment of fewer than four words that does not end as a sentence. The entry then takes the first paragraph of prose in the page's content (not a heading, list, table, link or quotation, and ending as a sentence does), up to the sentence that passes 200 characters, on the same terms. Failing that it has no description, which is better than the same line on every entry.
 - **Site summary:** Claude Opus writes it from the homepage and the listed pages. It is rewritten only when the homepage's title or description, or the titles of listed navigation pages, change, and the model is given its previous summary and told to keep the wording unless something is now wrong. So a new blog post does not reword it.
+- **Notes:** the same call returns up to five one-line notes, which go under the summary. They are for what an assistant would get wrong from the summary and the links alone, and only for what the site itself states: a deprecated product and its replacement, two products that are easily confused, a requirement that applies to everything. The model is told that most sites need none, and to leave out guesses, its own advice, and version numbers, prices and dates, which would go stale while the cached notes stood. A note that repeats the summary or another note is dropped. They are cached on the summary's hash and passed back like the previous summary, so they do not come and go between runs.
+- **Machine-readable files:** the files the crawler found go under an H2 named `Machine-readable resources`, after the page sections and before `Optional`. Each is titled by its path (`docs/llms.txt`) and described by its kind, the same words for every site, with no LLM involved. A workspace cannot exclude one.
 - **LLM caching:** both results are stored against a hash of their inputs (including the model and prompt version) and never requested again for unchanged inputs, because an LLM words the same thing differently each time.
 - **LLM failures:** the SDK retries transient errors. If the API is still unavailable, a page with an older assessment or a site with an older summary keeps it. A new page cannot be judged without one, so the run fails and the published file stays. A page the model refuses or answers unusably is left out and tried on the next run. Page text is passed as untrusted data, and output is forced to one line of plain text with links and markdown removed.
-- **No API key:** for local development and tests only, the worker skips the LLM: candidate pages are listed with the description the crawl gives them (above), and the summary is the homepage's description.
+- **No API key:** for local development and tests only, the worker skips the LLM: candidate pages are listed with the description the crawl gives them (above), the summary is the homepage's description, and there are no notes.
 - **Rendering:** deterministic, followed by validation against the spec. Output that fails validation is a bug, so it fails the run rather than being published.
 - **Per workspace:** the file is rendered once per workspace, applying that workspace's overrides.
 
@@ -103,7 +106,7 @@ The full DDL with comments is in [`db/schema.sql`](../../db/schema.sql).
 
 | Table | Holds | Mutability |
 |---|---|---|
-| `sites` | One crawled website: root URL, cached summary, monitor schedule | Updated in place |
+| `sites` | One crawled website: root URL, cached summary and notes, machine-readable files found, monitor schedule | Updated in place |
 | `site_workspaces` | One submission of a site: access token, hosted slug, published version | Updated in place |
 | `pages` | Current state of each known URL of a site | Updated in place |
 | `workspace_page_overrides` | A workspace's edits to individual pages | Updated in place |
@@ -222,12 +225,13 @@ The app is public, has no accounts, and fetches URLs that users supply.
 
 Checked against llmstxt.org.
 
-- **Order:** H1 with the site name (the only required part), a blockquote summary, optional body text with no headings, then H2 sections of links.
+- **Order:** H1 with the site name (the only required part), a blockquote summary, optional notes as a plain list with no headings, then H2 sections of links.
 - **Headings:** only H1 and H2. No H3 sub-grouping.
 - **Entries:** `- [title](url): description`, each on one line.
 - **Escaping:** square brackets in titles are escaped, newlines are stripped, parentheses in URLs are encoded, and LLM output is forced to a single line.
 - **Optional section:** lower-priority pages go under an H2 named exactly `Optional`, which the spec defines as skippable.
 - **Markdown links:** where a page has a `.md` variant, the entry links that.
+- **Machine-readable files:** the site's own `llms-full.txt`, section `llms.txt` files and OpenAPI descriptions are entries like any other, under their own H2.
 
 ## 9. Deliberately left out
 
@@ -236,7 +240,8 @@ Checked against llmstxt.org.
 | User accounts | A secret link per workspace covers editing without the work of auth |
 | Webhook and email notifications | Both are open relays on an app without accounts |
 | Adaptive check interval | A fixed interval plus "check now" is simpler and easier to demonstrate |
-| `llms-full.txt` | Not found in the spec; it would duplicate large content per version |
+| Generating an `llms-full.txt` | Not found in the spec; it would duplicate large content per version. A site's own is linked when it has one |
+| Notes written by the site's owner | Overrides are limited to description and exclude; the notes are the LLM's, from what the site states |
 | Server-sent events | Polling `pipeline_runs` is enough for run status |
 | LLM-invented sections, and title, summary and section overrides | Sections come from the assessed page type and, for pages of no type, from the site's own URL areas and navigation labels; overrides are limited to description and exclude |
 | Raw HTML storage | Saved fixtures cover extractor testing |

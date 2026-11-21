@@ -82,6 +82,7 @@ const fakeCrawl =
       failedFetches,
       requiresHeadlessRendering: false,
       decidedHeadlessRendering: true,
+      machineReadableResourceUrls: [],
     };
   };
 
@@ -159,7 +160,7 @@ function fakeLlmClient() {
     async writeSiteSummary() {
       calls.writeSiteSummary += 1;
       if (behaviour.failWith !== null) throw behaviour.failWith;
-      return 'Acme, summarised.';
+      return { summary: 'Acme, summarised.', notes: ['The v1 API is deprecated.'] };
     },
   };
   return { client, calls, behaviour };
@@ -180,7 +181,7 @@ describe('runPipeline with an LLM', () => {
     const llm = fakeLlmClient();
     expect((await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client)).status).toBe('succeeded');
     const content = (await versions(workspaceId))[0]!.llms_txt_content;
-    expect(content).toContain('> Acme, summarised.');
+    expect(content).toContain('> Acme, summarised.\n\n- The v1 API is deprecated.\n');
     expect(content).toContain(`- [Docs](${rootUrl}/docs): Assessed Docs.`);
     expect(content).not.toContain('/gone');
     expect(content).not.toContain('/blog/launch');

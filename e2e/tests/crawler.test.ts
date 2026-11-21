@@ -242,6 +242,26 @@ describe('discovery', () => {
     expect(result.pages.every((page) => page.normalisedUrl.startsWith(site.origin))).toBe(true);
   });
 
+  it('finds the site’s machine-readable files, and only those that are there', async () => {
+    const site = sites['markdown-site'];
+    const result = await crawl('markdown-site');
+    // /guides/llms.txt is linked but answers 404; the root llms.txt is what the generated file replaces.
+    expect(result.machineReadableResourceUrls).toEqual([`${site.origin}/llms-full.txt`, `${site.origin}/api/openapi.json`]);
+    expect(result.pages.some((page) => page.normalisedUrl.includes('openapi'))).toBe(false);
+  });
+
+  it('checks known machine-readable files again and drops one that has gone', async () => {
+    const site = sites['static-site'];
+    const result = await crawl('static-site', { knownMachineReadableResourceUrls: [`${site.origin}/api/openapi.json`] });
+    expect(result.machineReadableResourceUrls).toEqual([]);
+  });
+
+  it('cannot tell which machine-readable files exist when one answers with an error', async () => {
+    const site = sites['static-site'];
+    const result = await crawl('static-site', { knownMachineReadableResourceUrls: [`${site.origin}/broken/openapi.json`] });
+    expect(result.machineReadableResourceUrls).toBeNull();
+  });
+
   it('links .md variants where they exist', async () => {
     const site = sites['markdown-site'];
     const result = await crawl('markdown-site');

@@ -143,6 +143,41 @@ describe('generateLlmsTxt', () => {
     expect(generate({ pages: [homepage], siteSummary: 'A cached\nsummary.' })).toContain('> A cached summary.\n');
   });
 
+  it('puts the notes between the summary and the first section, one line each', () => {
+    const llmsTxt = generate({
+      pages: [homepage, page('/docs', { pageType: 'docs' })],
+      siteNotes: ['The v1 API is deprecated;\nuse v2.', ' '],
+    });
+    expect(llmsTxt).toContain('> Example makes examples.\n\n- The v1 API is deprecated; use v2.\n\n## Docs\n');
+    expect(validateLlmsTxt(llmsTxt).isValid).toBe(true);
+  });
+
+  it('lists the site’s machine-readable files after its pages and before Optional', () => {
+    const llmsTxt = generate({
+      pages: [homepage, page('/docs', { pageType: 'docs' }), page('/terms', { pageType: 'legal' })],
+      machineReadableResourceUrls: [
+        `${ORIGIN}/api/openapi.json`,
+        `${ORIGIN}/workers/llms.txt`,
+        `${ORIGIN}/llms-full.txt`,
+        `${ORIGIN}/not-a-resource.txt`,
+        `${ORIGIN}/llms-full.txt`,
+      ],
+    });
+    expect(Object.keys(sections(llmsTxt))).toEqual(['Docs', 'Machine-readable resources', 'Optional']);
+    expect(llmsTxt).toContain(
+      [
+        `- [llms-full.txt](${ORIGIN}/llms-full.txt): The full text of the site's pages in one file.`,
+        `- [workers/llms.txt](${ORIGIN}/workers/llms.txt): An llms.txt index for this part of the site.`,
+        `- [api/openapi.json](${ORIGIN}/api/openapi.json): Machine-readable OpenAPI description of the API.`,
+      ].join('\n'),
+    );
+  });
+
+  it('has no notes and no section of machine-readable files when there are none', () => {
+    const pages = [homepage, page('/docs', { pageType: 'docs' })];
+    expect(generate({ pages, siteNotes: [], machineReadableResourceUrls: [] })).toBe(generate({ pages }));
+  });
+
   it('is valid with only an H1 when there is nothing else to say', () => {
     const llmsTxt = generate({ pages: [page('/', { description: null })] });
     expect(llmsTxt).toBe('# Example\n');

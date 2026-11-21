@@ -1,0 +1,11 @@
+# Plaintext Tools
+
+Command-line tools for working with plain text.
+
+## Introduction
+
+Start here.
+
+## Setup
+
+Install and configure.

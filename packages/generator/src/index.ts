@@ -1,13 +1,20 @@
 // The generator: selects pages, assigns sections by page type, renders and validates.
 // Pure: the worker loads its inputs, makes the LLM calls through an LlmClient, and stores
 // the outputs. With no LLM configured, the summary falls back to the homepage's
-// description and candidate pages are listed with what the crawl found for them.
-export { entryTitle, generateLlmsTxt, siteNameFrom, type GenerateLlmsTxtInput } from './generate-llms-txt';
+// description, there are no notes, and candidate pages are listed with what the crawl found for them.
+export {
+  entryTitle,
+  generateLlmsTxt,
+  MACHINE_READABLE_SECTION_NAME,
+  siteNameFrom,
+  type GenerateLlmsTxtInput,
+} from './generate-llms-txt';
 export {
   buildPageAssessmentPrompt,
   buildSiteSummaryInput,
   buildSiteSummaryPrompt,
   LlmOutputRejectedError,
+  MAXIMUM_SITE_NOTES,
   PAGE_ASSESSMENT_MODEL,
   pageAssessmentInputOf,
   pageAssessmentSourceHash,
@@ -16,6 +23,7 @@ export {
   parseSiteSummary,
   SITE_SUMMARY_MODEL,
   siteSummarySourceHash,
+  type GeneratedSiteSummary,
   type LlmClient,
   type LlmPrompt,
   type PageAssessmentInput,
