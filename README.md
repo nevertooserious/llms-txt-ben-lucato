@@ -23,6 +23,23 @@ An npm workspaces monorepo. Each design component is its own package, so its bou
 
 ESLint enforces the boundaries: the extractor may not import network, filesystem or database modules; only the crawler may import network modules; only `packages/db` may import `pg`; and contracts, the extractor, the generator and the crawler may not touch the database or the queue.
 
+### Inside a component
+
+Each package's `src/` is grouped by layer, and `src/index.ts` is its only entry point: other packages import the package, never a file inside it.
+
+| Component | Folders |
+|---|---|
+| `packages/contracts` | One module per hand-off: `crawl`, `page-record`, `page-assessment`, `generation`, `pipeline-jobs`, `machine-readable-resources` |
+| `packages/crawler` | `network/` (HTTP fetcher, headless renderer, SSRF guard), `discovery/` (robots.txt, sitemaps, URL normalisation), `page-signals/` (what a fetched page says about itself and whether to render it), `crawl/` (the crawl loop that uses the other three) |
+| `packages/extractor` | `html/` (parsing, main content, links), `record/` (markdown, page type, hashes); `extract-page.ts` puts them together |
+| `packages/generator` | `selection/` (candidates, scores, sections, limits), `entry-text/` (site name, titles, descriptions), `enrichment/` (LLM prompts, parsing, cache hashes), `rendering/` (render and validate), `publication/` (publish or not) |
+| `packages/monitor` | `decisions/` (pure: page reconciliation, safety gate, sitemap trust), `scheduling/` (the tick) |
+| `packages/db` | `connection/` (pool, transactions), `repositories/` (one module per table), `queue/` (the pipeline-run queue) |
+| `apps/worker` | `main.ts` (composition root), `config/`, `jobs/` (queue consumers), `llm/` (Anthropic client), `pipeline/` (the run's lifecycle, and one module per stage in `pipeline/stages/`) |
+| `apps/web` | `app/` (Next.js routes only), `features/` (React components, by screen), `browser/` (API client, local storage), `server/` (`sites/`, `workspaces/`, `http/`, `composition/`), `shared/` (types and pure helpers for both sides) |
+
+ESLint enforces these layers too. In the crawler only `network/` may open a connection, so every request is made beside the SSRF guard. In `packages/db` only `connection/` imports `pg`. The worker's pipeline is handed its dependencies and does not import the worker's wiring. In the web app, routes in `app/` call `server/` and render `features/`; server and browser code share only `shared/`. The web app imports across its folders with the `@/` alias (`@/server/...`).
+
 ## Quick start with Docker
 
 ```sh

@@ -8,7 +8,7 @@ import {
   PAGE_TYPES,
   PIPELINE_TRIGGERS,
 } from '@llms-txt/contracts';
-import { createDatabasePool } from './database-pool';
+import { createDatabasePool } from './connection/database-pool';
 
 // Runs against a database with db/schema.sql applied (the CI `schema` job).
 const databaseUrl = process.env.DATABASE_URL;

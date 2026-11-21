@@ -7,7 +7,7 @@ export {
   type CrawlResult,
   type CrawlSiteOptions,
   type CrawlStopReason,
-} from './crawl-site';
+} from './crawl/crawl-site';
 export {
   HeadlessRenderer,
   type HeadlessRendererOptions,
@@ -15,7 +15,7 @@ export {
   type RenderFailure,
   type RenderOptions,
   type RenderOutcome,
-} from './headless-renderer';
+} from './network/headless-renderer';
 export {
   DEFAULT_USER_AGENT,
   FETCH_FAILURE_REASONS,
@@ -26,7 +26,7 @@ export {
   type FetchOutcome,
   type FetchRequest,
   type HttpFetcherOptions,
-} from './http-fetcher';
+} from './network/http-fetcher';
 export {
   assertPublicAddress,
   BlockedAddressError,
@@ -34,7 +34,7 @@ export {
   publicInternetOnly,
   type HostnameResolver,
   type NetworkPolicy,
-} from './ssrf-guard';
-export { looksLikeBotChallenge } from './detect-bot-challenge';
-export { resolveSiteRootUrl, type ResolveSiteRootOptions } from './resolve-site-root';
-export { ROBOTS_USER_AGENT_TOKEN, type RobotsTxtStatus } from './robots-rules';
+} from './network/ssrf-guard';
+export { looksLikeBotChallenge } from './page-signals/detect-bot-challenge';
+export { resolveSiteRootUrl, type ResolveSiteRootOptions } from './crawl/resolve-site-root';
+export { ROBOTS_USER_AGENT_TOKEN, type RobotsTxtStatus } from './discovery/robots-rules';

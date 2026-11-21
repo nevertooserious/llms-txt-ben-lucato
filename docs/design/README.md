@@ -37,7 +37,7 @@ Stack: TypeScript throughout, Next.js for the web app, a Node worker with Playwr
 
 Each stage has one typed input and one typed output, so each can be tested alone with fixtures.
 
-A run is driven by the worker (`apps/worker/src/pipeline-stages.ts`) as load, decide, write. It loads the site and its stored pages, runs the stages, passes their output through pure decision functions, and saves what those return. The rules that are easiest to get wrong are those functions, tested without a database: `reconcilePage` (what a fetch does to a stored page, section 5), `evaluateSafetyGate`, `assessSitemapLastModifiedTrust` (in `packages/monitor`) and `decidePublication` (in `packages/generator`). Extraction happens inside the crawl: each page is extracted and saved as the crawler hands it over. So the UI states one of: queued, crawling, extracted (the crawl is done and the file is being generated), generated, or failed.
+A run is driven by the worker (`apps/worker/src/pipeline/run-pipeline-stages.ts`, one module per stage in `pipeline/stages/`) as load, decide, write. It loads the site and its stored pages, runs the stages, passes their output through pure decision functions, and saves what those return. The rules that are easiest to get wrong are those functions, tested without a database: `reconcilePage` (what a fetch does to a stored page, section 5), `evaluateSafetyGate`, `assessSitemapLastModifiedTrust` (in `packages/monitor`) and `decidePublication` (in `packages/generator`). Extraction happens inside the crawl: each page is extracted and saved as the crawler hands it over. So the UI states one of: queued, crawling, extracted (the crawl is done and the file is being generated), generated, or failed.
 
 ### Crawler
 
@@ -262,4 +262,4 @@ Not yet decided or designed.
 - **Meta refresh:** a stored page that becomes a meta-refresh stub is neither updated nor removed; its target is crawled as a new page.
 - **Restoring an excluded page:** a user cannot yet force back a page the assessment wrongly excluded.
 - **Partial link counts:** a page answered with a 304, or skipped because of a trusted `lastmod`, has no body, so its links are not seen. On such runs, inbound link counts and the frontier miss those links.
-- **Thresholds:** the page budget (200, `CRAWL_PAGE_BUDGET`) and the safety-gate failure share (0.5) have starting values that have not been tuned against real sites. The headless thresholds have starting values in `packages/crawler/src/render-decision.ts`, tuned only against the fixture sites.
+- **Thresholds:** the page budget (200, `CRAWL_PAGE_BUDGET`) and the safety-gate failure share (0.5) have starting values that have not been tuned against real sites. The headless thresholds have starting values in `packages/crawler/src/page-signals/render-decision.ts`, tuned only against the fixture sites.

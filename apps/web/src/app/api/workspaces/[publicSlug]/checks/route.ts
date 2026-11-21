@@ -1,6 +1,6 @@
-import { checkSiteNow } from '../../../../../server/check-site-now';
-import { webServices } from '../../../../../server/web-services';
-import { authoriseWorkspaceRequest } from '../../../../../server/workspace-access';
+import { checkSiteNow } from '@/server/sites/check-site-now';
+import { webServices } from '@/server/composition/web-services';
+import { authoriseWorkspaceRequest } from '@/server/workspaces/workspace-access';
 
 // "Check now": POST with the workspace's secret token as a bearer token. Answers 202
 // with the run to poll, which may be one already in progress, or 429 with Retry-After

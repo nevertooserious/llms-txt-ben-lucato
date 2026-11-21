@@ -44,11 +44,6 @@ export function forgetWorkspace(publicSlug: string): void {
   }
 }
 
-/** The path of a workspace's secret link. */
-export function secretLinkPath(publicSlug: string, accessToken: string): string {
-  return `/w/${encodeURIComponent(publicSlug)}#token=${encodeURIComponent(accessToken)}`;
-}
-
 /** The token in the current URL's fragment, else the one saved for this workspace. */
 export function accessTokenFor(publicSlug: string): string | null {
   const fromFragment = new URLSearchParams(window.location.hash.slice(1)).get('token');

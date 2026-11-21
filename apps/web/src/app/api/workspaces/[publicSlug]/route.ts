@@ -1,7 +1,7 @@
 import { deleteWorkspace, withTransaction } from '@llms-txt/db';
-import { loadWorkspaceView } from '../../../../server/load-workspace-view';
-import { webServices } from '../../../../server/web-services';
-import { authoriseWorkspaceRequest } from '../../../../server/workspace-access';
+import { loadWorkspaceView } from '@/server/workspaces/load-workspace-view';
+import { webServices } from '@/server/composition/web-services';
+import { authoriseWorkspaceRequest } from '@/server/workspaces/workspace-access';
 
 // The workspace screen's state, polled while a run is active: GET with the workspace's
 // secret token as a bearer token.

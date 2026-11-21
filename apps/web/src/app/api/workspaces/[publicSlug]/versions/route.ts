@@ -1,7 +1,7 @@
 import { listLlmsTxtVersions } from '@llms-txt/db';
-import { webServices } from '../../../../../server/web-services';
-import { authoriseWorkspaceRequest } from '../../../../../server/workspace-access';
-import type { LlmsTxtVersionSummaryView } from '../../../../../shared/workspace-view';
+import { webServices } from '@/server/composition/web-services';
+import { authoriseWorkspaceRequest } from '@/server/workspaces/workspace-access';
+import type { LlmsTxtVersionSummaryView } from '@/shared/workspace-view';
 
 // The workspace's version history, newest first, without the file contents. GET with the
 // workspace's secret token as a bearer token: only the live version is public.

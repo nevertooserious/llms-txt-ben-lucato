@@ -1,4 +1,8 @@
 {
   "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    // The tests call the web app's route handlers, which import through its `@/` alias.
+    "paths": { "@/*": ["../apps/web/src/*"] }
+  },
   "include": ["tests", "fixture-sites", "support"]
 }

@@ -1,6 +1,6 @@
-import { loadDemoWorkspacePath } from '../server/demo-workspace';
-import { webServices } from '../server/web-services';
-import { HomeScreen } from './home-screen';
+import { loadDemoWorkspacePath } from '@/server/workspaces/demo-workspace';
+import { webServices } from '@/server/composition/web-services';
+import { HomeScreen } from '@/features/sites/home-screen';
 
 // Whether the demo link shows is decided per request, not when the image is built.
 export const dynamic = 'force-dynamic';

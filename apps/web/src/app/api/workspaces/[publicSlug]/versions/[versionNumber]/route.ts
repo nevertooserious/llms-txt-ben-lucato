@@ -1,6 +1,6 @@
 import { loadLlmsTxtVersionContent } from '@llms-txt/db';
-import { webServices } from '../../../../../../server/web-services';
-import { authoriseWorkspaceRequest } from '../../../../../../server/workspace-access';
+import { webServices } from '@/server/composition/web-services';
+import { authoriseWorkspaceRequest } from '@/server/workspaces/workspace-access';
 
 /** The largest value of the Postgres `integer` column `version_number`. */
 const MAX_VERSION_NUMBER = 2_147_483_647;
