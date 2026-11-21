@@ -33,6 +33,7 @@ export {
   claimDueMonitorChecks,
   findOrCreateSite,
   loadSiteForRun,
+  saveGeneratedSummary,
   saveSiteCrawlOutcome,
   saveSiteTitle,
   type SiteCrawlOutcome,
@@ -63,6 +64,7 @@ export {
   saveCrawledPage,
   saveExtractedPage,
   saveLinkSignals,
+  savePageAssessment,
   type CrawledPageWrite,
   type StoredPage,
 } from './pages';

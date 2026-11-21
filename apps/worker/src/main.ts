@@ -8,6 +8,7 @@ import { crawlSite, HeadlessRenderer, resolveSiteRootUrl } from '@llms-txt/crawl
 import { createDatabasePool } from '@llms-txt/db';
 import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
+import { createAnthropicLlmClient } from './anthropic-llm-client';
 import { readWorkerConfig } from './worker-config';
 import { startWorkerJobs } from './worker-jobs';
 
@@ -19,6 +20,8 @@ queue.on('error', (error) => logger.error('queue error', { error }));
 // One renderer for every run, so its concurrency limit holds across the worker. Chromium
 // starts on the first render.
 const headlessRenderer = new HeadlessRenderer();
+const llmClient = config.anthropicApiKey === null ? null : createAnthropicLlmClient(config.anthropicApiKey);
+if (llmClient === null) logger.warn('ANTHROPIC_API_KEY is not set; using heuristics instead of LLM assessment');
 
 await queue.start();
 await startWorkerJobs({
@@ -29,6 +32,7 @@ await startWorkerJobs({
   crawl: (options) => crawlSite({ ...options, headlessRenderer }),
   resolveRootUrl: (rootUrl) => resolveSiteRootUrl({ rootUrl }),
   renderLlmsTxt: generateLlmsTxt,
+  llmClient,
 });
 // The monitor tick: every five minutes, reap stale runs and enqueue due checks.
 await queue.schedule(QUEUE_NAMES.monitorTick, '*/5 * * * *');

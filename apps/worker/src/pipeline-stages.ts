@@ -22,7 +22,7 @@ import {
   type StoredPage,
 } from '@llms-txt/db';
 import { extractPage } from '@llms-txt/extractor';
-import { decidePublication, type GenerateLlmsTxtInput } from '@llms-txt/generator';
+import { decidePublication, type GenerateLlmsTxtInput, type LlmClient } from '@llms-txt/generator';
 import {
   assessSitemapLastModifiedTrust,
   evaluateSafetyGate,
@@ -32,6 +32,10 @@ import {
   type SitemapLastModifiedObservation,
 } from '@llms-txt/monitor';
 import type { Logger } from '@llms-txt/runtime';
+import { enrichPagesWithLlm } from './llm-enrichment-stage';
+import { PipelineRunFailure } from './pipeline-run-failure';
+
+export { PipelineRunFailure };
 
 // The stages of one run. This is the imperative shell: it loads state, hands it to the
 // stages and the pure decisions (reconcilePage, evaluateSafetyGate, decidePublication,
@@ -55,15 +59,9 @@ export interface PipelineStageDependencies {
   resolveRootUrl: (rootUrl: string) => Promise<string>;
   /** generateLlmsTxt. */
   renderLlmsTxt: (input: GenerateLlmsTxtInput) => string;
+  /** Assesses pages and writes the summary. Without one, the generator's heuristics are used. */
+  llmClient?: LlmClient | null;
   now?: () => Date;
-}
-
-/** Fails the run with a message for the user; not a bug. */
-export class PipelineRunFailure extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'PipelineRunFailure';
-  }
 }
 
 const PROGRESS_WRITE_INTERVAL_MS = 2_000;
@@ -196,12 +194,23 @@ export async function runPipelineStages(
     currentStage: 'generate',
     pagesChangedCount: changedUrls.size,
   });
-  const generatorPages = await loadGeneratorPages(databasePool, site.id);
+  const renderedSiteTitle = siteTitle ?? new URL(site.rootUrl).host;
+  const loadedPages = await loadGeneratorPages(databasePool, site.id);
+  const { pages: generatorPages, siteSummary } = dependencies.llmClient
+    ? await enrichPagesWithLlm({
+        databasePool,
+        logger,
+        llmClient: dependencies.llmClient,
+        site,
+        siteTitle: renderedSiteTitle,
+        pages: loadedPages,
+      })
+    : { pages: loadedPages, siteSummary: site.generatedSummary };
   let publishedCount = 0;
   for (const workspaceId of await loadWorkspaceIdsForSite(databasePool, site.id)) {
     const rendered = dependencies.renderLlmsTxt({
-      siteTitle: siteTitle ?? new URL(site.rootUrl).host,
-      siteSummary: site.generatedSummary,
+      siteTitle: renderedSiteTitle,
+      siteSummary,
       pages: generatorPages,
       overrides: await loadWorkspaceOverrides(databasePool, workspaceId),
     });
