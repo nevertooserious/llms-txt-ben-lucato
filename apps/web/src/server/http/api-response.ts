@@ -1,5 +1,4 @@
-// What the REST API's route handlers have in common: errors with a stable code, the
-// paths it links to, and the plain-text form of an llms.txt.
+// Common response info for the API
 
 export type ApiErrorCode =
   | 'cooldown_active'
@@ -15,7 +14,7 @@ export type ApiErrorCode =
   | 'unauthorized'
   | 'version_not_found';
 
-/** `error` is for people and may be reworded; `code` is for programs and will not be. */
+/** `error` is for front-end info; `code` is for business logic. */
 export function apiError(status: number, code: ApiErrorCode, message: string, headers?: Record<string, string>): Response {
   return Response.json({ error: message, code }, { status, headers });
 }
@@ -27,10 +26,9 @@ export const hostedLlmsTxtPath = (publicSlug: string) => `/w/${encodeURIComponen
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Checked before a query, because Postgres raises an error on a malformed uuid. */
 export const isPipelineRunId = (text: string) => UUID_PATTERN.test(text);
 
-/** One version's file as text/plain. Its ETag is the content hash, so a client can revalidate. */
+// TODO blucato
 export function llmsTxtFileResponse(
   request: Request,
   file: { versionNumber: number; llmsTxtContent: string; llmsTxtContentHash: string },

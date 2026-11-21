@@ -262,3 +262,6 @@ Not yet decided or designed.
 - **Meta refresh:** a stored page that becomes a meta-refresh stub is neither updated nor removed; its target is crawled as a new page.
 - **Restoring an excluded page:** a user cannot yet force back a page the assessment wrongly excluded.
 - **Thresholds:** the page budget (200, `CRAWL_PAGE_BUDGET`) and the safety-gate failure share (0.5) have starting values that have not been tuned against real sites. The headless thresholds have starting values in `packages/crawler/src/page-signals/render-decision.ts`, tuned only against the fixture sites.
+
+
+// TODO blucato

@@ -36,7 +36,7 @@ const ONE_HOUR_SECONDS = 3600;
 /**
  * A URL submission: rate-limit by IP, then in one transaction create a new site with
  * monitoring on and start its first run. Each submission is an independent site, even
- * for a URL submitted before.
+ * for a URL submitted before by another user.
  */
 export async function submitSite(
   request: SubmitSiteRequest,

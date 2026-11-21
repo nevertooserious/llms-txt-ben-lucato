@@ -1,0 +1,3 @@
+# Summary
+
+The extractor receives the page's full HTML, found by the crawler. The extractor reads its metadata (title, description, canonical URL, language, site name), classifies the page type, strips the page down to its main content, and converts that to markdown. It also computes a scrubbed hash of the content, ignoring dates and numbers, in order to reduce change detection noisiness. It returns a page record, which the generator combines with the crawl signals and LLM assessment to build the llms.txt.

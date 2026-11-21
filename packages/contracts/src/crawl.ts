@@ -6,11 +6,11 @@ export type FetchMethod = (typeof FETCH_METHODS)[number];
 export const DISCOVERY_SOURCES = ['sitemap', 'navigation', 'page_link', 'existing_llms_txt'] as const;
 export type DiscoverySource = (typeof DISCOVERY_SOURCES)[number];
 
-/** Crawler output: one fetched page, plus what discovery learned about it. */
+/** Crawler output: a single fetched page. */
 export interface RawPage {
-  /** The page's identity: normalised before fetching. */
+  /** Unique identifier for the page. */
   normalisedUrl: string;
-  /** What was requested: the URL as the site linked it. Stored, so a re-check asks for the same form. */
+  /** What was requested: the URL as the site linked it. */
   fetchUrl: string;
   /** Where the page ended up after redirects. */
   finalUrl: string;
@@ -38,8 +38,7 @@ export interface PageCrawlSignals {
   crawlDepth: number;
   discoveredVia: DiscoverySource;
   /**
-   * A robots directive for this crawler (`<meta name="robots">` or X-Robots-Tag) says
-   * `noindex`: the site asks that the page not be listed, so the generator leaves it out.
+   * A robots directive from the site says `noindex`, so the generator leaves it out.
    */
   hasNoindexDirective: boolean;
 }
@@ -56,8 +55,8 @@ export interface LinkSignals {
   navigationLabel: string | null;
   /**
    * Where the first navigation link to the page comes among the homepage's navigation
-   * links, from 0; null when it is not in the navigation. The site's own order, which
-   * the generator uses to order pages that score the same.
+   * links, from 0; null when it is not in the navigation. Helpful for ordering pages
+   * in the generator.
    */
   navigationPosition: number | null;
   /**
