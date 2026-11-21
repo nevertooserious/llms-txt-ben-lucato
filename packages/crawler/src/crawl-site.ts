@@ -180,6 +180,15 @@ class SiteCrawl {
 
   async run(): Promise<CrawlResult> {
     const decidedBefore = this.requiresHeadlessRendering !== null;
+    try {
+      return await this.crawlUntilStopped(decidedBefore);
+    } catch (error) {
+      if (error instanceof CrawlDeadlineReached) return this.result('time_limit', decidedBefore);
+      throw error;
+    }
+  }
+
+  private async crawlUntilStopped(decidedBefore: boolean): Promise<CrawlResult> {
     await this.loadRobotsTxt();
     if (this.robots.status === 'unreachable') return this.result('robots_txt_unreachable', decidedBefore);
 
@@ -271,6 +280,7 @@ class SiteCrawl {
         acceptedContentTypes: ['*/*'],
         maxResponseBytes: MAX_SITEMAP_BYTES,
         decompressGzip: true,
+        ...(!listedInRobotsTxt && { isRedirectAllowed: this.isRedirectAllowed }),
       });
       if (outcome.kind !== 'response' || outcome.httpStatusCode !== 200) continue;
 
@@ -291,7 +301,11 @@ class SiteCrawl {
     const candidates = [...new Set([`${this.rootUrl}/llms.txt`, new URL('/llms.txt', this.rootUrl).href])];
     for (const llmsTxtUrl of candidates) {
       if (!this.isAllowedByRobots(llmsTxtUrl)) continue;
-      const outcome = await this.politeFetch({ url: llmsTxtUrl, acceptedContentTypes: TEXT_TYPES });
+      const outcome = await this.politeFetch({
+        url: llmsTxtUrl,
+        acceptedContentTypes: TEXT_TYPES,
+        isRedirectAllowed: this.isRedirectAllowed,
+      });
       if (outcome.kind !== 'response' || outcome.httpStatusCode !== 200) continue;
       for (const match of outcome.body.matchAll(/\]\(\s*<?([^)\s>]+)>?\s*\)/g)) {
         const linkedUrl = htmlUrlForMarkdownLink(match[1]!, outcome.finalUrl);
@@ -499,7 +513,9 @@ class SiteCrawl {
     // The browser's requests to this host obey robots.txt too, as a crawler's should.
     const outcome = await this.renderer.render(url, { isUrlAllowed: this.isRedirectAllowed });
     if (outcome.kind === 'failed') {
-      if (recordFailure && outcome.reason !== 'disallowed_by_robots') this.recordFailure(url, outcome.reason, outcome.message);
+      if (recordFailure && outcome.reason !== 'disallowed_by_robots' && outcome.reason !== 'unsupported_content_type') {
+        this.recordFailure(url, outcome.reason, outcome.message);
+      }
       return null;
     }
     if (isErrorStatus(outcome.httpStatusCode)) {
@@ -526,8 +542,9 @@ class SiteCrawl {
       for (const navigationLink of signals.navigationLinkUrls) {
         const url = normaliseUrl(navigationLink);
         if (url === null || !isInScope(url, this.rootUrl)) continue;
+        // Membership is a fact about the page; nofollow only forbids following the link.
         this.navigationUrls.add(url);
-        this.addToFrontier(navigationLink, 1, 'navigation', null);
+        if (!signals.isNofollow) this.addToFrontier(navigationLink, 1, 'navigation', null);
       }
     }
     if (signals.isNofollow) return;
@@ -553,8 +570,16 @@ class SiteCrawl {
     const markdownUrl = markdownVariantUrlFor(pageUrl);
     if (markdownUrl === null || !this.isAllowedByRobots(markdownUrl)) return null;
 
-    const outcome = await this.politeFetch({ url: markdownUrl, acceptedContentTypes: TEXT_TYPES });
-    const found = outcome.kind === 'response' && outcome.httpStatusCode === 200 && outcome.contentType !== null;
+    const outcome = await this.politeFetch({
+      url: markdownUrl,
+      acceptedContentTypes: TEXT_TYPES,
+      isRedirectAllowed: this.isRedirectAllowed,
+    });
+    const found =
+      outcome.kind === 'response' &&
+      outcome.httpStatusCode === 200 &&
+      outcome.contentType !== null &&
+      isInScope(outcome.finalUrl, this.rootUrl);
     if (found) this.markdownVariantsFound = true;
     else this.markdownProbeMisses += 1;
     return found ? outcome.finalUrl : null;
@@ -574,6 +599,7 @@ class SiteCrawl {
 
     const retryAfterMs = parseRetryAfter(outcome.headers['retry-after']);
     if (retryAfterMs === null || retryAfterMs > (this.options.maxRetryAfterMs ?? 30_000)) return outcome;
+    if (Date.now() + retryAfterMs >= this.deadline) throw new CrawlDeadlineReached();
     // Slow down for the rest of the crawl too.
     this.requestIntervalMs = Math.max(this.requestIntervalMs, Math.min(retryAfterMs, 10_000));
     await sleep(retryAfterMs);
@@ -583,6 +609,8 @@ class SiteCrawl {
 
   private async waitForRequestSlot(): Promise<void> {
     const waitMs = this.lastRequestAt + this.requestIntervalMs - Date.now();
+    // Crawl-delay is honoured as given, so a slot past the time limit ends the crawl.
+    if (waitMs > 0 && Date.now() + waitMs >= this.deadline) throw new CrawlDeadlineReached();
     if (waitMs > 0) await sleep(waitMs);
     this.lastRequestAt = Date.now();
   }
@@ -614,6 +642,9 @@ class SiteCrawl {
     };
   }
 }
+
+/** The next request could only be made after the crawl's time limit. */
+class CrawlDeadlineReached extends Error {}
 
 /** A response that says the site is struggling or refusing us, not that the page is gone. */
 function isErrorStatus(httpStatusCode: number): boolean {
