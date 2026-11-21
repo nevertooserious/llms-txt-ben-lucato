@@ -12,6 +12,7 @@
     "@llms-txt/db": "*",
     "@llms-txt/generator": "*",
     "@llms-txt/runtime": "*",
-    "pg-boss": "^12.38.2"
+    "pg-boss": "^12.38.2",
+    "playwright": "^1.65.1"
   }
 }
