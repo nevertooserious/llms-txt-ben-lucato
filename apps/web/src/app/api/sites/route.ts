@@ -1,5 +1,44 @@
-// Submit a URL: rate-limit by IP, find or create the site, create a workspace and its
-// secret link, insert a pipeline_runs row and enqueue the job on pg-boss.
-export function POST(): Response {
-  return Response.json({ error: 'not implemented' }, { status: 501 });
+import { clientIpFrom } from '../../../server/client-ip';
+import { submitSite } from '../../../server/submit-site';
+import { webServices } from '../../../server/web-services';
+
+// Submit a URL. The work is in server/submit-site.ts; this handler only parses the
+// request and shapes the response.
+export async function POST(request: Request): Promise<Response> {
+  const body: unknown = await request.json().catch(() => null);
+  const submittedUrl = (body as { url?: unknown } | null)?.url;
+  if (typeof submittedUrl !== 'string') {
+    return Response.json({ error: 'Send a JSON body with a "url" string.' }, { status: 400 });
+  }
+
+  const services = webServices();
+  try {
+    const outcome = await submitSite(
+      { submittedUrl, clientIp: clientIpFrom(request.headers) },
+      {
+        databasePool: services.databasePool,
+        queue: await services.queue(),
+        submissionsPerIpPerHour: services.config.submissionsPerIpPerHour,
+      },
+    );
+    switch (outcome.kind) {
+      case 'invalid_url':
+        return Response.json({ error: 'That is not an http or https URL.' }, { status: 400 });
+      case 'rate_limited':
+        return Response.json({ error: 'Too many submissions from this address. Try again later.' }, { status: 429 });
+      case 'submitted':
+        return Response.json(
+          {
+            workspaceId: outcome.workspaceId,
+            publicSlug: outcome.publicSlug,
+            accessToken: outcome.accessToken,
+            pipelineRunId: outcome.pipelineRunId,
+          },
+          { status: 202 },
+        );
+    }
+  } catch (error) {
+    services.logger.error('submission failed', { error });
+    return Response.json({ error: 'The submission could not be saved.' }, { status: 500 });
+  }
 }

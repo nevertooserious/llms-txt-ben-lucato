@@ -14,7 +14,7 @@ export default defineConfig({
         // Needs DATABASE_URL pointing at a database with db/schema.sql applied; CI only.
         test: {
           name: 'database',
-          include: ['packages/*/src/**/*.database.test.ts'],
+          include: ['packages/*/src/**/*.database.test.ts', 'apps/*/src/**/*.database.test.ts'],
         },
       },
       {

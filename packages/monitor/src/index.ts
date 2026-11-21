@@ -1,3 +1,3 @@
-// The monitor has no pipeline of its own. It enqueues check runs for due sites, which
-// go through the same crawl -> extract -> generate stages, and reaps stale runs.
-export { enqueueDueMonitorChecks, reapStalePipelineRuns } from './monitor-tick';
+// Schedules re-checks: enqueues due monitor checks on the pipeline queue and reaps runs
+// that lost their worker. A check then runs through the same pipeline as a submission.
+export { runMonitorTick, type MonitorTickDependencies, type MonitorTickOutcome } from './monitor-tick';

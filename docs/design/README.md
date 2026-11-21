@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps that file up to date as the site changes.
 
-Status: project skeleton with the extractor and crawler implemented. Every other component exists as a package with typed stubs (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
+Status: the extractor, the crawler and the run lifecycle are implemented. The pipeline stages inside a run and the generator are typed stubs (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
 
 ## Contents
 
@@ -103,17 +103,23 @@ The full DDL with comments is in [`db/schema.sql`](../../db/schema.sql).
 - **Publishing is a single pointer update.** A version becomes live when `site_workspaces.published_version_id` moves to it. Rollback is the same operation.
 - **Raw HTML is not stored.** Only extracted markdown and hashes are kept. Improving the extractor means re-fetching pages.
 
+### Where SQL lives
+
+All SQL is hand-written in `packages/db`, one module per table, and the rest of the code calls its functions. ESLint stops any other package from importing `pg`, and stops contracts, the extractor, the generator and the crawler from importing the database at all: the worker loads their inputs and stores their outputs. A function whose writes must land with the caller's takes a `Transaction`, which only `withTransaction` produces, so it cannot be called on a bare pool by mistake.
+
 ## 4. Queueing and recovery
 
 - **One job is one site's run.** Jobs are not split per page.
 - **Concurrency:** the worker takes up to ten jobs at once, so ten sites run in parallel. Within a run, the target site is fetched at a per-host rate limit. Headless rendering has its own, lower, global limit because of memory: the worker shares one `HeadlessRenderer`, which runs at most two renders at once.
 - **Priority:** a user's submission or "check now" is taken ahead of scheduled monitor checks.
-- **One active run per site:** a partial unique index on `pipeline_runs` rejects a second queued or running run for the same site.
-- **Heartbeat:** a running job updates `last_heartbeat_at` every few seconds.
-- **Reaper:** marks any running row with a stale heartbeat as failed, which frees that site for a new run.
-- **Queue-level recovery:** pg-boss job expiry and retry cover a worker that dies mid-job.
+- **One active run per site:** a partial unique index on `pipeline_runs` rejects a second queued or running run for the same site. A second submission joins the active run instead.
+- **A run and its job are created together:** the `pipeline_runs` row is inserted and the pg-boss job sent in one transaction, through pg-boss's `db` option, and the job's id is the run's id. A crash can therefore never leave a queued row with no job, which would hold the site's slot for good. The web app and the monitor both go through one function, `startPipelineRun`, so priorities and queue options are set in one place.
+- **Guarded status changes:** `queued → running → succeeded | unchanged | failed`, and `queued | running → failed` by the reaper. Every change is a conditional update that names the status it expects. A job that cannot claim its run (already claimed, or reaped) is dropped. A worker that finishes after its run was reaped records nothing, and publishing first locks the run row and checks that the run is still running.
+- **Heartbeat:** a running job updates `last_heartbeat_at` every 5 seconds.
+- **Reaper:** every monitor tick, fails running rows whose heartbeat is over 2 minutes old and queued rows over 6 hours old (a job that failed or expired before it was claimed). Either frees the site for a new run.
+- **No queue-level retries:** pipeline-run jobs have `retryLimit: 0`. A retried job would find its run already failed by the reaper, so retries would only add a second recovery path that disagrees with the first. A failed run is retried by the next monitor check or by the user. pg-boss expiry (45 minutes, well past the longest run) only cleans up after a worker that died.
 
-`pipeline_runs` records what a job did and feeds the progress the frontend polls. pg-boss decides when and where a job runs.
+`pipeline_runs` is the record of a run: its status, and the progress the frontend polls. pg-boss only decides when and where a job runs.
 
 ## 5. Monitor
 
@@ -171,7 +177,7 @@ The app is public, has no accounts, and fetches URLs that users supply.
 - **SSRF guard:** blocks private, loopback and link-local addresses, including IPv6 and IPv4-mapped forms and the hosting platform's private network. It runs inside the HTTP client's connector: the host is resolved there, every address is checked, and the socket connects to the checked address, so there is no second lookup for DNS rebinding to exploit. A host with any blocked address is refused. Redirects are followed by hand, and each hop opens a new, checked connection. It covers the headless browser by performing every browser request in Node through the same connector. As a second layer, the browser's own DNS is disabled, so a request that escaped interception could not reach anything. WebSockets, service workers and popups are refused.
 - **Network policy:** the guard's rule is passed in when the fetcher is created. Production uses the public-internet-only policy. End-to-end tests pass one that allows only their fixture sites' loopback ports; it lives in the tests, and no setting or environment variable can loosen the guard.
 - **Fetch limits:** 15 seconds per fetch including redirects, 5 MB per response, 5 redirects, and only `http` and `https`; a page budget per run. A response of a type the caller did not ask for is dropped without reading its body.
-- **Submission limits:** a per-IP rate limit using `site_workspaces.creator_ip_hash`, and a global concurrency cap from the queue.
+- **Submission limits:** a per-IP rate limit using `site_workspaces.creator_ip_hash` (10 new workspaces per hour by default), and a global concurrency cap from the queue. The IP is the first `X-Forwarded-For` entry, which is only trustworthy behind the hosting platform's proxy.
 - **Monitor expiry:** `monitoring_enabled_until` stops abandoned submissions from being re-crawled forever.
 - **Served files:** `text/plain` with `X-Content-Type-Options: nosniff`.
 - **Preview:** crawled titles and descriptions are untrusted and are escaped before display.

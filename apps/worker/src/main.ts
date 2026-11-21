@@ -1,50 +1,58 @@
 // Worker process: consumes pipeline runs from the pg-boss queue and runs the monitor
 // tick on a schedule. The web app and the worker never call each other; they share
-// only Postgres.
+// only Postgres. This file is the composition root: it reads the configuration and
+// builds every long-lived dependency once.
 import { PgBoss } from 'pg-boss';
 import { QUEUE_NAMES, type PipelineRunJob } from '@llms-txt/contracts';
-import { createDatabasePool } from '@llms-txt/db';
-import { enqueueDueMonitorChecks, reapStalePipelineRuns } from '@llms-txt/monitor';
+import { createDatabasePool, createPipelineQueues } from '@llms-txt/db';
+import { runMonitorTick } from '@llms-txt/monitor';
+import { createLogger } from '@llms-txt/runtime';
 import { runPipeline } from './run-pipeline';
+import { readWorkerConfig } from './worker-config';
 
-/** Ten sites run in parallel (docs/design/README.md, section 4). */
-const PIPELINE_RUN_CONCURRENCY = 10;
-/** Monitor checks queue behind user submissions and "check now". */
-const MONITOR_CHECK_PRIORITY = -1;
-
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) throw new Error('DATABASE_URL is not set');
-
-const databasePool = createDatabasePool(databaseUrl);
-const queue = new PgBoss(databaseUrl);
-queue.on('error', (error) => console.error('[queue]', error));
+const config = readWorkerConfig();
+const logger = createLogger({ level: config.logLevel, fields: { process: 'worker' } });
+const databasePool = createDatabasePool(config.databaseUrl);
+const queue = new PgBoss(config.databaseUrl);
+queue.on('error', (error) => logger.error('queue error', { error }));
 
 await queue.start();
-await queue.createQueue(QUEUE_NAMES.pipelineRun);
-await queue.createQueue(QUEUE_NAMES.monitorTick);
+await createPipelineQueues(queue);
 
 await queue.work<PipelineRunJob>(
   QUEUE_NAMES.pipelineRun,
-  { localConcurrency: PIPELINE_RUN_CONCURRENCY },
+  { localConcurrency: config.pipelineRunConcurrency },
   async ([job]) => {
-    if (job) await runPipeline(job.data, { databasePool });
+    if (job === undefined) return;
+    await runPipeline(job.data, {
+      databasePool,
+      logger: logger.child({ pipelineRunId: job.data.pipelineRunId, siteId: job.data.siteId }),
+      heartbeatIntervalMs: config.heartbeatIntervalMs,
+    });
   },
 );
 
 await queue.schedule(QUEUE_NAMES.monitorTick, '*/5 * * * *');
 await queue.work(QUEUE_NAMES.monitorTick, async () => {
-  await reapStalePipelineRuns(databasePool);
-  await enqueueDueMonitorChecks(databasePool, async (job) => {
-    await queue.send(QUEUE_NAMES.pipelineRun, job, { priority: MONITOR_CHECK_PRIORITY });
+  const outcome = await runMonitorTick({
+    databasePool,
+    queue,
+    thresholds: {
+      heartbeatStaleAfterSeconds: config.heartbeatStaleAfterSeconds,
+      queuedStaleAfterSeconds: config.queuedStaleAfterSeconds,
+    },
+    maxChecksPerTick: config.maxMonitorChecksPerTick,
   });
+  logger.info('monitor tick', { ...outcome });
 });
 
-console.log('[worker] started');
+logger.info('worker started', { pipelineRunConcurrency: config.pipelineRunConcurrency });
 
-async function shutDown(): Promise<void> {
+async function shutDown(signal: string): Promise<void> {
+  logger.info('worker stopping', { signal });
   await queue.stop();
   await databasePool.end();
   process.exit(0);
 }
-process.once('SIGTERM', () => void shutDown());
-process.once('SIGINT', () => void shutDown());
+process.once('SIGTERM', () => void shutDown('SIGTERM'));
+process.once('SIGINT', () => void shutDown('SIGINT'));
