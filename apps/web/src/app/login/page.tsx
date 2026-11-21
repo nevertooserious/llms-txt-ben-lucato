@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { LoginScreen } from '@/features/login/login-screen';
-import { basicAuthCredentials } from '@/server/http/basic-auth';
+import { readBasicAuthCredentials } from '@/server/composition/web-config';
 import { isValidSessionToken, pathAfterLogin, SESSION_COOKIE_NAME } from '@/server/http/session';
 import { signIn } from './actions';
 
@@ -14,6 +14,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { next } = await searchParams;
   const nextPath = pathAfterLogin(typeof next === 'string' ? next : null);
   const sessionToken = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
-  if (isValidSessionToken(sessionToken, basicAuthCredentials())) redirect(nextPath);
+  if (isValidSessionToken(sessionToken, readBasicAuthCredentials())) redirect(nextPath);
   return <LoginScreen signIn={signIn} nextPath={nextPath} />;
 }

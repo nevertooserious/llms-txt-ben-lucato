@@ -17,6 +17,10 @@ import tseslint from 'typescript-eslint';
 //     composition root's;
 //   - the worker's `pipeline/decisions/` is pure: no I/O, and only types from @llms-txt/db;
 //   - the monitor only schedules runs, so it does not import the stages a run calls;
+//   - packages are imported through their entry point, and only along `packageDependencies`;
+//   - only the worker's `llm/` imports the Anthropic SDK, so no call skips the LLM cache;
+//   - the pure stages and decisions read no clock or randomness, so equal inputs render equally;
+//   - only the config modules read `process.env`.
 //   - in the web app, `app/` routes call `server/` and render `features/`; `server/` and
 //     the browser code (`features/`, `browser/`) share only `shared/`.
 // Builtins match with or without the `node:` prefix; all modules match subpaths too.
@@ -59,6 +63,52 @@ const restrict = (
     },
   ],
 });
+
+/** Which workspace packages each package may import. */
+const packageDependencies = {
+  contracts: [],
+  runtime: [],
+  crawler: ['contracts'],
+  db: ['contracts'],
+  extractor: ['contracts'],
+  generator: ['contracts'],
+  monitor: ['db'],
+};
+const WORKSPACE_PACKAGES = [...Object.keys(packageDependencies), 'web', 'worker'];
+const ENTRY_POINT_PATTERN = {
+  regex: '^@llms-txt/[^/]+/.+$',
+  message: 'Import a package through its entry point (src/index.ts), never a file inside it.',
+};
+const LLM_SDK_PATTERN = {
+  regex: '^@anthropic-ai/sdk(/.*)?$',
+  message: 'Only the worker\'s llm/ folder uses the Anthropic SDK; the pipeline is handed an LlmClient.',
+};
+
+// A separate rule from `no-restricted-imports`, so these apply alongside each block above.
+const packageBoundaries = (
+  /** @type {string[]} */ allowedPackages,
+  /** @type {{ mayUseLlmSdk?: boolean }} */ { mayUseLlmSdk = false } = {},
+) => {
+  const forbiddenPackages = WORKSPACE_PACKAGES.filter((name) => !allowedPackages.includes(name));
+  return {
+    '@typescript-eslint/no-restricted-imports': [
+      'error',
+      {
+        patterns: [
+          ENTRY_POINT_PATTERN,
+          {
+            regex: `^@llms-txt/(${forbiddenPackages.join('|')})$`,
+            message: 'This package may not depend on that one (packageDependencies in eslint.config.js).',
+          },
+          ...(mayUseLlmSdk ? [] : [LLM_SDK_PATTERN]),
+        ],
+      },
+    ],
+  };
+};
+const WORKER_DEPENDENCIES = Object.keys(packageDependencies);
+const WEB_DEPENDENCIES = ['contracts', 'db', 'generator', 'runtime'];
+const DETERMINISM_MESSAGE = 'Pure code takes the time or an id as an input, so equal inputs give equal output.';
 
 export default tseslint.config(
   { ignores: ['**/node_modules/', '**/.next/', '**/next-env.d.ts'] },
@@ -126,16 +176,6 @@ export default tseslint.config(
     rules: restrict(networkBuiltins, networkPackages, NETWORK_MESSAGE, [PG_PATTERN]),
   },
   {
-    files: ['packages/monitor/src/**/*.ts'],
-    rules: restrict(networkBuiltins, networkPackages, NETWORK_MESSAGE, [
-      PG_PATTERN,
-      {
-        regex: '^@llms-txt/(crawler|extractor|generator)(/.*)?$',
-        message: 'The monitor only schedules runs; the worker\'s pipeline calls the stages.',
-      },
-    ]),
-  },
-  {
     files: ['packages/db/src/connection/**/*.ts'],
     rules: restrict(networkBuiltins, networkPackages, NETWORK_MESSAGE),
   },
@@ -165,7 +205,13 @@ export default tseslint.config(
       ]),
       '@typescript-eslint/no-restricted-imports': [
         'error',
-        { patterns: [{ regex: '^@llms-txt/db(/.*)?$', allowTypeImports: true, message: DECISIONS_MESSAGE }] },
+        {
+          patterns: [
+            ENTRY_POINT_PATTERN,
+            LLM_SDK_PATTERN,
+            { regex: '^@llms-txt/db$', allowTypeImports: true, message: DECISIONS_MESSAGE },
+          ],
+        },
       ],
     },
   },
@@ -193,6 +239,47 @@ export default tseslint.config(
     rules: restrict(networkBuiltins, [...networkPackages, ...databasePackages], BROWSER_MESSAGE, [
       webLayers(['app', 'server', 'features', 'browser'], 'shared/ is imported by both sides and imports neither.'),
     ]),
+  },
+  ...Object.entries(packageDependencies).map(([name, allowedPackages]) => ({
+    files: [`packages/${name}/src/**/*.ts`],
+    rules: packageBoundaries(allowedPackages),
+  })),
+  {
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    rules: packageBoundaries(WEB_DEPENDENCIES),
+  },
+  {
+    files: ['apps/worker/src/**/*.ts'],
+    ignores: ['apps/worker/src/pipeline/decisions/**', 'apps/worker/src/llm/**'],
+    rules: packageBoundaries(WORKER_DEPENDENCIES),
+  },
+  {
+    files: ['apps/worker/src/llm/**/*.ts'],
+    rules: packageBoundaries(WORKER_DEPENDENCIES, { mayUseLlmSdk: true }),
+  },
+  {
+    files: ['packages/{extractor,generator}/src/**/*.ts', 'apps/worker/src/pipeline/decisions/**/*.ts'],
+    ignores: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        { selector: "CallExpression[callee.object.name='Date'][callee.property.name='now']", message: DETERMINISM_MESSAGE },
+        { selector: "NewExpression[callee.name='Date'][arguments.length=0]", message: DETERMINISM_MESSAGE },
+        { selector: "CallExpression[callee.object.name='Math'][callee.property.name='random']", message: DETERMINISM_MESSAGE },
+        { selector: "CallExpression[callee.name='randomUUID']", message: DETERMINISM_MESSAGE },
+        { selector: "CallExpression[callee.property.name='randomUUID']", message: DETERMINISM_MESSAGE },
+      ],
+    },
+  },
+  {
+    files: ['apps/*/src/**/*.{ts,tsx}', 'packages/*/src/**/*.ts'],
+    ignores: ['**/*.test.{ts,tsx}', 'apps/worker/src/config/**', 'apps/web/src/server/composition/web-config.ts'],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        { object: 'process', property: 'env', message: 'Read the environment in the config modules (worker-config.ts, web-config.ts).' },
+      ],
+    },
   },
   // Server code may not call fetch either (LLM calls go through the Anthropic SDK);
   // browser components in apps/web may still fetch the app's own /api.

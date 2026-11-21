@@ -2,7 +2,8 @@
 
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { basicAuthCredentials, isCorrectLogin } from '@/server/http/basic-auth';
+import { readBasicAuthCredentials } from '@/server/composition/web-config';
+import { isCorrectLogin } from '@/server/http/basic-auth';
 import {
   createSessionToken,
   LOGIN_PATH,
@@ -18,7 +19,7 @@ export async function signIn(_previous: SignInState, form: FormData): Promise<Si
     const value = form.get(name);
     return typeof value === 'string' ? value : '';
   };
-  const credentials = basicAuthCredentials();
+  const credentials = readBasicAuthCredentials();
   if (!isCorrectLogin(text('username'), text('password'), credentials)) {
     return { errorMessage: 'That username or password is not right.', username: text('username') };
   }

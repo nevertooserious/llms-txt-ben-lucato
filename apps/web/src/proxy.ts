@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { apiError } from './server/http/api-response';
-import { basicAuthCredentials, isAuthorised, isPublicPath } from './server/http/basic-auth';
+import { readBasicAuthCredentials } from './server/composition/web-config';
+import { isAuthorised, isPublicPath } from './server/http/basic-auth';
 import { isValidSessionToken, LOGIN_PATH, SESSION_COOKIE_NAME } from './server/http/session';
 
 const NO_STORE = { 'cache-control': 'no-store' };
@@ -13,7 +14,7 @@ export function proxy(request: NextRequest): Response {
   const { pathname, search } = request.nextUrl;
   if (isPublicPath(pathname)) return NextResponse.next();
 
-  const credentials = basicAuthCredentials();
+  const credentials = readBasicAuthCredentials();
   if (
     isAuthorised(request.headers.get('authorization'), credentials) ||
     isValidSessionToken(request.cookies.get(SESSION_COOKIE_NAME)?.value, credentials)

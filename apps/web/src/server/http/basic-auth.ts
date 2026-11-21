@@ -1,5 +1,4 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
-import type { Environment } from '@llms-txt/runtime';
 
 // The login for the whole app (src/proxy.ts). One shared username and password, with no
 // accounts: API clients send it with HTTP Basic auth each time, and the browser gives it
@@ -8,13 +7,6 @@ import type { Environment } from '@llms-txt/runtime';
 export interface BasicAuthCredentials {
   username: string;
   password: string;
-}
-
-export function basicAuthCredentials(environment: Environment = process.env): BasicAuthCredentials {
-  return {
-    username: environment.BASIC_AUTH_USERNAME || 'user1',
-    password: environment.BASIC_AUTH_PASSWORD || 'pass1',
-  };
 }
 
 /** Compared as hashes, so neither the time taken nor the length gives the value away. */

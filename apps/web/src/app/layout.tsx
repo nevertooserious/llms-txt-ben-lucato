@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { Geist_Mono } from 'next/font/google';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { basicAuthCredentials } from '@/server/http/basic-auth';
+import { readBasicAuthCredentials } from '@/server/composition/web-config';
 import { isValidSessionToken, SESSION_COOKIE_NAME } from '@/server/http/session';
 import { signOut } from './login/actions';
 import './globals.css';
@@ -19,7 +19,7 @@ export const viewport = { themeColor: '#f4f4f4' };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const sessionToken = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
-  const isSignedIn = isValidSessionToken(sessionToken, basicAuthCredentials());
+  const isSignedIn = isValidSessionToken(sessionToken, readBasicAuthCredentials());
   return (
     <html lang="en" className={geistMono.variable}>
       <body>
