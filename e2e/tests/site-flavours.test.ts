@@ -83,9 +83,10 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
     });
 
     it('server-rendered metadata with a client-rendered body', async () => {
-      const result = await generate('metadata-ssr-site');
-      expect(result.llmsTxt.startsWith('# Halfway Studio\n')).toBe(true);
-      expect((await harness.storedPage(result, '/'))?.fetch_method).toBe('headless_browser');
+      // One page, so there is nothing to list: the run reads it, then says so.
+      const result = await harness.submit(await harness.startSite('metadata-ssr-site'));
+      expect(result.firstRun).toMatchObject({ status: 'failed', errorMessage: expect.stringContaining('No page besides the homepage') });
+      expect(await harness.storedPage(result, '/')).toMatchObject({ fetch_method: 'headless_browser', extracted_title: 'Halfway Studio' });
     });
 
     it('server-rendered and hydrated: no needless headless render', async () => {
@@ -113,9 +114,10 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
       expect(result.llmsTxt).toMatch(new RegExp(`- \\[Dashboard\\]\\(${result.site.origin}/app/?\\)`));
     });
 
-    it('hash routing: handled cleanly as a known limitation', async () => {
-      const result = await generate('hash-routing-site');
-      expect(result.llmsTxt.startsWith('# Hashbang Docs\n')).toBe(true);
+    it('hash routing: fails clearly as a known limitation, and publishes nothing', async () => {
+      const result = await harness.submit(await harness.startSite('hash-routing-site'));
+      expect(result.firstRun).toMatchObject({ status: 'failed', errorMessage: expect.stringContaining('URL fragment') });
+      expect(await harness.publishedLlmsTxt(result)).toBeNull();
       expect(await harness.storedPagePaths(result)).toEqual(['/']);
     });
   });

@@ -275,6 +275,22 @@ describe('runPipeline', () => {
     expect(latest.page_changes).toEqual({ added: [], removed: [`${rootUrl}/old`], changed: [] });
   });
 
+  it('fails a first run that finds nothing to list, but lets a published file lose its last page', async () => {
+    const onlyHomepage = await newSiteWithWorkspace();
+    const failed = await run(onlyHomepage.siteId, fakeCrawl([{ path: '/', title: 'Acme' }]));
+    expect(failed).toMatchObject({ status: 'failed', error_message: expect.stringContaining('No page besides the homepage') });
+    expect(await versions(onlyHomepage.workspaceId)).toHaveLength(0);
+
+    const { siteId, workspaceId } = await newSiteWithWorkspace();
+    await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old' }]));
+    await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old', status: 404 }]));
+    const emptied = await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old', status: 404 }]));
+    expect(emptied.status).toBe('succeeded');
+    const published = await versions(workspaceId);
+    expect(published).toHaveLength(2);
+    expect(published.at(-1)!.llms_txt_content).not.toContain('/old');
+  });
+
   it('fails a run with too many failed fetches, records no 404s, and leaves the published file', async () => {
     const { siteId, workspaceId } = await newSiteWithWorkspace();
     await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old' }]));
@@ -345,7 +361,7 @@ describe('runPipeline', () => {
       },
     });
 
-    const outcome = await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }]), undefined, pool);
+    const outcome = await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/docs' }]), undefined, pool);
     expect(outcome.status).toBe('succeeded');
     expect(await versions(workspaceId)).toHaveLength(1);
     expect(await versions(lateWorkspaceId!)).toHaveLength(1);

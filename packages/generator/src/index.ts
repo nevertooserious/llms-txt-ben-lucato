@@ -35,4 +35,4 @@ export {
   type SelectionLimits,
 } from './select-pages';
 export { ENTRY_PATTERN, validateLlmsTxt, type LlmsTxtValidationResult } from './validate-llms-txt';
-export { decidePublication, listedEntries, type PageChanges, type PublicationDecision } from './decide-publication';
+export { decidePublication, listedEntries, NOTHING_TO_LIST_REASON, type PageChanges, type PublicationDecision } from './decide-publication';

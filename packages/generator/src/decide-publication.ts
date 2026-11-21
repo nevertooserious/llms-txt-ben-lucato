@@ -19,6 +19,14 @@ export type PublicationDecision =
       pageChanges: PageChanges;
     };
 
+/**
+ * Why a site with nothing to list publishes nothing: a file that is only a name and a
+ * summary tells a reader no more than the homepage does, and usually means the crawl
+ * could not get past it.
+ */
+export const NOTHING_TO_LIST_REASON =
+  'No page besides the homepage could be listed, so nothing was published. The site may be a single page, route on the URL fragment (/#/docs), or sit behind a login.';
+
 /** A new version only when the text differs from the published version's. */
 export function decidePublication(publishedContent: string | null, renderedContent: string): PublicationDecision {
   if (publishedContent === renderedContent) return { kind: 'unchanged' };
