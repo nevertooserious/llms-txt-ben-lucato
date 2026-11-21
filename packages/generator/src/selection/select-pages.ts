@@ -1,6 +1,7 @@
 import type { GeneratorPage, PageOverride } from '@llms-txt/contracts';
 import { listingCandidates } from './listing-candidates';
 import { homepageOf, isDocumentationType } from './page-kinds';
+import { withoutReferenceFamilies } from './reference-families';
 import { scorePage } from './score-page';
 import { areaSectionNamesOf, isDocumentationSection, OPTIONAL_SECTION_NAME, orderSectionNames, sectionLimitOf, sectionNameOf } from './sections';
 import { DEFAULT_SELECTION_LIMITS, type SelectionLimits } from './selection-limits';
@@ -19,7 +20,7 @@ export interface SelectedPage {
 
 /**
  * Takes the listing candidates, minus pages the user excluded or an assessment judged
- * not to belong; keeps one page per canonical URL; drops pages that score too low; then
+ * not to belong, and minus the rest of a folder most of whose pages are reference entries; keeps one page per canonical URL; drops pages that score too low; then
  * fills the sections in score order within the limits. Pages that score the same keep
  * the order of the site's navigation, then the order the crawl first saw links to them,
  * then of their URLs. A page beyond a limit is left
@@ -33,9 +34,12 @@ export function selectPages(
 ): SelectedPage[] {
   const overridesByUrl = new Map(overrides.map((override) => [override.normalisedUrl, override]));
 
-  const candidates = listingCandidates(pages).filter(
-    (page) =>
-      overridesByUrl.get(page.record.normalisedUrl)?.isExcluded !== true && page.assessment?.listingValue !== 'exclude',
+  const candidates = withoutReferenceFamilies(
+    listingCandidates(pages).filter(
+      (page) =>
+        overridesByUrl.get(page.record.normalisedUrl)?.isExcluded !== true && page.assessment?.listingValue !== 'exclude',
+    ),
+    pages,
   );
 
   const ranked = keepOnePerCanonicalUrl(candidates)

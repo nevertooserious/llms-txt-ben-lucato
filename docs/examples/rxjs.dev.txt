@@ -1,0 +1,48 @@
+# RxJS
+
+> RxJS is the documentation site for the Reactive Extensions Library for JavaScript, a library for composing asynchronous and event-based code with Observables. It provides guides, API reference and migration notes for developers using RxJS.
+
+- In RxJS 7, toPromise is deprecated and should be replaced with firstValueFrom or lastValueFrom.
+- The multicasting APIs multicast, publish and refCount are deprecated in favour of connectable, connect and share.
+- This project is a rewrite of the older Reactive-Extensions/RxJS library and is mostly backwards compatible, with some breaking changes.
+
+## Docs
+
+- [RxJS 6.x to 7.x Detailed Change List](https://rxjs.dev/6-to-7-change-summary): Detailed list of breaking changes and new features between RxJS 6.x and 7.x, organised by module and API item.
+- [Breaking Changes in Version 7](https://rxjs.dev/deprecations/breaking-changes): Lists breaking changes in RxJS version 7 for general behaviour, operators and ajax, with migration notes for each.
+- [Conversion to Promises](https://rxjs.dev/deprecations/to-promise): Explains the RxJS 7 deprecation of toPromise and how to replace it with firstValueFrom or lastValueFrom, with examples and warnings.
+
+## API
+
+- [API List](https://rxjs.dev/api): An index listing RxJS API items grouped by index, operators, ajax, fetch, webSocket and testing, with links to each entry.
+- [BehaviorSubject](https://rxjs.dev/api/index/class/BehaviorSubject): API reference for the BehaviorSubject class, covering its constructor, value property, getValue and next methods, and inherited members.
+- [Observable](https://rxjs.dev/api/index/class/Observable): Reference for the Observable class: its constructor, properties, and methods such as subscribe, pipe, lift, forEach and toPromise, with examples.
+- [ReplaySubject](https://rxjs.dev/api/index/class/ReplaySubject): Documents the ReplaySubject class: its buffering behaviour, constructor parameters, differences from BehaviorSubject, and the next method.
+- [AsyncSubject](https://rxjs.dev/api/index/class/AsyncSubject): API reference for the AsyncSubject class, which emits only its latest value to observers on completion, with its next and complete methods.
+
+## Guides
+
+- [Introduction](https://rxjs.dev/guide/overview): Introduces RxJS as a library for asynchronous, event-based programs using observables, with examples comparing plain JavaScript to RxJS code.
+- [Operator Decision Tree](https://rxjs.dev/operator-decision-tree): A decision tree guide that helps readers choose which RxJS operator to use, starting from a list of options.
+- [Observable](https://rxjs.dev/guide/observable): Explains RxJS Observables: how they differ from functions and Promises, and how to create, subscribe to, execute and dispose them.
+- [Observer](https://rxjs.dev/guide/observer): Explains the RxJS Observer as a set of next, error and complete callbacks, including partial observers and passing a single next callback to subscribe.
+- [RxJS Operators](https://rxjs.dev/guide/operators): Explains RxJS operators: pipeable and creation operators, piping, higher-order observables, marble diagrams, operator categories, and creating custom operators.
+- [Subscription](https://rxjs.dev/guide/subscription): Explains the RxJS Subscription object, its unsubscribe method, combining subscriptions with add and remove, with code examples.
+- [Subject](https://rxjs.dev/guide/subject): Explains RxJS Subjects, multicasting, reference counting, and the BehaviorSubject, ReplaySubject, AsyncSubject and void subject variants, with code examples.
+- [Scheduler](https://rxjs.dev/guide/scheduler): Explains what RxJS schedulers are, lists the built-in scheduler types, and describes how schedulers are used with operators and subscriptions.
+- [Installation Instructions](https://rxjs.dev/guide/installation): Explains how to install RxJS via npm, CommonJS, module type variants, and CDN, with notes on bundler configuration.
+- [Importing instructions](https://rxjs.dev/guide/importing): Explains how to import RxJS modules and operators by version, covering export sites, migration from rxjs/operators, npm and CDN usage.
+- [RxJS: Glossary And Semantics](https://rxjs.dev/guide/glossary-and-semantics): Defines RxJS core terms such as observable, consumer, producer, subscription, notification, hot and cold, and explains their semantics.
+- [Multicasting](https://rxjs.dev/deprecations/multicasting): Migration guide explaining how deprecated RxJS multicasting APIs such as multicast, publish and refCount map to connectable, connect and share.
+- [Testing RxJS Code with Marble Diagrams](https://rxjs.dev/guide/testing/marble-testing): Guide explaining how to test RxJS code with marble diagrams using TestScheduler, covering marble syntax, time progression, subscription marbles, and known issues.
+
+## Optional
+
+- [Team](https://rxjs.dev/team): Lists the RxJS core team and learning team members with links to their Twitter, GitHub and personal websites.
+- [BLACK LIVES MATTER](https://rxjs.dev/blackLivesMatter): A statement of solidarity with the Black Lives Matter movement, listing external resources on racial equity and links to donate to causes.
+- [Contributor Covenant Code of Conduct](https://rxjs.dev/code-of-conduct): The RxJS project's Contributor Covenant code of conduct, covering pledge, standards, responsibilities, scope, enforcement contacts and attribution.
+- [Scheduler Argument](https://rxjs.dev/deprecations/scheduler-argument): Explains the deprecation of the scheduler argument on several RxJS operators, lists affected operators, and shows how to refactor code using scheduled.
+- [Subscribe Arguments](https://rxjs.dev/deprecations/subscribe-arguments): Explains RxJS deprecation of multi-argument subscribe signatures, including tap, and recommends passing an observer object instead.
+- [ResultSelector Parameter](https://rxjs.dev/deprecations/resultSelector): Explains that the resultSelector argument of several RxJS operators is deprecated, lists affected operators, and shows how to refactor using map.
+- [Array Arguments](https://rxjs.dev/deprecations/array-argument): Explains that forkJoin and combineLatest deprecated passing observables as separate arguments, and shows refactoring to arrays or objects.
+- [ConnectableObservable](https://rxjs.dev/api/index/class/ConnectableObservable): Deprecated RxJS class ConnectableObservable, listing its constructor, properties, and methods, with guidance to use connectable or share instead.

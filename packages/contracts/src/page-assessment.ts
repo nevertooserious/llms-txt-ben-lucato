@@ -18,6 +18,8 @@ export const PAGE_EXCLUSION_REASONS = [
   'archive',
   /** One blog post, news item, press release, case study, changelog entry or episode. */
   'individual_content',
+  /** One small item of a larger reference: a single configuration option, flag, error code or function. */
+  'reference_entry',
   /** A copy of another page, such as a print version. */
   'duplicate',
 ] as const;

@@ -226,7 +226,7 @@ create table pages (
   -- Set exactly when listing_value is 'exclude'.
   exclusion_reason                     text check (exclusion_reason in
                                          ('error_page', 'utility', 'thin', 'archive',
-                                          'individual_content', 'duplicate')),
+                                          'individual_content', 'reference_entry', 'duplicate')),
   -- SHA-256 of the model, prompt version and page inputs the assessment was made from.
   assessment_source_hash               text,
 

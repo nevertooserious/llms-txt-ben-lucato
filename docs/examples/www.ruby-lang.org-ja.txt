@@ -1,27 +1,24 @@
 # Ruby Programming Language
 
-> プログラミング言語Rubyの公式サイト（日本語版）です。Rubyを使う開発者や学習者向けに、ダウンロードとインストール方法、ドキュメント、gemによるライブラリ管理、ニュースやセキュリティ情報、コア開発への参加方法を提供しています。
+> The Japanese-language edition of the official Ruby programming language website, for programmers who want to download and install Ruby, read documentation, find gems, follow core development, report security issues, and get release and security news.
 
 ## Docs
 
-- [ドキュメント](https://www.ruby-lang.org/ja/documentation/): A documentation hub linking the Japanese Ruby reference manual by version, a 20-minute quickstart, language-transition guide, English references, and editor recommendations.
-- [Rubyコア開発](https://www.ruby-lang.org/ja/dev/): Explains where to follow Ruby core development: GitHub wiki, mailing lists, bug tracker, source snapshots and how to contribute.
-- [Rubyのインストール](https://www.ruby-lang.org/ja/documentation/installation/): Explains how to install Ruby using package managers, installers, version managers, and building from source, with commands for each platform.
+- [ドキュメント](https://www.ruby-lang.org/ja/documentation/): A Japanese Ruby documentation hub linking to the reference manual, a 20-minute quickstart, language guides, English references, old manual versions, and editor tools.
+- [Rubyコア開発](https://www.ruby-lang.org/ja/dev/): Describes resources for following Ruby's core development: wiki, mailing lists, issue tracker, source snapshots, and how to contribute.
+- [Rubyのインストール](https://www.ruby-lang.org/ja/documentation/installation/): Explains the many ways to install Ruby, covering package managers, installers, version managers and building from source, with commands for each.
 
 ## Guides
 
-- [ライブラリ](https://www.ruby-lang.org/ja/libraries/): Explains how Ruby libraries are distributed as gems, and how to search, install and manage them with the gem command and RubyGems.
-
-## Blog
-
-- [最近のニュース](https://www.ruby-lang.org/ja/news/): Lists recent Ruby news posts, including release announcements, security advisories, and a conference registration notice, each with a date and author.
+- [ライブラリ](https://www.ruby-lang.org/ja/libraries/): Explains how Ruby third-party libraries are distributed as gems, how to search, install and list them with the gem command, and points to RubyGems, GitHub and The Ruby Toolbox.
 
 ## Pages
 
-- [セキュリティ](https://www.ruby-lang.org/ja/security/): Explains how to report Ruby security issues via HackerOne or email, and lists known Ruby security vulnerability announcements.
+- [セキュリティ](https://www.ruby-lang.org/ja/security/): Explains how to report Ruby security issues via HackerOne or email, and lists past translated security advisories.
 
 ## Optional
 
 - [コミュニティ](https://www.ruby-lang.org/ja/community/): Lists Ruby community groups, IRC channels, Slack, mailing lists, newsgroups and conferences, with links and short descriptions of each.
-- [このウェブサイトについて](https://www.ruby-lang.org/ja/about/website/): このサイトの技術的な構成、デザインの担当者、ソースコードの管理先、問題報告と協力方法、支援機関を説明している。
-- [Ruby のロゴについて](https://www.ruby-lang.org/ja/about/logo/): Explains the Ruby logo's copyright by Yukihiro Matsumoto and its Creative Commons licence, and links to a logo kit download in several formats.
+- [最近のニュース](https://www.ruby-lang.org/ja/news/): A Japanese-language list of recent Ruby news posts, including release announcements, security advisories and conference registration notices, each with a short excerpt and date.
+- [このウェブサイトについて](https://www.ruby-lang.org/ja/about/website/): Describes how the Ruby website is built with Jekyll, where its source is hosted, who designed it, and how to report issues or contribute.
+- [Ruby のロゴについて](https://www.ruby-lang.org/ja/about/logo/): Explains the copyright and Creative Commons license terms for the Ruby logo and links to a downloadable logo kit in several formats.

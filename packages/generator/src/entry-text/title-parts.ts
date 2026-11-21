@@ -22,3 +22,10 @@ export function firstTitlePartOf(title: string): string | null {
   const part = partEnds.length === 0 ? '' : title.slice(0, Math.min(...partEnds)).trim();
   return part === '' ? null : part;
 }
+
+/** `Docs`, `Acme` and `A fast tool` in `Docs | Acme - A fast tool`. */
+export function titlePartsOf(title: string): string[] {
+  let parts = [title];
+  for (const separator of TITLE_SEPARATORS) parts = parts.flatMap((part) => part.split(separator));
+  return parts.map((part) => part.trim()).filter((part) => part !== '');
+}

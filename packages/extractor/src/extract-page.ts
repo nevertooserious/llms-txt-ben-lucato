@@ -40,9 +40,9 @@ export function extractPage(input: ExtractPageInput): PageRecord {
   const baseUrl = documentBaseUrl($, input.finalUrl);
 
   // Metadata is read before content selection, which removes elements.
-  const openGraphTitle = metaContent($, 'meta[property="og:title"]');
-  const titleTag = nonEmptyText($('title').first().text());
-  const heading = firstHeading($);
+  const { heading, headingWithAnchor } = firstHeading($);
+  const openGraphTitle = withoutHeadingAnchor(metaContent($, 'meta[property="og:title"]'), heading, headingWithAnchor);
+  const titleTag = withoutHeadingAnchor(nonEmptyText($('title').first().text()), heading, headingWithAnchor);
   const declaredSiteName = siteNameOrNull(
     metaContent($, 'meta[property="og:site_name"]') ??
       structuredDataWebSiteName($) ??
@@ -117,17 +117,24 @@ function siteNameOrNull(text: string | null): string | null {
   return text !== null && text.length <= MAXIMUM_SITE_NAME_LENGTH ? text : null;
 }
 
-/** The first <h1> with text, without the permalink anchor documentation tools add (`Title¶`). */
-function firstHeading($: CheerioAPI): string | null {
-  const heading = $('h1')
-    .toArray()
-    .map((element) => {
-      const heading = $(element).clone();
-      heading.find('a.headerlink, a.header-anchor, a.anchor, a.hash-link').remove();
-      return nonEmptyText(heading.text().replace(/[¶#§]\s*$/, ''));
-    })
-    .find((text) => text !== null);
-  return heading ?? null;
+/**
+ * The first <h1> with text, without the permalink anchor documentation tools add
+ * (`Title¶`, or an icon font's `Titlelink`), and the same heading with the anchor's text.
+ */
+function firstHeading($: CheerioAPI): { heading: string | null; headingWithAnchor: string | null } {
+  for (const element of $('h1').toArray()) {
+    const withoutAnchor = $(element).clone();
+    withoutAnchor.find('a.headerlink, a.header-anchor, a.header-link, a.anchor, a.hash-link, a[aria-hidden="true"]').remove();
+    const heading = nonEmptyText(withoutAnchor.text().replace(/[¶#§]\s*$/, ''));
+    if (heading !== null) return { heading, headingWithAnchor: nonEmptyText($(element).text()) };
+  }
+  return { heading: null, headingWithAnchor: null };
+}
+
+/** A site that builds its titles from its heading's text copies the anchor too (`Acme - Setuplink`). */
+function withoutHeadingAnchor(title: string | null, heading: string | null, headingWithAnchor: string | null): string | null {
+  if (title === null || heading === null || headingWithAnchor === null || heading === headingWithAnchor) return title;
+  return title.endsWith(headingWithAnchor) ? `${title.slice(0, -headingWithAnchor.length)}${heading}` : title;
 }
 
 function firstParagraphDescription($: CheerioAPI, content: ReturnType<typeof selectMainContent>): string | null {

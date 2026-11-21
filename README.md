@@ -125,7 +125,7 @@ Errors are JSON with a message and a stable code, such as `{"error": "This site 
 
 ## Examples
 
-[`docs/examples`](docs/examples/README.md) holds files generated for real sites of different kinds (documentation, a browser-rendered app, a shop, a blog, a site not in English). `node scripts/generate-examples.mjs` regenerates them against a running stack.
+[`docs/examples`](docs/examples/README.md) holds files generated for real sites of different kinds (documentation, a site rendered in the browser, a shop, a blog, a site not in English). `node scripts/generate-examples.mjs` regenerates them against a running stack.
 
 ## Checks
 

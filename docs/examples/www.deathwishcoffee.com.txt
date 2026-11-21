@@ -1,21 +1,38 @@
 # Death Wish Coffee
 
-> Death Wish Coffee is an online store selling strong, organic and Fair Trade coffee in ground, whole bean and single-serve pod form, plus brewing equipment, merchandise and bundles. Coffee drinkers can buy products, start a subscription and read brewing guides.
+> Death Wish Coffee is an online store selling strong, organic and Fair Trade coffee as ground, whole bean, single-serve pods and espresso capsules, plus merch and bundles. Shoppers can buy coffee, start subscriptions, join a rewards program, and read caffeine information, brewing guides and recipes.
+
+## Docs
+
+- [Help and FAQs](https://www.deathwishcoffee.com/pages/help): Help center listing general FAQs on contact, refunds, terms, privacy, unauthorized sellers, military orders, wholesale, donations and careers.
 
 ## Guides
 
-- [How To Brew Coffee In An Aeropress](https://www.deathwishcoffee.com/pages/aeropress-how-to): A step-by-step guide to brewing coffee with an Aeropress, listing required equipment and the pressing method using Death Wish Coffee.
-- [How To Brew Coffee In A French Press](https://www.deathwishcoffee.com/pages/french-press-coffee-how-to): A step-by-step guide to brewing coffee in a French press, listing required equipment, coffee ratios, grind size, and steeping times.
+- [How To Brew Coffee In An Aeropress](https://www.deathwishcoffee.com/pages/aeropress-how-to): A step-by-step guide for brewing coffee with an Aeropress, listing required equipment, grind size, water ratio, and pressing method.
+- [How To Brew Coffee In A French Press](https://www.deathwishcoffee.com/pages/french-press-coffee-how-to): A step-by-step guide to brewing coffee in a French press, covering grind, coffee ratio, water, steeping time and pressing.
 
 ## Product
 
-- [Peppermint Mocha Coffee](https://www.deathwishcoffee.com/products/peppermint-mocha-coffee): A product page for a ground peppermint mocha coffee, 9-ounce bag, with flavor profile, roast and attribute details, and price of $13.99, currently sold out.
-- [Valhalla Java Odinforce Blend](https://www.deathwishcoffee.com/products/valhalla-java-odin-force-blend): Product page for the Valhalla Java Odinforce coffee blend, showing flavor profile, caffeine content, organic and fair trade details, bag sizes, and subscription options.
-- [6 Cup Chemex (with filters)](https://www.deathwishcoffee.com/products/6-cup-chemex-brewer): Product page for a 6 cup Chemex pourover brewer bundled with 100 compostable filters, showing price, details and a sold-out status.
-- [Fiercely Strong Coffee | Dark Roast Coffee](https://www.deathwishcoffee.com/products/death-wish-coffee): Product page for Death Wish Dark Roast Coffee, covering flavor profile, caffeine content, organic and Fair Trade sourcing, bag sizes and purchase options.
-- [Intensely Strong Coffee | Espresso Roast Coffee](https://www.deathwishcoffee.com/products/espresso-roast-coffee): Product page for Death Wish Espresso Roast coffee showing flavor profile, caffeine content, bag sizes, subscription options, and organic certification details.
-- [Pumpkin Chai Coffee](https://www.deathwishcoffee.com/products/pumpkin-chai): Product page for Pumpkin Chai flavored ground coffee, listing flavor profile, caffeine content, bag sizes, and Fair Trade details; currently sold out.
-- [Fiercely Strong Coffee | Dark Roast Death Cups](https://www.deathwishcoffee.com/products/death-cups): A product page for Dark Roast single-serve coffee pods, with flavor profile, caffeine content, compatible machines, pack sizes, and subscription options.
+- [Fair Trade & Organic Coffee](https://www.deathwishcoffee.com/collections/coffee): Product listing of Death Wish Coffee's Fair Trade coffee, offered as ground, whole bean and single-serve pods, with prices shown.
+- [Bagged](https://www.deathwishcoffee.com/collections/bagged): A product listing page showing bagged coffee products from Death Wish Coffee with prices, bundles, and a money-back guarantee note.
+- [Single-Serve Pods](https://www.deathwishcoffee.com/collections/single-serve): Product listing of Death Wish Coffee single-serve pods and pod bundles, with prices for each flavor and roast.
+- [Espresso Capsules](https://www.deathwishcoffee.com/collections/espresso-capsules): A product collection page listing Death Wish Coffee espresso capsules in Dark Roast and Espresso Roast, with prices and a money-back guarantee notice.
+- [Peppermint Mocha Coffee](https://www.deathwishcoffee.com/products/peppermint-mocha-coffee): Product page for a 9-ounce ground peppermint mocha coffee blend, with flavor notes, roast and body attributes, Fair Trade details, and a $13.99 price that is currently sold out.
+- [Fiercely Strong Coffee | Dark Roast Coffee](https://www.deathwishcoffee.com/products/death-wish-coffee): Product page for Death Wish Dark Roast Coffee showing flavor profile, caffeine content, size options, and subscription offers; currently sold out.
+- [Intensely Strong Coffee | Espresso Roast Coffee](https://www.deathwishcoffee.com/products/espresso-roast-coffee): Product page for Death Wish Espresso Roast coffee, listing flavor profile, caffeine content, bag sizes, grind options and price.
+- [Valhalla Java Odinforce Blend](https://www.deathwishcoffee.com/products/valhalla-java-odin-force-blend): Product page for the Valhalla Java Odinforce coffee blend, showing flavor profile, caffeine content, bag size options and subscription offers.
+
+## About
+
+- [About Us](https://www.deathwishcoffee.com/pages/about): Describes Death Wish Coffee's history, sourcing of organic and Fair Trade robusta and arabica beans, and its company milestones since founding in 2012.
+- [Ritual Rewards](https://www.deathwishcoffee.com/pages/ritual-rewards): Explains the Ritual Rewards loyalty program, including how members earn points, reward tiers, point boosters, and the Society of Strong Coffee perks.
+- [How Strong is Death Wish Coffee?](https://www.deathwishcoffee.com/pages/caffeine): Explains Death Wish Coffee's caffeine content across canned lattes, bean types, roasts and instant coffee, with comparisons to generic coffee.
+
+## Blog
+
+- [Blog and TikTok Feed](https://www.deathwishcoffee.com/pages/blog): A blog index listing recent Death Wish Coffee articles in Coffee, Recipes, Lifestyle and Deathcast podcast sections, plus press mentions.
+- [Coffee Talk](https://www.deathwishcoffee.com/blogs/coffee-talk): A blog index listing coffee articles on whole bean versus ground, roast shades, arabica and robusta, brewing ratios, and related topics.
+- [Death Wish Coffee Recipes](https://www.deathwishcoffee.com/blogs/recipes): A blog index listing coffee recipe posts such as baked goods, iced drinks, lattes and syrups, with short previews of each.
 
 ## Machine-readable resources
 
@@ -23,6 +40,18 @@
 
 ## Optional
 
-- [Death Wish Coffee Instant Coffee](https://www.deathwishcoffee.com/products/death-wish-instant-coffee-1): A product page for Death Wish Dark Roast Instant Coffee packets, covering flavor profile, caffeine content, pack sizes and subscription options; currently sold out.
-- [Triple Threat Chocolate Bark Bundle](https://www.deathwishcoffee.com/products/triple-threat-chocolate-bark-bundle): A sold-out limited-edition bundle of three dark chocolate coffee barks, Gingerdead, Peppermint Mocha and Valhalla Java, priced at $45 for 4oz.
-- [Valhalla Java Dark Chocolate Bark](https://www.deathwishcoffee.com/products/valhalla-java-dark-chocolate-bark): A product page for Valhalla Java dark chocolate bark, infused with coffee, showing its description, ingredients, allergen warning and 4oz package size, currently sold out.
+- [Canned Lattes](https://www.deathwishcoffee.com/collections/canned-lattes): A product listing collection of canned cold brew latte variants in Caramel, Vanilla, Classic and Mocha, plus a sampler kit, with prices shown.
+- [Cold Brew](https://www.deathwishcoffee.com/collections/cold-brew): A product collection page listing cold brew coffee products, including unsweetened espresso and dark roast options, with prices and sold-out status.
+- [Flavored Chocolate Bark](https://www.deathwishcoffee.com/collections/flavored-chocolate-bark): A product collection listing flavored chocolate bark items with coffee blends, showing bundle and single-bag prices.
+- [Death Wish Coffee Instant Coffee](https://www.deathwishcoffee.com/products/death-wish-instant-coffee-1): Product page for Dark Roast Instant Coffee single-serve packets, showing flavor profile, caffeine content, pack sizes and a subscription option.
+- [Subscribe & Save](https://www.deathwishcoffee.com/collections/subscribe-save): A product listing page of Death Wish Coffee subscribe-and-save items, showing coffee bundles, single-serve pods and cold brew lattes with prices.
+- [Subscription Perks](https://www.deathwishcoffee.com/pages/subscription): Marketing page describing the Society of Strong Coffee subscription benefits, subscribe-and-save discounts, member-only rewards, and linked coffee and merch products.
+- [Society of Strong Coffee Exclusives](https://www.deathwishcoffee.com/collections/society-of-strong-coffee-exclusives): A Shopify collection listing Society of Strong Coffee merchandise such as mugs, tees, hoodies, hats, and coaster sets with sale prices.
+- [Build Your Own Bundle](https://www.deathwishcoffee.com/pages/build-your-own-bundle): A page for building a custom coffee bundle from brews and limited-edition mugs, with the extracted text showing only cart and sign-up notices.
+- [Organic Coffee](https://www.deathwishcoffee.com/collections/organic-coffee): A product listing of organic coffee, bundles, pods and instant coffee from Death Wish Coffee, with prices and a money-back guarantee note.
+- [Dark Roast Organic Coffee](https://www.deathwishcoffee.com/collections/dark-roast): A product collection page listing dark roast coffee products, pods, bundles and related items with prices, some sold out.
+- [Espresso Roast Organic Coffee](https://www.deathwishcoffee.com/collections/espresso-roast): A product listing of Espresso Roast coffee variants, including ground, whole bean, pods, capsules, cold brew and bundles, with prices.
+- [Light Roast Organic Coffee](https://www.deathwishcoffee.com/collections/light-roast): A product listing page showing Death Wish Light Roast coffee in ground, whole bean and single-serve pod formats, plus bundles, with prices.
+- [Medium Roast Organic Coffee](https://www.deathwishcoffee.com/collections/medium-roast): A product collection page listing medium roast coffee products, single-serve pods, and bundles with prices.
+- [Power Surge](https://www.deathwishcoffee.com/collections/power-surge): A Shopify collection listing Power Surge coffee, single-serve pods, a suncatcher, a tee and a shaker bottle with prices.
+- [Valhalla Java Odinforce Blend Organic Coffee](https://www.deathwishcoffee.com/collections/valhalla-java-odinforce-blend): A Shopify collection page listing Valhalla Java Odinforce Blend coffee products, bundles, merchandise and related items with prices.
