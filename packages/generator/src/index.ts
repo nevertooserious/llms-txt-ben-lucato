@@ -31,6 +31,7 @@ export {
 } from './enrichment';
 export {
   DEFAULT_SELECTION_LIMITS,
+  excludePagesUnderUrlPrefixes,
   GENERAL_SECTION_NAME,
   isPaginationUrl,
   listingCandidates,

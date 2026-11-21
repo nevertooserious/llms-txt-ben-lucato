@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps it up to date as the site changes. The design is in [`docs/design/README.md`](docs/design/README.md).
 
-Status: the extractor, the crawler, the run lifecycle (submission, queueing, reaper, monitor tick), the run itself (crawl, extract, reconcile, publish), the generator and monitoring (on from submission, scheduled checks, "check now") are implemented. So is the UI for generating a file (submit a URL, watch the run, preview, copy, download, the hosted URL) for monitoring ("check now"), for choosing which version is live, and for deleting a site. With `ANTHROPIC_API_KEY` set, Claude Haiku assesses each candidate page (description, whether it belongs, page type) and Claude Opus writes the site summary and, where a site needs them, a few notes under it. The file also lists the machine-readable files a site has (`llms-full.txt`, section `llms.txt` files, OpenAPI descriptions). These calls have not yet run against the live API. Without a key the worker uses heuristics, which is meant only for local development and tests.
+Status: the extractor, the crawler, the run lifecycle (submission, queueing, reaper, monitor tick), the run itself (crawl, extract, reconcile, publish), the generator and monitoring (on from submission, scheduled checks, "check now") are implemented. So is the UI for generating a file (submit a URL, watch the run, preview, copy, download, the hosted URL) for monitoring ("check now"), for choosing which version is live, for ignoring pages or whole paths of the site, and for deleting a site. With `ANTHROPIC_API_KEY` set, Claude Haiku assesses each candidate page (description, whether it belongs, page type) and Claude Opus writes the site summary and, where a site needs them, a few notes under it. The file also lists the machine-readable files a site has (`llms-full.txt`, section `llms.txt` files, OpenAPI descriptions). These calls have not yet run against the live API. Without a key the worker uses heuristics, which is meant only for local development and tests.
 
 ## Layout
 
@@ -107,6 +107,8 @@ Every endpoint uses HTTP Basic auth except the live file, which stays public so 
 | Get a version as text | `GET /api/sites/{slug}/versions/{n}/llms.txt` |
 | Pin a version | `PUT /api/sites/{slug}/published-version` with `{"versionNumber": 2}` |
 | Follow the latest version | `DELETE /api/sites/{slug}/published-version` |
+| List crawled pages and what is ignored | `GET /api/sites/{slug}/pages` |
+| Set the ignored pages and paths | `PUT /api/sites/{slug}/pages` with `{"excludedUrls": [], "excludedUrlPrefixes": ["https://example.com/blog"]}` |
 | Get the live file (no login) | `GET /w/{slug}/llms.txt` |
 
 ```sh

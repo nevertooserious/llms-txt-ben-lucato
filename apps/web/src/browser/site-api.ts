@@ -1,3 +1,4 @@
+import type { PageExclusions, SaveExclusionsResult, SitePagesView } from '@/shared/site-pages';
 import type { LlmsTxtVersionSummaryView, SiteView } from '@/shared/site-view';
 
 // Browser calls to the site routes.
@@ -45,3 +46,8 @@ export const pinVersion = (publicSlug: string, versionNumber: number) =>
 
 export const followLatestVersion = (publicSlug: string) =>
   call<Record<string, never>>(publicSlug, '/published-version', { method: 'DELETE' });
+
+export const fetchSitePages = (publicSlug: string) => call<SitePagesView>(publicSlug, '/pages');
+
+export const savePageExclusions = (publicSlug: string, exclusions: PageExclusions) =>
+  call<SaveExclusionsResult>(publicSlug, '/pages', { method: 'PUT', body: JSON.stringify(exclusions) });

@@ -94,7 +94,7 @@ A pure function from HTML to a `PageRecord`. No I/O, so it is tested against sav
 - **LLM failures:** the SDK retries transient errors. If the API is still unavailable, a page with an older assessment or a site with an older summary keeps it. A new page cannot be judged without one, so the run fails and the published file stays. A page the model refuses or answers unusably is left out and tried on the next run. Page text is passed as untrusted data, and output is forced to one line of plain text with links and markdown removed.
 - **No API key:** for local development and tests only, the worker skips the LLM: candidate pages are listed with the description the crawl gives them (above), the summary is the homepage's description, and there are no notes.
 - **Rendering:** deterministic, followed by validation against the spec. Output that fails validation is a bug, so it fails the run rather than being published.
-- **Overrides:** the file is rendered with the site's overrides applied.
+- **Overrides:** the file is rendered with the site's overrides and excluded paths applied.
 
 Still open: a site whose pages declare no language gets no locale filtering, and very large sites are only bounded by the page budget and the limits above.
 
@@ -109,15 +109,17 @@ The full DDL with comments is in [`db/schema.sql`](../../db/schema.sql).
 | `sites` | One crawled website: root URL, cached summary and notes, machine-readable files found, monitor schedule | Updated in place |
 | `pages` | Current state of each known URL of a site | Updated in place |
 | `page_overrides` | The user's edits to individual pages | Updated in place |
+| `excluded_url_prefixes` | The paths the user keeps out of the file | Replaced as a set |
 | `pipeline_runs` | One execution of crawl, extract, generate for a site | Written during the run, then fixed |
 | `llms_txt_versions` | Every published llms.txt of a site | Append-only |
 
 ### Design choices
 
-- **Each submission is its own site.** Nothing is shared between submissions: submitting a URL twice makes two sites, each with its own crawl data, overrides, versions and schedule. This costs repeat crawls and LLM calls for a popular URL, and two submissions can crawl one host at the same time. In exchange, nobody can reach a file by submitting its URL.
+- **Each submission is its own site.** Nothing is shared between submissions: submitting a URL twice makes two sites, each with its own crawl data, overrides, excluded paths, versions and schedule. This costs repeat crawls and LLM calls for a popular URL, and two submissions can crawl one host at the same time. In exchange, nobody can reach a file by submitting its URL.
 - **One shared login, no accounts.** HTTP Basic auth (`apps/web/src/proxy.ts`) covers the web app and REST API. Anyone with the login can read and change every site. Only the hosted file is public, because a site's own `/llms.txt` proxies or redirects to it.
 - **Column groups in `pages` have one writer each.** Crawler, extractor and generator each own a set of columns, so a stage can be re-run without clobbering another's output.
 - **User edits are stored as inputs.** Overrides are applied by the generator on every run, so an edit survives regeneration. Only the description and an exclude flag can be overridden.
+- **A path is excluded by rule, not page by page.** `excluded_url_prefixes` holds URL prefixes (`https://example.com/blog`). Each render excludes every page at or under one, by whole path segments, so the rule covers pages a later crawl finds, which per-page flags cannot. The crawl still fetches and stores those pages, so including the path again needs no crawl.
 - **Rows are keyed on the normalised URL.** That is the URL after cleanup that needs no fetch: lowercase host, fragment and tracking parameters removed, query sorted, trailing slash stripped. The canonical URL a page declares is only known after fetching, so it is stored as a plain column and used to drop duplicates at selection.
 - **Publishing is a single pointer update.** A version becomes live when `sites.published_version_id` moves to it. Choosing an older version is the same operation, and sets `is_published_version_pinned`: runs then still record new versions, compared with the newest version rather than the live one so nothing is recorded twice, but the pointer stays until the user unpins it and returns to the newest.
 - **Raw HTML is not stored.** Only extracted markdown and hashes are kept. Improving the extractor means re-fetching pages.
@@ -151,7 +153,7 @@ A check runs on a fixed interval per site (default 7 days) or when a user presse
 The monitor only acts on a schedule. A request to check now arrives over HTTP, so the web app takes it and queues the run itself, through the same `startPipelineRun`. The two never call each other.
 
 - **Starting and renewing:** every submission turns monitoring on for 30 days and users cannot turn it off. "Check now" renews it for 30 days, including after it has lapsed. If the site has no check scheduled, it gets one a full interval out: the site was just crawled, so checking sooner would find nothing.
-- **Deleting a site:** removes its pages, overrides, runs, versions and hosted file. A run in progress loses its row, so its next write fails and it cannot publish.
+- **Deleting a site:** removes its pages, overrides, excluded paths, runs, versions and hosted file. A run in progress loses its row, so its next write fails and it cannot publish.
 - **The tick:** every 5 minutes, a pg-boss cron job in the worker reaps stale runs (section 4). Then it claims up to 100 due sites, skipping rows another tick has locked, moves each one's next check on by its interval, and queues a monitor run behind user requests. A due site whose monitoring has lapsed is unscheduled at that point, so expiry needs no job of its own.
 - **Check now:** the same pipeline as a scheduled check, queued ahead of scheduled checks. A run already in progress is joined. Otherwise the site is checked at most once per 5 minutes, counted from its last run of any kind.
 
@@ -200,7 +202,8 @@ A site with nothing to list besides its homepage publishes nothing: the run fail
 
 - **Generate:** URL input, then the run's status polled from `pipeline_runs`: crawling, extracted, generated.
 - **Result:** rendered preview next to raw text, spec validation status, copy and download.
-- **Editing:** override a page's description or exclude a page.
+- **Pages:** an expandable list of every crawled page, grouped by the directories of its URL path, with the section each is listed under. Unticking a page excludes that page; unticking a path excludes everything under it, now and in later checks. Changes are collected and saved together. Saving renders the file again from the stored crawl, with no fetch and no LLM call, and records the result as a `user_edit` version; while a run is active the choices are only saved, and that run applies them.
+- **Editing descriptions:** overriding a page's description is not built yet.
 - **Site link:** `/w/{public_slug}`. The browser keeps the sites it created so the home page can show them as a table with each one's latest status. Submitting a site opens its details page.
 - **API (HTTP Basic auth):** a REST API that the web app also uses, documented in the [root README](../../README.md#rest-api). A submission creates a site. A run has its own status, and a file is reached by version number or by the run that published it. A run that published nothing answers 404 with the code `run_produced_no_version`, rather than some other run's file. Errors carry a stable `code` beside the human-readable `error`.
 - **Hosted URL:** a stable `/w/{public_slug}/llms.txt`. The spec puts llms.txt at the site's own root, so the site owner redirects or proxies to this URL. The [root README](../../README.md#serving-llmstxt-from-your-own-domain) explains how.

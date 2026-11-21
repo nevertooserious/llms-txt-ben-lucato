@@ -5,6 +5,7 @@
 --                      public slug and the published version
 --   pages              current state of each known URL of a site; mutable
 --   page_overrides     the user's edits to individual pages
+--   excluded_url_prefixes  the paths the user keeps out of the file
 --   pipeline_runs      one row per execution of crawl -> extract -> generate for a site;
 --                      the audit log and the source of the status shown in the UI
 --   llms_txt_versions  every published llms.txt of a site; append-only
@@ -262,6 +263,23 @@ create table page_overrides (
   description_override  text,
   is_excluded           boolean not null default false,
   updated_at            timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- excluded_url_prefixes
+-- ---------------------------------------------------------------------------
+-- Paths the user keeps out of the file. Every page at or under a prefix is left out,
+-- including pages a later crawl finds, which a per-page override cannot cover. Like the
+-- overrides, an input to the generator that is applied on every render. The crawl still
+-- fetches and stores those pages.
+create table excluded_url_prefixes (
+  site_id     uuid not null references sites (id) on delete cascade,
+  -- Scheme, host and path, with no trailing slash, query or fragment.
+  -- "https://example.com/blog" covers /blog and all of /blog/, not /blog-archive.
+  url_prefix  text not null,
+  created_at  timestamptz not null default now(),
+
+  primary key (site_id, url_prefix)
 );
 
 -- ---------------------------------------------------------------------------

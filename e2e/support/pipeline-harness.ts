@@ -6,6 +6,7 @@ import {
   createDatabasePool,
   createSite,
   loadPublishedLlmsTxt,
+  replaceExcludedUrlPrefixes,
   startPipelineRun,
   withTransaction,
   type DatabasePool,
@@ -226,6 +227,17 @@ export class PipelineHarness {
         override.descriptionOverride ?? null,
         override.isExcluded ?? false,
       ],
+    );
+  }
+
+  /** The paths the user ignores, as the frontend stores them: every page at or under one is left out. */
+  async setExcludedPaths(submitted: SubmittedSite, paths: string[]): Promise<void> {
+    await withTransaction(this.databasePool, (transaction) =>
+      replaceExcludedUrlPrefixes(
+        transaction,
+        submitted.siteId,
+        paths.map((path) => urlOf(submitted.site, path)),
+      ),
     );
   }
 }

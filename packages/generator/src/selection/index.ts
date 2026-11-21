@@ -1,6 +1,7 @@
 // Which pages are listed, and where. Sections come from page type and, for pages of no
 // particular type, from the area of the site they sit in; the LLM never chooses them.
 // Pure and deterministic: ties are broken by URL.
+export { excludePagesUnderUrlPrefixes } from './excluded-url-prefixes';
 export { listingCandidates } from './listing-candidates';
 export { homepageOf } from './page-kinds';
 export { scorePage } from './score-page';

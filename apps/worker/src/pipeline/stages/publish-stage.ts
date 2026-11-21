@@ -1,19 +1,20 @@
 import type { PipelineRunJob } from '@llms-txt/contracts';
 import {
   finishPipelineRun,
+  loadExcludedUrlPrefixes,
   loadNewestVersion,
   loadPageOverrides,
   lockRunningPipelineRun,
   publishLlmsTxtVersion,
   withTransaction,
 } from '@llms-txt/db';
-import { decidePublication, NOTHING_TO_LIST_REASON, selectPages } from '@llms-txt/generator';
+import { decidePublication, excludePagesUnderUrlPrefixes, NOTHING_TO_LIST_REASON, selectPages } from '@llms-txt/generator';
 import type { FinishedPipelineRun, PipelineStageDependencies } from '../pipeline-dependencies';
 import { PipelineRunFailure } from '../pipeline-run-failure';
 import type { SiteGenerationInput } from './generate-stage';
 
 /**
- * Renders the file with the user's overrides, publishes a version if the text changed,
+ * Renders the file with the user's overrides and excluded paths, publishes a version if the text changed,
  * and finishes the run. Throws when the site has nothing to list and has never published.
  */
 export async function publishStage(
@@ -34,7 +35,11 @@ export async function publishStage(
   }
   const rendered = dependencies.renderLlmsTxt({
     ...generationInput,
-    overrides: await loadPageOverrides(databasePool, siteId),
+    overrides: excludePagesUnderUrlPrefixes(
+      await loadPageOverrides(databasePool, siteId),
+      await loadExcludedUrlPrefixes(databasePool, siteId),
+      generationInput.pages,
+    ),
   });
   const decision = decidePublication(newestVersion?.llmsTxtContent ?? null, rendered);
   if (decision.kind === 'unchanged') {

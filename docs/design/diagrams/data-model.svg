@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="688" style="color:#171717;font-family:system-ui,-apple-system,'Segoe UI',sans-serif" viewBox="0 0 1100 688" role="img" aria-label="Five tables. A site has many pages, runs and llms.txt versions, and points at the version it serves. Users edit pages through page overrides. Nothing is shared between sites.">
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="790" style="color:#171717;font-family:system-ui,-apple-system,'Segoe UI',sans-serif" viewBox="0 0 1100 790" role="img" aria-label="Six tables. A site has many pages, runs and llms.txt versions, and points at the version it serves. Users edit pages through page overrides and keep whole paths out through excluded URL prefixes. Nothing is shared between sites.">
 <style>
 .b { fill: #fff; stroke: currentColor; stroke-width: 1.2; }
 .sep { stroke: currentColor; stroke-width: 1; opacity: .35; }
@@ -14,7 +14,7 @@
 .c3 { fill: #d97706; }
 .c4 { fill: #9333ea; }
 </style>
-<rect x="0" y="0" width="1100" height="688" fill="#ffffff"/>
+<rect x="0" y="0" width="1100" height="790" fill="#ffffff"/>
 
   <defs>
     <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -98,6 +98,14 @@
   <text class="f" x="394" y="610">page_id (primary key), updated_at</text>
   <text class="f" x="394" y="628">description_override, is_excluded</text>
 
+  <!-- excluded_url_prefixes -->
+  <rect class="b" x="380" y="666" width="360" height="66" rx="6"/>
+  <rect class="c4" x="384" y="707" width="3" height="14"/>
+  <text class="t" x="394" y="688">excluded_url_prefixes</text>
+  <text class="n" x="726" y="688" text-anchor="end">ignored paths</text>
+  <line class="sep" x1="380" y1="698" x2="740" y2="698"/>
+  <text class="f" x="394" y="718">site_id, url_prefix (primary key)</text>
+
   <!-- pipeline_runs -->
   <rect class="b" x="820" y="40" width="265" height="228" rx="6"/>
   <text class="t" x="834" y="62">pipeline_runs</text>
@@ -140,6 +148,9 @@
   <line class="ln" x1="560" y1="558" x2="560" y2="534" marker-end="url(#ar)"/>
   <text class="l" x="568" y="551">overrides a page</text>
 
-  <polyline class="ptr" points="160,376 160,666 952,666 952,524" marker-end="url(#arp)"/>
-  <text class="l" x="556" y="660" text-anchor="middle">published_version_id: the version this site serves</text>
+  <polyline class="ln" points="240,376 240,700 380,700" marker-end="url(#ar)"/>
+  <text class="l" x="310" y="694" text-anchor="middle">has many</text>
+
+  <polyline class="ptr" points="160,376 160,766 952,766 952,524" marker-end="url(#arp)"/>
+  <text class="l" x="556" y="760" text-anchor="middle">published_version_id: the version this site serves</text>
 </svg>
