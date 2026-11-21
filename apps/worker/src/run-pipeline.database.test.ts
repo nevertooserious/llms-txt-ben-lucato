@@ -101,6 +101,7 @@ async function run(
   siteId: string,
   crawl: ReturnType<typeof fakeCrawl>,
   resolveRootUrl: (rootUrl: string) => Promise<string> = async (rootUrl) => rootUrl,
+  pool: typeof databasePool = databasePool,
 ) {
   const outcome = await withTransaction(databasePool, (transaction) =>
     startPipelineRun(transaction, queue, { siteId, triggeredBy: 'monitor', requestedByWorkspaceId: null }),
@@ -109,7 +110,7 @@ async function run(
   await runPipeline(
     { pipelineRunId, siteId },
     {
-      databasePool,
+      databasePool: pool,
       logger: createLogger({ level: 'error', writeLine: () => {} }),
       heartbeatIntervalMs: 60_000,
       settings: { crawlPageBudget: 50, maxFailedFetchShare: 0.5 },
@@ -217,6 +218,37 @@ describe('runPipeline', () => {
     expect(workspace.rows[0]?.site_id).toBe(existing.siteId);
     expect((await versions(redirecting.workspaceId))[0]?.llms_txt_content).toContain(`${existing.rootUrl}/docs`);
     expect(await versions(existing.workspaceId)).toHaveLength(1);
+  });
+
+  it('still publishes for a workspace that joins after the run read its workspaces', async () => {
+    const { siteId, workspaceId } = await newSiteWithWorkspace();
+    let lateWorkspaceId: string | undefined;
+    // Adds a workspace straight after the run's first read of the site's workspaces.
+    const pool = new Proxy(databasePool, {
+      get(target, property) {
+        if (property !== 'query') {
+          const value = Reflect.get(target, property) as unknown;
+          return typeof value === 'function' ? value.bind(target) : value;
+        }
+        return async (text: string, values?: unknown[]) => {
+          const result = await target.query(text, values);
+          if (lateWorkspaceId === undefined && text.includes('from site_workspaces where site_id')) {
+            lateWorkspaceId = await createWorkspace(target, {
+              siteId,
+              accessTokenHash: crypto.randomUUID(),
+              publicSlug: crypto.randomUUID(),
+              creatorIpHash: null,
+            });
+          }
+          return result;
+        };
+      },
+    });
+
+    const outcome = await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }]), undefined, pool);
+    expect(outcome.status).toBe('succeeded');
+    expect(await versions(workspaceId)).toHaveLength(1);
+    expect(await versions(lateWorkspaceId!)).toHaveLength(1);
   });
 
   it('fails the run with the error when a stage throws', async () => {

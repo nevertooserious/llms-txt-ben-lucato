@@ -14,7 +14,7 @@ export async function POST(request: Request): Promise<Response> {
   const services = webServices();
   try {
     const outcome = await submitSite(
-      { submittedUrl, clientIp: clientIpFrom(request.headers) },
+      { submittedUrl, clientIp: clientIpFrom(request.headers, services.config.trustedProxyHops) },
       {
         databasePool: services.databasePool,
         queue: await services.queue(),
