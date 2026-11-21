@@ -5,14 +5,17 @@ import { crawlSite, resolveSiteRootUrl } from '@llms-txt/crawler';
 import { createDatabasePool, type DatabasePool } from '@llms-txt/db';
 import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
-import { readWorkerConfig } from '../../apps/worker/src/worker-config';
-import { startWorkerJobs } from '../../apps/worker/src/worker-jobs';
+import { readWorkerConfig } from '../../apps/worker/src/config/worker-config';
+import { startWorkerJobs } from '../../apps/worker/src/jobs/worker-jobs';
 import { POST as submitSiteRoute } from '../../apps/web/src/app/api/sites/route';
-import { POST as checkNowRoute } from '../../apps/web/src/app/api/workspaces/[publicSlug]/checks/route';
-import { DELETE as unpinVersionRoute, PUT as pinVersionRoute } from '../../apps/web/src/app/api/workspaces/[publicSlug]/published-version/route';
-import { DELETE as deleteWorkspaceRoute } from '../../apps/web/src/app/api/workspaces/[publicSlug]/route';
+import { POST as checkNowRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/runs/route';
+import { GET as runRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/runs/[pipelineRunId]/route';
+import { GET as runFileRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/runs/[pipelineRunId]/llms.txt/route';
+import { GET as versionFileRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/versions/[versionNumber]/llms.txt/route';
+import { DELETE as unpinVersionRoute, PUT as pinVersionRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/published-version/route';
+import { DELETE as deleteSiteRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/route';
 import { GET as hostedLlmsTxtRoute } from '../../apps/web/src/app/w/[publicSlug]/llms.txt/route';
-import { webServices } from '../../apps/web/src/server/web-services';
+import { webServices } from '../../apps/web/src/server/composition/web-services';
 import { changingSite } from '../fixture-sites/changing-site/routes';
 import { startFixtureSite, type FixtureSite } from '../support/fixture-site-server';
 import { allowLoopbackPorts } from '../support/local-network-policy';
@@ -39,7 +42,6 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
   // Set by the submission, used by every later step.
   let siteId: string;
   let publicSlug: string;
-  let accessToken: string;
 
   beforeAll(async () => {
     changingSite.reset();
@@ -76,13 +78,10 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
 
   const slugParams = () => ({ params: Promise.resolve({ publicSlug }) });
 
-  function apiRequest(method: string, body?: unknown, token: string | null = accessToken): Request {
+  function apiRequest(method: string, body?: unknown): Request {
     return new Request('http://app.test/api', {
       method,
-      headers: {
-        'content-type': 'application/json',
-        ...(token === null ? {} : { authorization: `Bearer ${token}` }),
-      },
+      headers: { 'content-type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   }
@@ -97,8 +96,8 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
     const result = await databasePool.query<{ version_number: number; page_changes: unknown }>(
       `select versions.version_number, versions.page_changes
          from llms_txt_versions versions
-         join site_workspaces workspaces on workspaces.id = versions.workspace_id
-        where workspaces.public_slug = $1
+         join sites on sites.id = versions.site_id
+        where sites.public_slug = $1
         order by versions.version_number`,
       [publicSlug],
     );
@@ -166,15 +165,12 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
   // --- the life of a monitored site, in order ------------------------------------------
 
   it('a submission publishes the first version', async () => {
-    const response = await submitSiteRoute(apiRequest('POST', { url: site.origin }, null));
+    const response = await submitSiteRoute(apiRequest('POST', { url: site.origin }));
     expect(response.status).toBe(202);
-    const submitted = (await response.json()) as { publicSlug: string; accessToken: string; pipelineRunId: string };
-    ({ publicSlug, accessToken } = submitted);
-    const sites = await databasePool.query<{ site_id: string }>(
-      'select site_id from site_workspaces where public_slug = $1',
-      [publicSlug],
-    );
-    siteId = sites.rows[0]!.site_id;
+    const submitted = (await response.json()) as { publicSlug: string; pipelineRunId: string };
+    ({ publicSlug } = submitted);
+    const sites = await databasePool.query<{ id: string }>('select id from sites where public_slug = $1', [publicSlug]);
+    siteId = sites.rows[0]!.id;
 
     const run = await waitForNewRun([]);
     expect(run).toMatchObject({ id: submitted.pipelineRunId, triggered_by: 'submission', status: 'succeeded' });
@@ -185,12 +181,12 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
   });
 
   it('a submission schedules the first check a full interval out', async () => {
-    const workspaces = await databasePool.query<{ monitoring_days: number }>(
+    const monitoring = await databasePool.query<{ monitoring_days: number }>(
       `select extract(epoch from monitoring_enabled_until - now())::float8 / 86400 as monitoring_days
-         from site_workspaces where public_slug = $1`,
+         from sites where public_slug = $1`,
       [publicSlug],
     );
-    expect(workspaces.rows[0]!.monitoring_days).toBeCloseTo(30, 1);
+    expect(monitoring.rows[0]!.monitoring_days).toBeCloseTo(30, 1);
     expect((await monitorSchedule()).next_check_in_days).toBeCloseTo(7, 1);
 
     // Not due yet, so a tick leaves the site alone.
@@ -266,16 +262,13 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
     const tooSoon = await checkNowRoute(apiRequest('POST'), slugParams());
     expect(tooSoon.status).toBe(429);
     expect(Number(tooSoon.headers.get('retry-after'))).toBeGreaterThan(0);
-    expect((await checkNowRoute(apiRequest('POST', undefined, 'not-the-token'), slugParams())).status).toBe(401);
   });
 
   it('a pinned version stays live while checks record newer ones, until it is unpinned', async () => {
-    const pin = (body: unknown, token?: string | null) => pinVersionRoute(apiRequest('PUT', body, token), slugParams());
+    const pin = (body: unknown) => pinVersionRoute(apiRequest('PUT', body), slugParams());
     const versionCount = (await versions()).length;
     const newestBefore = await hostedLlmsTxt();
 
-    expect((await pin({ versionNumber: 2 }, 'not-the-token')).status).toBe(401);
-    expect((await pin({ versionNumber: 2 }, null)).status).toBe(401);
     expect((await pin({ versionNumber: 'two' })).status).toBe(400);
     expect((await pin({ versionNumber: 2 ** 31 })).status).toBe(400);
     expect((await pin({ versionNumber: 999 })).status).toBe(404);
@@ -297,9 +290,6 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
     expect(await versions()).toHaveLength(versionCount + 1);
     expect(await hostedLlmsTxt()).toBe(pinned);
 
-    expect((await unpinVersionRoute(apiRequest('DELETE', undefined, 'not-the-token'), slugParams())).status).toBe(401);
-    expect(await hostedLlmsTxt()).toBe(pinned);
-
     // Unpinning serves the newest version, and later changes go live again.
     expect((await unpinVersionRoute(apiRequest('DELETE'), slugParams())).status).toBe(204);
     expect(await hostedLlmsTxt()).toContain('Written while pinned.');
@@ -311,7 +301,7 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
   it('expired monitoring stops scheduled checks, keeps the file, and "check now" renews it', async () => {
     const servedBefore = await hostedLlmsTxt();
     await databasePool.query(
-      `update site_workspaces set monitoring_enabled_until = now() - interval '1 minute' where public_slug = $1`,
+      `update sites set monitoring_enabled_until = now() - interval '1 minute' where public_slug = $1`,
       [publicSlug],
     );
     await databasePool.query(`update sites set next_monitor_check_at = now() - interval '1 second' where id = $1`, [siteId]);
@@ -330,14 +320,66 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
     expect((await monitorSchedule()).next_check_in_days).toBeCloseTo(7, 1);
   });
 
-  it('a site is deleted only with the workspace token, and its file and checks stop', async () => {
-    expect((await deleteWorkspaceRoute(apiRequest('DELETE', undefined, 'not-the-token'), slugParams())).status).toBe(401);
-    expect((await deleteWorkspaceRoute(apiRequest('DELETE', undefined, null), slugParams())).status).toBe(401);
+  it('reports each run and serves the file it published', async () => {
+    const runParams = (pipelineRunId: string) => ({ params: Promise.resolve({ publicSlug, pipelineRunId }) });
+    const fileRequest = (etag?: string) =>
+      new Request('http://app.test/llms.txt', { headers: etag ? { 'if-none-match': etag } : {} });
+    const runs = await databasePool.query<{ id: string; status: string; version_number: number | null }>(
+      `select runs.id, runs.status, versions.version_number
+         from pipeline_runs runs
+         left join llms_txt_versions versions on versions.pipeline_run_id = runs.id
+        where runs.site_id = $1
+        order by runs.created_at`,
+      [siteId],
+    );
+
+    const published = runs.rows.find((row) => row.version_number !== null)!;
+    const statusResponse = await runRoute(apiRequest('GET'), runParams(published.id));
+    expect(statusResponse.status).toBe(200);
+    const status = (await statusResponse.json()) as Record<string, unknown>;
+    expect(status).toMatchObject({
+      id: published.id,
+      status: 'succeeded',
+      versionNumber: published.version_number,
+      llmsTxtUrl: `/api/sites/${encodeURIComponent(publicSlug)}/runs/${published.id}/llms.txt`,
+    });
+    expect(status.pagesFetchedCount).toBeGreaterThan(0);
+
+    const versionParams = { params: Promise.resolve({ publicSlug, versionNumber: String(published.version_number) }) };
+    const versionFile = await versionFileRoute(fileRequest(), versionParams);
+    expect(versionFile.status).toBe(200);
+    expect(versionFile.headers.get('content-type')).toContain('text/plain');
+    const etag = versionFile.headers.get('etag')!;
+    const versionText = await versionFile.text();
+    expect(versionText).toContain('# Acme');
+    expect((await versionFileRoute(fileRequest(etag), versionParams)).status).toBe(304);
+    const runFile = await runFileRoute(fileRequest(), runParams(published.id));
+    expect(await runFile.text()).toBe(versionText);
+
+    // A run that changed nothing has no file of its own.
+    const unchanged = runs.rows.find((row) => row.status === 'unchanged')!;
+    const noFile = await runFileRoute(fileRequest(), runParams(unchanged.id));
+    expect(noFile.status).toBe(404);
+    expect(await noFile.json()).toMatchObject({ code: 'run_produced_no_version' });
+
+    // A run that is not this site's is not found, and neither is a malformed id.
+    for (const unknownRunId of [crypto.randomUUID(), 'not-a-run']) {
+      const notFound = await runRoute(apiRequest('GET'), runParams(unknownRunId));
+      expect(notFound.status).toBe(404);
+      expect(await notFound.json()).toMatchObject({ code: 'run_not_found' });
+    }
+    const missingVersion = await versionFileRoute(fileRequest(), {
+      params: Promise.resolve({ publicSlug, versionNumber: '999' }),
+    });
+    expect(await missingVersion.json()).toMatchObject({ code: 'version_not_found' });
+  });
+
+  it('a deleted site loses its file and its checks', async () => {
     expect((await hostedLlmsTxtRoute(new Request('http://app.test/llms.txt'), slugParams())).status).toBe(200);
 
-    expect((await deleteWorkspaceRoute(apiRequest('DELETE'), slugParams())).status).toBe(204);
+    expect((await deleteSiteRoute(apiRequest('DELETE'), slugParams())).status).toBe(204);
     expect((await hostedLlmsTxtRoute(new Request('http://app.test/llms.txt'), slugParams())).status).toBe(404);
-    expect((await deleteWorkspaceRoute(apiRequest('DELETE'), slugParams())).status).toBe(404);
+    expect((await deleteSiteRoute(apiRequest('DELETE'), slugParams())).status).toBe(404);
     const sites = await databasePool.query('select 1 from sites where id = $1', [siteId]);
     expect(sites.rowCount).toBe(0);
   });

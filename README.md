@@ -23,6 +23,23 @@ An npm workspaces monorepo. Each design component is its own package, so its bou
 
 ESLint enforces the boundaries: the extractor may not import network, filesystem or database modules; only the crawler may import network modules; only `packages/db` may import `pg`; and contracts, the extractor, the generator and the crawler may not touch the database or the queue.
 
+### Inside a component
+
+Each package's `src/` is grouped by layer, and `src/index.ts` is its only entry point: other packages import the package, never a file inside it.
+
+| Component | Folders |
+|---|---|
+| `packages/contracts` | One module per hand-off: `crawl`, `page-record`, `page-assessment`, `generation`, `pipeline-jobs`, `machine-readable-resources` |
+| `packages/crawler` | `network/` (HTTP fetcher, headless renderer, SSRF guard), `discovery/` (robots.txt, sitemaps, URL normalisation), `page-signals/` (what a fetched page says about itself and whether to render it), `crawl/` (the crawl loop that uses the other three) |
+| `packages/extractor` | `html/` (parsing, main content, links), `record/` (markdown, page type, hashes); `extract-page.ts` puts them together |
+| `packages/generator` | `selection/` (candidates, scores, sections, limits), `entry-text/` (site name, titles, descriptions), `enrichment/` (LLM prompts, parsing, cache hashes), `rendering/` (render and validate), `publication/` (publish or not) |
+| `packages/monitor` | `decisions/` (pure: page reconciliation, safety gate, sitemap trust), `scheduling/` (the tick) |
+| `packages/db` | `connection/` (pool, transactions), `repositories/` (one module per table), `queue/` (the pipeline-run queue) |
+| `apps/worker` | `main.ts` (composition root), `config/`, `jobs/` (queue consumers), `llm/` (Anthropic client), `pipeline/` (the run's lifecycle, and one module per stage in `pipeline/stages/`) |
+| `apps/web` | `app/` (Next.js routes only), `features/` (React components, by screen: `home/`, `site/`), `browser/` (API client, local storage), `server/` (`sites/`, `http/`, `composition/`), `shared/` (types and pure helpers for both sides) |
+
+ESLint enforces these layers too. In the crawler only `network/` may open a connection, so every request is made beside the SSRF guard. In `packages/db` only `connection/` imports `pg`. The worker's pipeline is handed its dependencies and does not import the worker's wiring. In the web app, routes in `app/` call `server/` and render `features/`; server and browser code share only `shared/`. The web app imports across its folders with the `@/` alias (`@/server/...`).
+
 ## Quick start with Docker
 
 ```sh
@@ -31,7 +48,7 @@ docker compose up --build                # http://localhost:3000
 
 This starts Postgres (with `db/schema.sql` applied on first boot), the web app and the worker. No configuration is needed. To use Claude rather than heuristics, put `ANTHROPIC_API_KEY` in a `.env` file at the repository root and run the command again. `WEB_PORT` (default 3000) and `POSTGRES_PORT` (default 5433) change the host ports.
 
-A new database also gets a demo site with four versions, linked from the home page and at <http://localhost:3000/w/demo#token=demo-workspace-token>. Its token is public, so `db/demo-seed.sql` is applied only by this local stack. The site is not real, so "Check now" on it ends in a failed run and keeps the published file.
+A new database also gets a demo site with four versions, linked from the home page and at <http://localhost:3000/w/demo>. `db/demo-seed.sql` is applied only by this local stack. The site is not real, so "Check now" on it ends in a failed run and keeps the published file.
 
 The schema and demo are applied only to an empty database, so to change the schema or restore the demo run `docker compose down --volumes`, which deletes all local data. The crawler's SSRF guard refuses private addresses, so this stack cannot crawl a site running on your machine.
 
@@ -52,7 +69,7 @@ Each process reads its configuration once at startup and stops with a message na
 
 ## Serving llms.txt from your own domain
 
-The spec puts the file at `/llms.txt` on your site. Each workspace has a stable hosted URL, `https://<app>/w/<slug>/llms.txt`, shown on its page, which serves the latest version unless you pin another on that page. Point your own path at it with a proxy, which keeps your domain in the response, or a redirect.
+The spec puts the file at `/llms.txt` on your site. Each site has a stable hosted URL, `https://<app>/w/<slug>/llms.txt`, shown on its page, which serves the latest version unless you pin another on that page. Point your own path at it with a proxy, which keeps your domain in the response, or a redirect.
 
 ```nginx
 # nginx: proxy
@@ -72,6 +89,39 @@ location = /llms.txt {
 ```
 
 The last one is for Vercel, in `vercel.json`. Use a temporary redirect, so clients keep asking your domain.
+
+## REST API
+
+There is no authentication yet, so anyone who knows a site's slug can read, change or delete it. Do not expose a deployment you need to protect until basic auth is added.
+
+| Action | Request |
+|---|---|
+| Submit a site | `POST /api/sites` with `{"url": "https://example.com"}` |
+| Get a site | `GET /api/sites/{slug}` |
+| Delete a site | `DELETE /api/sites/{slug}` |
+| Re-trigger a site | `POST /api/sites/{slug}/runs` |
+| Check a run's status | `GET /api/sites/{slug}/runs/{runId}` |
+| Get the file a run published | `GET /api/sites/{slug}/runs/{runId}/llms.txt` |
+| List versions | `GET /api/sites/{slug}/versions` |
+| Get a version as JSON | `GET /api/sites/{slug}/versions/{n}` |
+| Get a version as text | `GET /api/sites/{slug}/versions/{n}/llms.txt` |
+| Pin a version | `PUT /api/sites/{slug}/published-version` with `{"versionNumber": 2}` |
+| Follow the latest version | `DELETE /api/sites/{slug}/published-version` |
+| List crawled pages and what is ignored | `GET /api/sites/{slug}/pages` |
+| Set the ignored pages and paths | `PUT /api/sites/{slug}/pages` with `{"excludedUrls": [], "excludedUrlPrefixes": ["https://example.com/blog"]}` |
+| Get the live file | `GET /w/{slug}/llms.txt` |
+
+```sh
+# Submit, then poll the run until it finishes.
+curl -si localhost:3000/api/sites -H 'content-type: application/json' -d '{"url":"https://example.com"}'
+# 202, with {"publicSlug", "pipelineRunId", "runUrl", "llmsTxtUrl"}
+curl -s localhost:3000/api/sites/<slug>/runs/<runId>
+# {"status": "running", "currentStage": "crawl", "pagesFetchedCount": 12, "versionNumber": null, ...}
+```
+
+A run's `status` is `queued`, `running`, `succeeded`, `unchanged` or `failed`. While it is active, the response has a `Retry-After` header. Re-triggering during a run returns that run, and re-triggering within five minutes of the last run answers 429 with `Retry-After`.
+
+Errors are JSON with a message and a stable code, such as `{"error": "This site has no such run.", "code": "run_not_found"}`. The codes are `invalid_request`, `invalid_url`, `invalid_version_number`, `site_not_found`, `run_not_found`, `version_not_found`, `run_in_progress`, `run_produced_no_version`, `rate_limited`, `cooldown_active` and `internal_error`. Plain-text versions have an `ETag` and answer `If-None-Match` with 304.
 
 ## Checks
 

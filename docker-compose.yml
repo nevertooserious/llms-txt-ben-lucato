@@ -49,7 +49,7 @@ services:
       SUBMISSIONS_PER_IP_PER_HOUR: ${SUBMISSIONS_PER_IP_PER_HOUR:-}
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-}
       # Links the home page to the workspace from db/demo-seed.sql.
-      DEMO_WORKSPACE_ENABLED: "true"
+      DEMO_SITE_ENABLED: "true"
     ports:
       - "127.0.0.1:${WEB_PORT:-3000}:3000"
 

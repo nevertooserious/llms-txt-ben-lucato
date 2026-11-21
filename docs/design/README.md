@@ -37,13 +37,13 @@ Stack: TypeScript throughout, Next.js for the web app, a Node worker with Playwr
 
 Each stage has one typed input and one typed output, so each can be tested alone with fixtures.
 
-A run is driven by the worker (`apps/worker/src/pipeline-stages.ts`) as load, decide, write. It loads the site and its stored pages, runs the stages, passes their output through pure decision functions, and saves what those return. The rules that are easiest to get wrong are those functions, tested without a database: `reconcilePage` (what a fetch does to a stored page, section 5), `evaluateSafetyGate`, `assessSitemapLastModifiedTrust` (in `packages/monitor`) and `decidePublication` (in `packages/generator`). Extraction happens inside the crawl: each page is extracted and saved as the crawler hands it over. So the UI states one of: queued, crawling, extracted (the crawl is done and the file is being generated), generated, or failed.
+A run is driven by the worker (`apps/worker/src/pipeline/run-pipeline-stages.ts`, one module per stage in `pipeline/stages/`) as load, decide, write. It loads the site and its stored pages, runs the stages, passes their output through pure decision functions, and saves what those return. The rules that are easiest to get wrong are those functions, tested without a database: `reconcilePage` (what a fetch does to a stored page, section 5), `evaluateSafetyGate`, `assessSitemapLastModifiedTrust` (in `packages/monitor`) and `decidePublication` (in `packages/generator`). Extraction happens inside the crawl: each page is extracted and saved as the crawler hands it over. So the UI states one of: queued, crawling, extracted (the crawl is done and the file is being generated), generated, or failed.
 
 ### Crawler
 
 Owns all network I/O. It hands each fetched page (404s, 410s and 304s included, since the monitor needs them) to an `onPage` callback as soon as it has it, and waits for the callback, so the worker extracts and stores the page and the HTML is not held for the rest of the crawl. Then it returns a `CrawlResult`: the link signals that are only final once the crawl ends (navigation membership, inbound link counts), the fetches that failed with a typed reason (timeouts, 5xx, 429s, blocks), the robots.txt status, why the crawl stopped, and the site's rendering decision.
 
-- **Root URL:** before a site's first crawl, the worker follows the homepage's redirect (`resolveSiteRootUrl`), obeying robots.txt. A move to another origin (`example.com` to `www.example.com`, `http` to `https`) becomes the site's `root_url`. If another row already holds that root, the workspaces and the run move to it, so both addresses share one crawl.
+- **Root URL:** before a site's first crawl, the worker follows the homepage's redirect (`resolveSiteRootUrl`), obeying robots.txt. A move to another origin (`example.com` to `www.example.com`, `http` to `https`) becomes the site's `root_url`.
 - **Discovery:** robots.txt, sitemaps, any existing llms.txt, and homepage navigation seed a prioritised breadth-first crawl under a page budget. Sitemaps come from robots.txt's `Sitemap:` lines, else `/sitemap.xml`, in every format the sitemaps protocol allows: XML, gzipped XML, plain text, RSS and Atom, up to 50 MB each. At most 10 sitemap files are read, and at most four sitemap URLs are kept per page of budget. llms.txt is looked for under the root URL, then at the host root. Its links usually point at `.md` variants, so they are mapped back to the HTML page. Within a depth, navigation links come first, then llms.txt, then sitemap, then other page links.
 - **Navigation:** links inside `<nav>`, `<header>` or `role="navigation"` on the homepage. For each page they link, the crawler records the link's text (`navigation_label`, when it is 40 characters or fewer) and where the link comes among them (`navigation_position`). The generator uses the label to name a page or a section, and the position to keep the site's own order.
 - **Conventions first:** where an open convention covers a behaviour (RFC 9309 for robots.txt, the sitemaps protocol, RFC 9110 for status codes and `Retry-After`, RFC 3986 for URLs, robots meta tags and `X-Robots-Tag`), the crawler follows it, and the choices below only fill the gaps.
@@ -77,7 +77,7 @@ A pure function from HTML to a `PageRecord`. No I/O, so it is tested against sav
 
 ### Generator
 
-- **Selection:** the file lists durable, structural pages that explain the site and how to use it, not its stream of content. Three steps. Deterministic filters first, so nothing is paid for pages that cannot be listed (below). Then the page assessment and workspace exclusions remove what does not belong. Last, pages are scored and one page per canonical URL is kept.
+- **Selection:** the file lists durable, structural pages that explain the site and how to use it, not its stream of content. Three steps. Deterministic filters first, so nothing is paid for pages that cannot be listed (below). Then the page assessment and the user's exclusions remove what does not belong. Last, pages are scored and one page per canonical URL is kept.
 - **Deterministic filters:** the homepage (it is the H1) under any of its URLs, and any page serving the homepage's content; `noindex` pages; pagination (`/page/2`, `?page=2`); pages whose declared language differs from the homepage's (locale duplicates such as `/de/`); utility pages by URL (`login`, `signup`, `account`, `cart`, a last segment such as `create` or `search`, a `?next=` parameter); archive listings (`category`, `tag`, `author`, `archive`, a last segment `past`); what sits under a job board (`/jobs/...`, `/careers/...`); a page whose last segment is a number, unless the navigation links it or it is a blog post (the Blog limit handles those); and families of five or more sibling pages three or more path segments deep (`/downloads/release/...`), unless the navigation or the site's own llms.txt names them. The URL rules leave documentation alone, because it writes about logins and tags at URLs that say so. URL variants with the same content (`/guide`, `/guide.html`, `/guide.md`, `/guide/index.html`) count as one page.
 - **Scoring:** navigation presence (4), nearness to the homepage (3 over one plus the crawl depth), inbound links (log2, capped at 3, because a sidebar that links every filter page from every listing page says nothing about them), a lift for pages the site's own llms.txt lists (2), less half a point per path segment beyond the first. Pages that score the same keep the order of the site's navigation, then the order in which the crawl first saw links to them (`first_link_position`), then of their URLs, comparing digit runs as numbers. On a site whose menu or sidebar holds every page, that order is what decides: a documentation site's pages all score the same, and its sidebar's order (installation before the reference) is better than the alphabet's. The crawl reads pages nearest the homepage first and links in the order they stand on a page, so the first sighting of each link follows the site's menus. The position is written by the first crawl that sees a link and kept, because a later check reads fewer pages (a 304 has no links) and an order that moved would republish an unchanged file. The cost is that a site that reorders its sidebar keeps the old order.
 - **Page assessment:** Claude Haiku reads each candidate page and returns a one-line description, a listing value (`primary`, `optional` or `exclude`), a reason for any exclusion (`error_page`, `utility`, `thin`, `archive`, `individual_content`, `duplicate`) and a corrected page type. So a "not found" page served with a 200, a login page or a single blog post is left out. The model is told to choose `optional` when unsure.
@@ -89,12 +89,12 @@ A pure function from HTML to a `PageRecord`. No I/O, so it is tested against sav
 - **Entry descriptions without an assessment:** text a site's templates repeat says nothing about a page. A meta description is dropped when it is the homepage's, when three or more pages with different content share it, or when it is a fragment of fewer than four words that does not end as a sentence. The entry then takes the first paragraph of prose in the page's content (not a heading, list, table, link or quotation, and ending as a sentence does), up to the sentence that passes 200 characters, on the same terms. Failing that it has no description, which is better than the same line on every entry.
 - **Site summary:** Claude Opus writes it from the homepage and the listed pages. It is rewritten only when the homepage's title or description, or the titles of listed navigation pages, change, and the model is given its previous summary and told to keep the wording unless something is now wrong. So a new blog post does not reword it.
 - **Notes:** the same call returns up to five one-line notes, which go under the summary. They are for what an assistant would get wrong from the summary and the links alone, and only for what the site itself states: a deprecated product and its replacement, two products that are easily confused, a requirement that applies to everything. The model is told that most sites need none, and to leave out guesses, its own advice, and version numbers, prices and dates, which would go stale while the cached notes stood. A note that repeats the summary or another note is dropped. They are cached on the summary's hash and passed back like the previous summary, so they do not come and go between runs.
-- **Machine-readable files:** the files the crawler found go under an H2 named `Machine-readable resources`, after the page sections and before `Optional`. Each is titled by its path (`docs/llms.txt`) and described by its kind, the same words for every site, with no LLM involved. A workspace cannot exclude one.
+- **Machine-readable files:** the files the crawler found go under an H2 named `Machine-readable resources`, after the page sections and before `Optional`. Each is titled by its path (`docs/llms.txt`) and described by its kind, the same words for every site, with no LLM involved. A user cannot exclude one.
 - **LLM caching:** both results are stored against a hash of their inputs (including the model and prompt version) and never requested again for unchanged inputs, because an LLM words the same thing differently each time.
 - **LLM failures:** the SDK retries transient errors. If the API is still unavailable, a page with an older assessment or a site with an older summary keeps it. A new page cannot be judged without one, so the run fails and the published file stays. A page the model refuses or answers unusably is left out and tried on the next run. Page text is passed as untrusted data, and output is forced to one line of plain text with links and markdown removed.
 - **No API key:** for local development and tests only, the worker skips the LLM: candidate pages are listed with the description the crawl gives them (above), the summary is the homepage's description, and there are no notes.
 - **Rendering:** deterministic, followed by validation against the spec. Output that fails validation is a bug, so it fails the run rather than being published.
-- **Per workspace:** the file is rendered once per workspace, applying that workspace's overrides and excluded paths.
+- **Overrides:** the file is rendered with the site's overrides and excluded paths applied.
 
 Still open: a site whose pages declare no language gets no locale filtering, and very large sites are only bounded by the page budget and the limits above.
 
@@ -107,22 +107,21 @@ The full DDL with comments is in [`db/schema.sql`](../../db/schema.sql).
 | Table | Holds | Mutability |
 |---|---|---|
 | `sites` | One crawled website: root URL, cached summary and notes, machine-readable files found, monitor schedule | Updated in place |
-| `site_workspaces` | One submission of a site: access token, hosted slug, published version | Updated in place |
 | `pages` | Current state of each known URL of a site | Updated in place |
-| `workspace_page_overrides` | A workspace's edits to individual pages | Updated in place |
-| `workspace_excluded_url_prefixes` | The paths a workspace keeps out of its file | Replaced as a set |
+| `page_overrides` | The user's edits to individual pages | Updated in place |
+| `excluded_url_prefixes` | The paths the user keeps out of the file | Replaced as a set |
 | `pipeline_runs` | One execution of crawl, extract, generate for a site | Written during the run, then fixed |
-| `llms_txt_versions` | Every published llms.txt of a workspace | Append-only |
+| `llms_txt_versions` | Every published llms.txt of a site | Append-only |
 
 ### Design choices
 
-- **Crawl state is shared, ownership is not.** A site has many workspaces. A second person submitting the same site reuses the crawl and gets their own workspace, token, overrides and excluded paths.
-- **No user accounts.** Each submission returns a secret link containing a random token. Holding the link authorises editing that workspace. Only the token's SHA-256 is stored.
+- **Each submission is its own site.** Nothing is shared between submissions: submitting a URL twice makes two sites, each with its own crawl data, overrides, excluded paths, versions and schedule. This costs repeat crawls and LLM calls for a popular URL, and two submissions can crawl one host at the same time. In exchange, nobody can reach a file by submitting its URL.
+- **No user accounts or tokens, for now.** Each site has a random `public_slug`, and anyone who knows it can read and change that site through the API. The slug is in the hosted URL, so it is not a secret once shared. Basic auth is planned for the write routes.
 - **Column groups in `pages` have one writer each.** Crawler, extractor and generator each own a set of columns, so a stage can be re-run without clobbering another's output.
 - **User edits are stored as inputs.** Overrides are applied by the generator on every run, so an edit survives regeneration. Only the description and an exclude flag can be overridden.
-- **A path is excluded by rule, not page by page.** `workspace_excluded_url_prefixes` holds URL prefixes (`https://example.com/blog`). Each render excludes every page at or under one, by whole path segments, so the rule covers pages a later crawl finds, which per-page flags cannot. The crawl still fetches and stores those pages: other workspaces of the site may list them.
+- **A path is excluded by rule, not page by page.** `excluded_url_prefixes` holds URL prefixes (`https://example.com/blog`). Each render excludes every page at or under one, by whole path segments, so the rule covers pages a later crawl finds, which per-page flags cannot. The crawl still fetches and stores those pages, so including the path again needs no crawl.
 - **Rows are keyed on the normalised URL.** That is the URL after cleanup that needs no fetch: lowercase host, fragment and tracking parameters removed, query sorted, trailing slash stripped. The canonical URL a page declares is only known after fetching, so it is stored as a plain column and used to drop duplicates at selection.
-- **Publishing is a single pointer update.** A version becomes live when `site_workspaces.published_version_id` moves to it. Choosing an older version is the same operation, and sets `is_published_version_pinned`: runs then still record new versions, compared with the newest version rather than the live one so nothing is recorded twice, but the pointer stays until the user unpins it and returns to the newest.
+- **Publishing is a single pointer update.** A version becomes live when `sites.published_version_id` moves to it. Choosing an older version is the same operation, and sets `is_published_version_pinned`: runs then still record new versions, compared with the newest version rather than the live one so nothing is recorded twice, but the pointer stays until the user unpins it and returns to the newest.
 - **Raw HTML is not stored.** Only extracted markdown and hashes are kept. Improving the extractor means re-fetching pages.
 
 ### Where SQL lives
@@ -134,7 +133,7 @@ All SQL is hand-written in `packages/db`, one module per table, and the rest of 
 - **One job is one site's run.** Jobs are not split per page.
 - **Concurrency:** the worker takes up to ten jobs at once, so ten sites run in parallel. Within a run, the target site is fetched at a per-host rate limit. Headless rendering has its own, lower, global limit because of memory: the worker shares one `HeadlessRenderer`, which runs at most two renders at once.
 - **Priority:** a user's submission or "check now" is taken ahead of scheduled monitor checks.
-- **One active run per site:** a partial unique index on `pipeline_runs` rejects a second queued or running run for the same site. A second submission joins the active run instead. A run ends in a transaction that locks the site row and first checks for workspaces it has not rendered, so a submission that joined late still gets its file.
+- **One active run per site:** a partial unique index on `pipeline_runs` rejects a second queued or running run for the same site. "Check now" during a run joins it.
 - **A run and its job are created together:** the `pipeline_runs` row is inserted and the pg-boss job sent in one transaction, through pg-boss's `db` option, and the job's id is the run's id. A crash can therefore never leave a queued row with no job, which would hold the site's slot for good. The web app and the monitor both go through one function, `startPipelineRun`, so priorities and queue options are set in one place.
 - **Guarded status changes:** `queued → running → succeeded | unchanged | failed`, and `queued | running → failed` by the reaper. Every change is a conditional update that names the status it expects. A job that cannot claim its run (already claimed, or reaped) is dropped. A worker that finishes after its run was reaped records nothing, and publishing first locks the run row and checks that the run is still running.
 - **Heartbeat:** a running job updates `last_heartbeat_at` every 5 seconds.
@@ -147,15 +146,15 @@ All SQL is hand-written in `packages/db`, one module per table, and the rest of 
 
 ![Monitor check](diagrams/monitor-check.svg)
 
-A check runs on a fixed interval per site (default 7 days) or when a user presses "check now". A site is only scheduled while at least one of its workspaces has unexpired monitoring.
+A check runs on a fixed interval per site (default 7 days) or when a user presses "check now". A site is only scheduled while its monitoring is unexpired.
 
 ### Scheduling
 
 The monitor only acts on a schedule. A request to check now arrives over HTTP, so the web app takes it and queues the run itself, through the same `startPipelineRun`. The two never call each other.
 
 - **Starting and renewing:** every submission turns monitoring on for 30 days and users cannot turn it off. "Check now" renews it for 30 days, including after it has lapsed. If the site has no check scheduled, it gets one a full interval out: the site was just crawled, so checking sooner would find nothing.
-- **Deleting a workspace:** removes its overrides, excluded paths, versions and hosted file. The site stays scheduled while another of its workspaces is monitoring. Its row and crawl data are deleted with its last workspace, unless a run is active, in which case the unscheduled row stays. A run skips a workspace deleted while it was generating. The delete locks the site row first (`deleteWorkspace` in `packages/db/src/workspaces.ts`).
-- **The tick:** every 5 minutes, a pg-boss cron job in the worker reaps stale runs (section 4). Then it claims up to 100 due sites, skipping rows another tick has locked, moves each one's next check on by its interval, and queues a monitor run behind user requests. A due site whose workspaces have all let monitoring lapse is unscheduled at that point, so expiry needs no job of its own.
+- **Deleting a site:** removes its pages, overrides, excluded paths, runs, versions and hosted file. A run in progress loses its row, so its next write fails and it cannot publish.
+- **The tick:** every 5 minutes, a pg-boss cron job in the worker reaps stale runs (section 4). Then it claims up to 100 due sites, skipping rows another tick has locked, moves each one's next check on by its interval, and queues a monitor run behind user requests. A due site whose monitoring has lapsed is unscheduled at that point, so expiry needs no job of its own.
 - **Check now:** the same pipeline as a scheduled check, queued ahead of scheduled checks. A run already in progress is joined. Otherwise the site is checked at most once per 5 minutes, counted from its last run of any kind.
 
 ### Change detection
@@ -195,7 +194,7 @@ A page fetched in full that has both an old and a new `lastmod`, and an old and 
 
 ### Publishing
 
-Entries are regenerated only for changed pages. The file is rendered per workspace, and a new version is written only where the text differs from that workspace's published version.
+Entries are regenerated only for changed pages. A new version is written only where the text differs from the site's newest version.
 
 A site with nothing to list besides its homepage publishes nothing: the run fails and says why. A file that is only a name and a summary usually means the crawl could not get past the homepage (a single-page app, hash routing, a login wall, an app that crashed in the browser). The rule is for a site's first file. A site that has published before is let through, so a file whose last page went on its own 404s loses that link instead of keeping it.
 
@@ -205,10 +204,10 @@ A site with nothing to list besides its homepage publishes nothing: the run fail
 - **Result:** rendered preview next to raw text, spec validation status, copy and download.
 - **Pages:** an expandable list of every crawled page, grouped by the directories of its URL path, with the section each is listed under. Unticking a page excludes that page; unticking a path excludes everything under it, now and in later checks. Changes are collected and saved together. Saving renders the file again from the stored crawl, with no fetch and no LLM call, and records the result as a `user_edit` version; while a run is active the choices are only saved, and that run applies them.
 - **Editing descriptions:** overriding a page's description is not built yet.
-- **Secret link:** `/w/{public_slug}#token=…`. The token is in the fragment, which browsers never send, and the browser keeps the links it created so the home page can show them as a table of sites with each one's latest status. Submitting a site opens its details page.
-- **API:** `POST /api/sites` submits a URL. `GET /api/workspaces/{public_slug}` is what the workspace screen polls: the latest run, the published file with its validation result, and monitoring. `DELETE /api/workspaces/{public_slug}` deletes the workspace. `POST /api/workspaces/{public_slug}/checks` is "check now" and renews monitoring. `GET /api/workspaces/{public_slug}/versions` lists the version history and `GET .../versions/{version_number}` returns one version's text. `PUT /api/workspaces/{public_slug}/published-version` makes a version live and pins it, and `DELETE` on the same path unpins it. `GET /api/workspaces/{public_slug}/pages` lists the crawled pages with what the workspace excludes, and `PUT` on the same path replaces the excluded pages and paths and renders the file again. The workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
+- **Site link:** `/w/{public_slug}`. The browser keeps the sites it created so the home page can show them as a table with each one's latest status. Submitting a site opens its details page.
+- **API (no authentication):** a REST API that the web app also uses, documented in the [root README](../../README.md#rest-api). A submission creates a site. A run has its own status, and a file is reached by version number or by the run that published it. A run that published nothing answers 404 with the code `run_produced_no_version`, rather than some other run's file. Errors carry a stable `code` beside the human-readable `error`.
 - **Hosted URL:** a stable `/w/{public_slug}/llms.txt`. The spec puts llms.txt at the site's own root, so the site owner redirects or proxies to this URL. The [root README](../../README.md#serving-llmstxt-from-your-own-domain) explains how.
-- **Monitoring:** on for every workspace with an expiry, a "check now" button that renews it, and version history with diffs: the user picks any two versions and sees a line diff, computed in the browser.
+- **Monitoring:** on for every site with an expiry, a "check now" button that renews it, and version history with diffs: the user picks any two versions and sees a line diff, computed in the browser.
 - **Versions:** a list of versions with counts of pages added, removed and changed, from which the user makes one live and pins it, or returns to following the latest.
 
 ## 7. Security and abuse limits
@@ -218,9 +217,9 @@ The app is public, has no accounts, and fetches URLs that users supply.
 - **SSRF guard:** blocks private, loopback and link-local addresses, including IPv6 and IPv4-mapped forms and the hosting platform's private network. It runs inside the HTTP client's connector: the host is resolved there, every address is checked, and the socket connects to the checked address, so there is no second lookup for DNS rebinding to exploit. A host with any blocked address is refused. Redirects are followed by hand, and each hop opens a new, checked connection. It covers the headless browser by performing every browser request in Node through the same connector. As a second layer, the browser's own DNS is disabled, so a request that escaped interception could not reach anything. WebSockets, service workers and popups are refused.
 - **Network policy:** the guard's rule is passed in when the fetcher is created. Production uses the public-internet-only policy. End-to-end tests pass one that allows only their fixture sites' loopback ports; it lives in the tests, and no setting or environment variable can loosen the guard.
 - **Fetch limits:** 15 seconds per fetch including redirects, 5 MB per response, 5 redirects, and only `http` and `https`; a page budget per run. A response of a type the caller did not ask for is dropped without reading its body.
-- **Submission limits:** a per-IP rate limit using `site_workspaces.creator_ip_hash` (10 new workspaces per hour by default), and a global concurrency cap from the queue. The IP is read from the right of `X-Forwarded-For`, counting back `TRUSTED_PROXY_HOPS` entries (default 1), because a client can put anything in the entries to the left. This needs the app to sit behind the hosting platform's proxy.
+- **Submission limits:** a per-IP rate limit using `sites.creator_ip_hash` (10 new sites per hour by default), and a global concurrency cap from the queue. The IP is read from the right of `X-Forwarded-For`, counting back `TRUSTED_PROXY_HOPS` entries (default 1), because a client can put anything in the entries to the left. This needs the app to sit behind the hosting platform's proxy.
 - **Monitor expiry:** `monitoring_enabled_until` stops abandoned submissions from being re-crawled forever.
-- **Check-now cooldown:** a site is checked by hand at most once per 5 minutes, so one secret link cannot keep a site under constant crawling. The active-run index already stops parallel crawls, but not back-to-back ones.
+- **Check-now cooldown:** a site is checked by hand at most once per 5 minutes, so nobody can keep a site under constant crawling. The active-run index already stops parallel crawls, but not back-to-back ones.
 - **Served files:** `text/plain` with `X-Content-Type-Options: nosniff`.
 - **Preview:** crawled titles and descriptions are untrusted and are escaped before display.
 
@@ -240,7 +239,7 @@ Checked against llmstxt.org.
 
 | Left out | Why |
 |---|---|
-| User accounts | A secret link per workspace covers editing without the work of auth |
+| User accounts | A random slug per site covers the app for now; basic auth is planned |
 | Webhook and email notifications | Both are open relays on an app without accounts |
 | Adaptive check interval | A fixed interval plus "check now" is simpler and easier to demonstrate |
 | Generating an `llms-full.txt` | Not found in the spec; it would duplicate large content per version. A site's own is linked when it has one |
@@ -255,7 +254,7 @@ Checked against llmstxt.org.
 Not yet decided or designed.
 
 - **Hosting:** Railway or Fly is proposed, not decided.
-- **Update notifications from sites:** a site cannot yet tell us it changed (from a deploy hook, say). Proposal: a web-app route that does what "check now" does, authorised by the workspace token and held to the same cooldown. The monitor would not change.
+- **Update notifications from sites:** a site cannot yet tell us it changed (from a deploy hook, say). Proposal: a web-app route that does what "check now" does, held to the same cooldown. The monitor would not change.
 - **Redirects:** a page that now returns a permanent redirect is not handled, and neither is a site with stored pages whose homepage moves to another origin (its runs fail and the published file stays). Proposal: treat it as an immediate removal of the old URL and add the target as a page if it is in scope. Needs one new column on `pages` for the redirect target.
 - **Soft 404s:** sites that answer a deleted URL with 200 and a "not found" body are not handled. Proposal: an extractor check that counts the same as a real 404.
 - **Slow removal:** with a 7-day interval, waiting for two checks can leave a dead link in the file for two weeks. Proposal: schedule a follow-up check 24 hours after any run that sees a first 404.
@@ -265,4 +264,4 @@ Not yet decided or designed.
 - **Meta refresh:** a stored page that becomes a meta-refresh stub is neither updated nor removed; its target is crawled as a new page.
 - **Restoring an excluded page:** a user cannot yet force back a page the assessment wrongly excluded.
 - **Partial link counts:** a page answered with a 304, or skipped because of a trusted `lastmod`, has no body, so its links are not seen. On such runs, inbound link counts and the frontier miss those links.
-- **Thresholds:** the page budget (200, `CRAWL_PAGE_BUDGET`) and the safety-gate failure share (0.5) have starting values that have not been tuned against real sites. The headless thresholds have starting values in `packages/crawler/src/render-decision.ts`, tuned only against the fixture sites.
+- **Thresholds:** the page budget (200, `CRAWL_PAGE_BUDGET`) and the safety-gate failure share (0.5) have starting values that have not been tuned against real sites. The headless thresholds have starting values in `packages/crawler/src/page-signals/render-decision.ts`, tuned only against the fixture sites.

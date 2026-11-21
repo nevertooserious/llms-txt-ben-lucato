@@ -4,8 +4,7 @@ import { generateLlmsTxt, type PageChanges } from '@llms-txt/generator';
 import { crawlSite, HeadlessRenderer, resolveSiteRootUrl } from '@llms-txt/crawler';
 import {
   createDatabasePool,
-  createWorkspace,
-  findOrCreateSite,
+  createSite,
   loadPublishedLlmsTxt,
   replaceExcludedUrlPrefixes,
   startPipelineRun,
@@ -13,8 +12,8 @@ import {
   type DatabasePool,
 } from '@llms-txt/db';
 import { createLogger } from '@llms-txt/runtime';
-import { readWorkerConfig } from '../../apps/worker/src/worker-config';
-import { startWorkerJobs } from '../../apps/worker/src/worker-jobs';
+import { readWorkerConfig } from '../../apps/worker/src/config/worker-config';
+import { startWorkerJobs } from '../../apps/worker/src/jobs/worker-jobs';
 import { startFixtureSite, type FixtureSite } from './fixture-site-server';
 import { allowLoopbackPorts } from './local-network-policy';
 
@@ -48,7 +47,6 @@ export interface PipelineRunRow {
 export interface SubmittedSite {
   site: FixtureSite;
   siteId: string;
-  workspaceId: string;
   publicSlug: string;
   /** The first run, finished. */
   firstRun: PipelineRunRow;
@@ -122,39 +120,22 @@ export class PipelineHarness {
     return site;
   }
 
-  /** What a URL submission does: a site, a workspace and a run, in one transaction. Waits for the run. */
+  /** What a URL submission does: a new site and a run, in one transaction. Waits for the run. */
   async submit(site: FixtureSite, rootPath = ''): Promise<SubmittedSite> {
-    const { siteId, workspaceId, publicSlug, pipelineRunId } = await withTransaction(
-      this.databasePool,
-      async (transaction) => {
-        const siteId = await findOrCreateSite(transaction, `${site.origin}${rootPath}`);
-        const publicSlug = randomUUID();
-        const workspaceId = await createWorkspace(transaction, {
-          siteId,
-          accessTokenHash: randomUUID(),
-          publicSlug,
-          creatorIpHash: null,
-        });
-        const run = await startPipelineRun(transaction, this.queue, {
-          siteId,
-          triggeredBy: 'submission',
-          requestedByWorkspaceId: workspaceId,
-        });
-        if (run.kind !== 'started') throw new Error('the site already had an active run');
-        return { siteId, workspaceId, publicSlug, pipelineRunId: run.pipelineRunId };
-      },
-    );
-    return { site, siteId, workspaceId, publicSlug, firstRun: await this.waitForRun(pipelineRunId) };
+    const publicSlug = randomUUID();
+    const { siteId, pipelineRunId } = await withTransaction(this.databasePool, async (transaction) => {
+      const siteId = await createSite(transaction, { rootUrl: `${site.origin}${rootPath}`, publicSlug, creatorIpHash: null });
+      const run = await startPipelineRun(transaction, this.queue, { siteId, triggeredBy: 'submission' });
+      if (run.kind !== 'started') throw new Error('the site already had an active run');
+      return { siteId, pipelineRunId: run.pipelineRunId };
+    });
+    return { site, siteId, publicSlug, firstRun: await this.waitForRun(pipelineRunId) };
   }
 
   /** A user pressing "check now": another run through the same pipeline. Waits for it. */
   async checkNow(submitted: SubmittedSite): Promise<PipelineRunRow> {
     const run = await withTransaction(this.databasePool, (transaction) =>
-      startPipelineRun(transaction, this.queue, {
-        siteId: submitted.siteId,
-        triggeredBy: 'user_check_now',
-        requestedByWorkspaceId: submitted.workspaceId,
-      }),
+      startPipelineRun(transaction, this.queue, { siteId: submitted.siteId, triggeredBy: 'user_check_now' }),
     );
     if (run.kind !== 'started') throw new Error('the site already had an active run');
     return this.waitForRun(run.pipelineRunId);
@@ -197,8 +178,8 @@ export class PipelineHarness {
   async versions(submitted: SubmittedSite): Promise<VersionRow[]> {
     const result = await this.databasePool.query<VersionRow>(
       `select version_number, listed_page_count, page_changes
-         from llms_txt_versions where workspace_id = $1 order by version_number`,
-      [submitted.workspaceId],
+         from llms_txt_versions where site_id = $1 order by version_number`,
+      [submitted.siteId],
     );
     return result.rows;
   }
@@ -229,19 +210,18 @@ export class PipelineHarness {
     return result.rows[0]!.requires_headless_rendering;
   }
 
-  /** A workspace edit, as the frontend will store it. */
+  /** A user edit, as the frontend will store it. */
   async setOverride(
     submitted: SubmittedSite,
     path: string,
     override: { descriptionOverride?: string | null; isExcluded?: boolean },
   ): Promise<void> {
     await this.databasePool.query(
-      `insert into workspace_page_overrides (workspace_id, page_id, description_override, is_excluded)
-       select $1, id, $4, $5 from pages where site_id = $2 and normalised_url = $3
-       on conflict (workspace_id, page_id) do update
+      `insert into page_overrides (page_id, description_override, is_excluded)
+       select id, $3, $4 from pages where site_id = $1 and normalised_url = $2
+       on conflict (page_id) do update
          set description_override = excluded.description_override, is_excluded = excluded.is_excluded`,
       [
-        submitted.workspaceId,
         submitted.siteId,
         urlOf(submitted.site, path),
         override.descriptionOverride ?? null,
@@ -250,12 +230,12 @@ export class PipelineHarness {
     );
   }
 
-  /** The paths a workspace ignores, as the frontend stores them: every page at or under one is left out. */
+  /** The paths the user ignores, as the frontend stores them: every page at or under one is left out. */
   async setExcludedPaths(submitted: SubmittedSite, paths: string[]): Promise<void> {
     await withTransaction(this.databasePool, (transaction) =>
       replaceExcludedUrlPrefixes(
         transaction,
-        submitted.workspaceId,
+        submitted.siteId,
         paths.map((path) => urlOf(submitted.site, path)),
       ),
     );

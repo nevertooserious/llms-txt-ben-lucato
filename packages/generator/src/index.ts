@@ -8,7 +8,7 @@ export {
   MACHINE_READABLE_SECTION_NAME,
   siteNameFrom,
   type GenerateLlmsTxtInput,
-} from './generate-llms-txt';
+} from './rendering/generate-llms-txt';
 export {
   buildPageAssessmentPrompt,
   buildSiteSummaryInput,
@@ -28,7 +28,7 @@ export {
   type LlmPrompt,
   type PageAssessmentInput,
   type SiteSummaryInput,
-} from './llm-enrichment';
+} from './enrichment';
 export {
   DEFAULT_SELECTION_LIMITS,
   excludePagesUnderUrlPrefixes,
@@ -42,6 +42,6 @@ export {
   selectPages,
   type SelectedPage,
   type SelectionLimits,
-} from './select-pages';
-export { ENTRY_PATTERN, validateLlmsTxt, type LlmsTxtValidationResult } from './validate-llms-txt';
-export { decidePublication, listedEntries, NOTHING_TO_LIST_REASON, type PageChanges, type PublicationDecision } from './decide-publication';
+} from './selection';
+export { ENTRY_PATTERN, validateLlmsTxt, type LlmsTxtValidationResult } from './rendering/validate-llms-txt';
+export { decidePublication, listedEntries, NOTHING_TO_LIST_REASON, type PageChanges, type PublicationDecision } from './publication/decide-publication';

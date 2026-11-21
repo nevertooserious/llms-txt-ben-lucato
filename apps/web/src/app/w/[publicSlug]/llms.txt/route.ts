@@ -1,7 +1,7 @@
 import { loadPublishedLlmsTxt } from '@llms-txt/db';
-import { webServices } from '../../../../server/web-services';
+import { webServices } from '@/server/composition/web-services';
 
-// The hosted file: the workspace's published llms_txt_versions row, as text/plain.
+// The hosted file: the site's published llms_txt_versions row, as text/plain.
 // Site owners redirect or proxy /llms.txt on their own domain to this URL.
 export async function GET(
   _request: Request,

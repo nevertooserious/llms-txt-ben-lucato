@@ -1,19 +1,17 @@
 -- llms.txt generator: data model (Postgres 14+)
 --
--- Six tables:
---   sites                     one row per crawled website; shared crawl and monitor state
---   site_workspaces           one row per submission of a site; many per site. Holds the
---                             access token, the user's overrides and the published version
---   pages                     current state of each known URL of a site; mutable
---   workspace_page_overrides  a workspace's edits to individual pages
---   workspace_excluded_url_prefixes  the paths a workspace keeps out of its file
---   pipeline_runs             one row per execution of crawl -> extract -> generate for a site;
---                             the audit log and the source of the status shown in the UI
---   llms_txt_versions         every published llms.txt of a workspace; append-only
+-- Five tables:
+--   sites              one row per submission of a URL: crawl and monitor state, the
+--                      public slug and the published version
+--   pages              current state of each known URL of a site; mutable
+--   page_overrides     the user's edits to individual pages
+--   excluded_url_prefixes  the paths the user keeps out of the file
+--   pipeline_runs      one row per execution of crawl -> extract -> generate for a site;
+--                      the audit log and the source of the status shown in the UI
+--   llms_txt_versions  every published llms.txt of a site; append-only
 --
--- Crawl results (sites, pages) are shared by every workspace on the same site, so a
--- second person submitting the same site reuses them. What differs per workspace is
--- only the overrides and therefore the rendered file.
+-- Nothing is shared between submissions: submitting a URL twice makes two independent
+-- sites, each with its own crawl data, overrides and versions.
 --
 -- The job queue is owned by pg-boss in its own schema and is not declared here.
 -- pipeline_runs records what a job did; pg-boss decides when and where it runs.
@@ -27,9 +25,13 @@ create table sites (
   id                               uuid primary key default gen_random_uuid(),
 
   -- Crawl scope: scheme + host + optional path prefix, lowercase host, no trailing
-  -- slash. "https://example.com" or "https://example.com/docs". Taken after following
-  -- the homepage redirect, so "example.com" and "www.example.com" land on one row.
-  root_url                         text not null unique,
+  -- slash. "https://example.com" or "https://example.com/docs". Replaced by where the
+  -- homepage redirects on the first crawl. Not unique: each submission is its own site.
+  root_url                         text not null,
+
+  -- Identifier in every URL of this site: /w/{public_slug}/llms.txt and the API. There
+  -- are no accounts, so knowing the slug is what allows changing the site.
+  public_slug                      text not null unique,
 
   -- Extractor: the site's name, from the homepage.
   site_title                       text,
@@ -48,8 +50,10 @@ create table sites (
 
   -- Monitor state. A fixed interval; users can also trigger a check by hand.
   monitor_check_interval           interval not null default interval '7 days',
-  -- Null means no check is scheduled. Set only while at least one workspace on this
-  -- site has unexpired monitoring.
+  -- Set for 30 days by the submission and renewed by "check now". It expires so that
+  -- abandoned submissions stop being re-crawled.
+  monitoring_enabled_until         timestamptz,
+  -- Null means no check is scheduled. Set only while monitoring is unexpired.
   next_monitor_check_at            timestamptz,
   last_monitor_check_at            timestamptz,
   -- Whether sitemap <lastmod> can be used as a change signal for this site. False
@@ -67,6 +71,15 @@ create table sites (
   -- every crawl and kept while it answers; a crawl that could not tell leaves this alone.
   machine_readable_resource_urls   text[] not null default '{}',
 
+  -- The version served at the hosted URL. Null until the first run succeeds.
+  -- Foreign key is added below, after llms_txt_versions exists.
+  published_version_id             uuid,
+  -- True when the user chose the published version. New versions are still recorded,
+  -- but the pointer stays until the user unpins it.
+  is_published_version_pinned      boolean not null default false,
+
+  -- SHA-256 of the submitter's IP, for per-IP submission rate limiting.
+  creator_ip_hash                  text,
   created_at                       timestamptz not null default now(),
 
   constraint sites_monitor_check_interval_bounds
@@ -78,41 +91,7 @@ create table sites (
 -- The monitor's due-site scan.
 create index sites_due_for_monitor_check_idx
   on sites (next_monitor_check_at) where next_monitor_check_at is not null;
-
--- ---------------------------------------------------------------------------
--- site_workspaces
--- ---------------------------------------------------------------------------
--- There are no user accounts. Each submission of a URL creates a workspace and hands
--- the submitter a secret link. Many workspaces can exist for one site, and none of
--- them can see or change another's overrides.
-create table site_workspaces (
-  id                        uuid primary key default gen_random_uuid(),
-  site_id                   uuid not null references sites (id) on delete cascade,
-
-  -- SHA-256 of the random token in the secret link. Holding the link authorises
-  -- editing this workspace. The token itself is never stored.
-  access_token_hash         text not null unique,
-  -- Public, read-only identifier in the hosted URL: /w/{public_slug}/llms.txt.
-  public_slug               text not null unique,
-
-  -- Set for 30 days by the submission and renewed by "check now". It expires so that
-  -- abandoned submissions stop being re-crawled.
-  monitoring_enabled_until  timestamptz,
-
-  -- The version served at the hosted URL. Null until the first run succeeds.
-  -- Foreign key is added below, after llms_txt_versions exists.
-  published_version_id      uuid,
-  -- True when the user chose the published version. New versions are still recorded,
-  -- but the pointer stays until the user unpins it.
-  is_published_version_pinned boolean not null default false,
-
-  -- SHA-256 of the submitter's IP, for per-IP submission rate limiting.
-  creator_ip_hash           text,
-  created_at                timestamptz not null default now()
-);
-
-create index site_workspaces_site_idx on site_workspaces (site_id);
-create index site_workspaces_rate_limit_idx on site_workspaces (creator_ip_hash, created_at);
+create index sites_rate_limit_idx on sites (creator_ip_hash, created_at);
 
 -- ---------------------------------------------------------------------------
 -- pipeline_runs
@@ -120,8 +99,6 @@ create index site_workspaces_rate_limit_idx on site_workspaces (creator_ip_hash,
 create table pipeline_runs (
   id                         uuid primary key default gen_random_uuid(),
   site_id                    uuid not null references sites (id) on delete cascade,
-  -- The workspace whose user started the run. Null for monitor runs.
-  requested_by_workspace_id  uuid references site_workspaces (id) on delete set null,
 
   -- What started this run: a URL submission, the monitor's schedule, or a user
   -- pressing "check now".
@@ -256,7 +233,7 @@ create table pages (
   -- Lifecycle.
   first_seen_pipeline_run_id           uuid references pipeline_runs (id) on delete set null,
   last_seen_pipeline_run_id            uuid references pipeline_runs (id) on delete set null,
-  -- Set after two consecutive 404/410 responses. Rows are kept so workspace
+  -- Set after two consecutive 404/410 responses. Rows are kept so
   -- overrides survive a page that comes back.
   removed_at                           timestamptz,
 
@@ -275,36 +252,34 @@ create table pages (
 create index pages_not_removed_idx on pages (site_id) where removed_at is null;
 
 -- ---------------------------------------------------------------------------
--- workspace_page_overrides
+-- page_overrides
 -- ---------------------------------------------------------------------------
 -- Edits are stored as inputs to the generator, not as edits to its output, so they
 -- survive regeneration. The section a page appears under is derived from page_type
 -- and is not editable.
-create table workspace_page_overrides (
-  workspace_id          uuid not null references site_workspaces (id) on delete cascade,
-  page_id               uuid not null references pages (id) on delete cascade,
+create table page_overrides (
+  page_id               uuid primary key references pages (id) on delete cascade,
 
   description_override  text,
   is_excluded           boolean not null default false,
-  updated_at            timestamptz not null default now(),
-
-  primary key (workspace_id, page_id)
+  updated_at            timestamptz not null default now()
 );
 
 -- ---------------------------------------------------------------------------
--- workspace_excluded_url_prefixes
+-- excluded_url_prefixes
 -- ---------------------------------------------------------------------------
--- Paths a workspace keeps out of its file. Every page at or under a prefix is left out,
+-- Paths the user keeps out of the file. Every page at or under a prefix is left out,
 -- including pages a later crawl finds, which a per-page override cannot cover. Like the
--- overrides, an input to the generator that is applied on every render.
-create table workspace_excluded_url_prefixes (
-  workspace_id  uuid not null references site_workspaces (id) on delete cascade,
+-- overrides, an input to the generator that is applied on every render. The crawl still
+-- fetches and stores those pages.
+create table excluded_url_prefixes (
+  site_id     uuid not null references sites (id) on delete cascade,
   -- Scheme, host and path, with no trailing slash, query or fragment.
   -- "https://example.com/blog" covers /blog and all of /blog/, not /blog-archive.
-  url_prefix    text not null,
-  created_at    timestamptz not null default now(),
+  url_prefix  text not null,
+  created_at  timestamptz not null default now(),
 
-  primary key (workspace_id, url_prefix)
+  primary key (site_id, url_prefix)
 );
 
 -- ---------------------------------------------------------------------------
@@ -312,10 +287,10 @@ create table workspace_excluded_url_prefixes (
 -- ---------------------------------------------------------------------------
 create table llms_txt_versions (
   id                     uuid primary key default gen_random_uuid(),
-  workspace_id           uuid not null references site_workspaces (id) on delete cascade,
+  site_id                uuid not null references sites (id) on delete cascade,
   -- Null for versions created by a user edit rather than a pipeline run.
   pipeline_run_id        uuid references pipeline_runs (id) on delete set null,
-  -- Allocated while holding a row lock on the workspace, so a user edit and a
+  -- Allocated while holding a row lock on the site, so a user edit and a
   -- pipeline run cannot both take the same number.
   version_number         integer not null,
 
@@ -328,11 +303,11 @@ create table llms_txt_versions (
   created_by             text not null check (created_by in ('pipeline', 'user_edit')),
   created_at             timestamptz not null default now(),
 
-  constraint llms_txt_versions_workspace_version_number_key unique (workspace_id, version_number)
+  constraint llms_txt_versions_site_version_number_key unique (site_id, version_number)
 );
 
-alter table site_workspaces
-  add constraint site_workspaces_published_version_fk
+alter table sites
+  add constraint sites_published_version_fk
   foreign key (published_version_id) references llms_txt_versions (id) on delete set null;
 
 commit;

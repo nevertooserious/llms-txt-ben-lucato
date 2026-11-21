@@ -325,7 +325,7 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
       state.pages['/docs-archive'] = { title: 'Old docs', description: 'Earlier versions.', body: '<p>Kept for reference.</p>' };
 
       expect(await harness.checkNow(submitted)).toMatchObject({ status: 'succeeded' });
-      // The crawl still stores the pages: ignoring is a workspace's choice about its file.
+      // The crawl still stores the pages: ignoring is a choice about the file, not the crawl.
       expect(await harness.storedPage(submitted, '/docs/upgrade')).toMatchObject({ http_status_code: 200, removed_at: null });
       const listed = listedUrls((await harness.publishedLlmsTxt(submitted))!);
       expect(listed.filter((url) => url.startsWith(urlOf(submitted.site, '/docs/')))).toEqual([]);
@@ -340,20 +340,14 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
       for (const path of ['/docs/intro', '/docs/setup', '/docs/upgrade']) expect(listedAgain).toContain(urlOf(submitted.site, path));
     });
 
-    it('an ignored path belongs to one workspace of the site', async () => {
-      const { submitted } = await submitEditableSite();
-      await harness.setExcludedPaths(submitted, ['/docs']);
-      const second = await harness.submit(submitted.site);
-      expect(second.firstRun.status).toBe('succeeded');
-      expect(listedUrls((await harness.publishedLlmsTxt(second))!)).toContain(urlOf(submitted.site, '/docs/intro'));
-      expect(listedUrls((await harness.publishedLlmsTxt(submitted))!)).not.toContain(urlOf(submitted.site, '/docs/intro'));
-    });
-
-    it('a second workspace on the same site gets its own file from the shared crawl', async () => {
+    it('a second submission of the same URL gets its own site and file', async () => {
       const { submitted } = await submitEditableSite();
       await harness.setOverride(submitted, '/pricing', { isExcluded: true });
       const second = await harness.submit(submitted.site);
+      expect(second.siteId).not.toBe(submitted.siteId);
       expect(second.firstRun.status).toBe('succeeded');
+      expect(listedUrls((await harness.publishedLlmsTxt(second))!)).toContain(urlOf(submitted.site, '/pricing'));
+      expect(await harness.checkNow(submitted)).toMatchObject({ status: 'succeeded' });
       expect(listedUrls((await harness.publishedLlmsTxt(second))!)).toContain(urlOf(submitted.site, '/pricing'));
       expect(listedUrls((await harness.publishedLlmsTxt(submitted))!)).not.toContain(urlOf(submitted.site, '/pricing'));
     });
