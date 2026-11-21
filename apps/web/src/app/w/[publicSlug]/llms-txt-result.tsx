@@ -4,10 +4,7 @@ import { useState } from 'react';
 import type { WorkspaceView } from '../../../shared/workspace-view';
 import { LlmsTxtPreview } from './llms-txt-preview';
 
-type ResultTab = 'preview' | 'raw';
-
 export function LlmsTxtResult({ view, siteHost }: { view: WorkspaceView; siteHost: string }) {
-  const [tab, setTab] = useState<ResultTab>('preview');
   const [copied, setCopied] = useState<'text' | 'url' | null>(null);
   const version = view.publishedVersion;
   const hostedUrl = typeof window === 'undefined' ? view.hostedLlmsTxtPath : `${window.location.origin}${view.hostedLlmsTxtPath}`;
@@ -34,20 +31,6 @@ export function LlmsTxtResult({ view, siteHost }: { view: WorkspaceView; siteHos
         </h2>
         {version && (
           <div className="toolbar">
-            <div className="tabs" role="tablist" aria-label="View">
-              {(['preview', 'raw'] as const).map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  role="tab"
-                  className="tab"
-                  aria-selected={tab === name}
-                  onClick={() => setTab(name)}
-                >
-                  {name === 'preview' ? 'Preview' : 'Raw'}
-                </button>
-              ))}
-            </div>
             <button type="button" className="button" onClick={() => copy(version.llmsTxtContent, 'text')}>
               {copied === 'text' ? 'Copied' : 'Copy'}
             </button>
@@ -70,11 +53,16 @@ export function LlmsTxtResult({ view, siteHost }: { view: WorkspaceView; siteHos
               {version.validation.isValid ? '✓ Valid per spec' : '✕ Spec problems'}
             </span>
           </div>
-          {tab === 'preview' ? (
-            <LlmsTxtPreview content={version.llmsTxtContent} />
-          ) : (
-            <pre className="raw-text">{version.llmsTxtContent}</pre>
-          )}
+          <div className="result-panes">
+            <section aria-label="Rendered preview">
+              <h3 className="label">Preview</h3>
+              <LlmsTxtPreview content={version.llmsTxtContent} />
+            </section>
+            <section aria-label="Raw text">
+              <h3 className="label">Raw</h3>
+              <pre className="raw-text">{version.llmsTxtContent}</pre>
+            </section>
+          </div>
           {!version.validation.isValid && (
             <ul className="problems">
               {version.validation.problems.map((problem) => (

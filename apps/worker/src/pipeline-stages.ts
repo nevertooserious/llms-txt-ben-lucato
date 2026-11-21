@@ -2,6 +2,7 @@ import type { CrawlResult, KnownPage, PipelineRunJob, RawPage } from '@llms-txt/
 import type { CrawlSiteOptions } from '@llms-txt/crawler';
 import {
   adoptResolvedSiteRoot,
+  finishPipelineRun,
   loadGeneratorPages,
   loadPublishedVersion,
   loadSiteForRun,
@@ -9,6 +10,7 @@ import {
   loadWorkspaceIdsForSite,
   loadWorkspaceOverrides,
   lockRunningPipelineRun,
+  lockSiteRow,
   publishLlmsTxtVersion,
   recordPipelineRunProgress,
   saveCrawledPage,
@@ -64,12 +66,18 @@ export interface PipelineStageDependencies {
   now?: () => Date;
 }
 
+/** How a run ended, and whether that was recorded; it is not if the reaper failed the run first. */
+export interface FinishedPipelineRun {
+  status: FinishedPipelineRunStatus;
+  isRecorded: boolean;
+}
+
 const PROGRESS_WRITE_INTERVAL_MS = 2_000;
 
 export async function runPipelineStages(
   job: PipelineRunJob,
   dependencies: PipelineStageDependencies,
-): Promise<FinishedPipelineRunStatus> {
+): Promise<FinishedPipelineRun> {
   const { databasePool, logger, settings } = dependencies;
   const now = dependencies.now ?? (() => new Date());
   const { pipelineRunId } = job;
@@ -87,7 +95,10 @@ export async function runPipelineStages(
         adoptResolvedSiteRoot(transaction, { siteId: site.id, pipelineRunId, resolvedRootUrl }),
       );
       logger.info('site root resolved', { resolvedRootUrl, adoption: adoption.kind });
-      if (adoption.kind === 'merged_into_active_run') return 'unchanged';
+      if (adoption.kind === 'merged_into_active_run') {
+        // That run's last step picks up the workspaces just moved to its site.
+        return { status: 'unchanged', isRecorded: await finishPipelineRun(databasePool, pipelineRunId, { status: 'unchanged' }) };
+      }
       site = await loadSiteForRun(databasePool, adoption.siteId);
       storedPageList = await loadStoredPages(databasePool, site.id);
     }
@@ -206,37 +217,52 @@ export async function runPipelineStages(
         pages: loadedPages,
       })
     : { pages: loadedPages, siteSummary: site.generatedSummary };
+  const renderedWorkspaceIds = new Set<string>();
   let publishedCount = 0;
-  for (const workspaceId of await loadWorkspaceIdsForSite(databasePool, site.id)) {
-    const rendered = dependencies.renderLlmsTxt({
-      siteTitle: renderedSiteTitle,
-      siteSummary,
-      pages: generatorPages,
-      overrides: await loadWorkspaceOverrides(databasePool, workspaceId),
-    });
-    const published = await loadPublishedVersion(databasePool, workspaceId);
-    const decision = decidePublication(published?.llmsTxtContent ?? null, rendered);
-    if (decision.kind === 'unchanged') continue;
-
-    await withTransaction(databasePool, async (transaction) => {
-      // A run the reaper has failed must not publish, even if it got this far.
-      if (!(await lockRunningPipelineRun(transaction, pipelineRunId))) {
-        throw new PipelineRunFailure('The run was failed for missing heartbeats before it could publish.');
-      }
-      const version = await publishLlmsTxtVersion(transaction, {
-        workspaceId,
-        pipelineRunId,
-        createdBy: 'pipeline',
-        llmsTxtContent: decision.llmsTxtContent,
-        llmsTxtContentHash: decision.llmsTxtContentHash,
-        listedPageCount: decision.listedPageCount,
-        pageChanges: decision.pageChanges,
+  for (;;) {
+    for (const workspaceId of await loadWorkspaceIdsForSite(databasePool, site.id)) {
+      if (renderedWorkspaceIds.has(workspaceId)) continue;
+      renderedWorkspaceIds.add(workspaceId);
+      const rendered = dependencies.renderLlmsTxt({
+        siteTitle: renderedSiteTitle,
+        siteSummary,
+        pages: generatorPages,
+        overrides: await loadWorkspaceOverrides(databasePool, workspaceId),
       });
-      logger.info('published', { workspaceId, versionNumber: version.versionNumber, ...decision.pageChanges });
+      const published = await loadPublishedVersion(databasePool, workspaceId);
+      const decision = decidePublication(published?.llmsTxtContent ?? null, rendered);
+      if (decision.kind === 'unchanged') continue;
+
+      await withTransaction(databasePool, async (transaction) => {
+        // A run the reaper has failed must not publish, even if it got this far.
+        if (!(await lockRunningPipelineRun(transaction, pipelineRunId))) {
+          throw new PipelineRunFailure('The run was failed for missing heartbeats before it could publish.');
+        }
+        const version = await publishLlmsTxtVersion(transaction, {
+          workspaceId,
+          pipelineRunId,
+          createdBy: 'pipeline',
+          llmsTxtContent: decision.llmsTxtContent,
+          llmsTxtContentHash: decision.llmsTxtContentHash,
+          listedPageCount: decision.listedPageCount,
+          pageChanges: decision.pageChanges,
+        });
+        logger.info('published', { workspaceId, versionNumber: version.versionNumber, ...decision.pageChanges });
+      });
+      publishedCount += 1;
+    }
+
+    // Finish under the site's lock, so a submission either lands before this check and is
+    // rendered above, or lands after it and starts a run of its own.
+    const status = publishedCount > 0 ? 'succeeded' : 'unchanged';
+    const finished = await withTransaction(databasePool, async (transaction) => {
+      await lockSiteRow(transaction, site.id);
+      const workspaceIds = await loadWorkspaceIdsForSite(transaction, site.id);
+      if (workspaceIds.some((workspaceId) => !renderedWorkspaceIds.has(workspaceId))) return null;
+      return { status, isRecorded: await finishPipelineRun(transaction, pipelineRunId, { status }) } as const;
     });
-    publishedCount += 1;
+    if (finished !== null) return finished;
   }
-  return publishedCount > 0 ? 'succeeded' : 'unchanged';
 }
 
 function knownPageFrom(stored: StoredPage): KnownPage {

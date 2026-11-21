@@ -51,8 +51,6 @@ create table sites (
   -- until lastmod is present and has been seen to agree with real content changes;
   -- set back to false if a page's content changed while its lastmod did not.
   sitemap_lastmod_is_trusted       boolean not null default false,
-  -- Fingerprints from discovery, e.g. {"sitemaps": {"<url>": {"etag": "...", "hash": "..."}}, "nav_hash": "..."}.
-  discovery_fingerprints           jsonb not null default '{}'::jsonb,
   -- Crawler: whether the site only has content after JavaScript runs, so every page is
   -- fetched with the headless browser. Null until a crawl decides it by fetching the
   -- homepage both ways; the worker passes null again once the decision is 30 days old,
@@ -215,7 +213,7 @@ create table pages (
 
   -- Generator: the LLM's cached assessment of the page. Written together, and asked
   -- for again only when assessment_source_hash no longer matches the page's inputs.
-  importance_score                     real,
+  -- A page's importance is computed at selection, not stored.
   generated_description                text,
   -- Corrects page_type, which the extractor guesses from the URL. Never 'home'.
   assessed_page_type                   text check (assessed_page_type in

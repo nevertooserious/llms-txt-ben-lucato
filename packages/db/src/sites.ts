@@ -43,6 +43,14 @@ export async function claimDueMonitorChecks(transaction: Transaction, limit: num
   return result.rows.filter((row) => row.is_monitored).map((row) => row.id);
 }
 
+/**
+ * Holds the site row until the transaction ends. A submission holds the same lock from
+ * findOrCreateSite, so a run can finish knowing no workspace is about to join it.
+ */
+export async function lockSiteRow(transaction: Transaction, siteId: string): Promise<void> {
+  await transaction.query('select 1 from sites where id = $1 for update', [siteId]);
+}
+
 export type SiteRootAdoption =
   /** No site had the resolved root: this site now does. */
   | { kind: 'renamed'; siteId: string }

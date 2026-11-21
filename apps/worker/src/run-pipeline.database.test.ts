@@ -101,6 +101,7 @@ async function run(
   siteId: string,
   crawl: ReturnType<typeof fakeCrawl>,
   resolveRootUrl: (rootUrl: string) => Promise<string> = async (rootUrl) => rootUrl,
+  pool: typeof databasePool = databasePool,
   llmClient: LlmClient | null = null,
 ) {
   const outcome = await withTransaction(databasePool, (transaction) =>
@@ -110,7 +111,7 @@ async function run(
   await runPipeline(
     { pipelineRunId, siteId },
     {
-      databasePool,
+      databasePool: pool,
       logger: createLogger({ level: 'error', writeLine: () => {} }),
       heartbeatIntervalMs: 60_000,
       settings: { crawlPageBudget: 50, maxFailedFetchShare: 0.5 },
@@ -173,7 +174,7 @@ describe('runPipeline with an LLM', () => {
   it('lists only the pages the assessment keeps, with its descriptions and summary', async () => {
     const { siteId, workspaceId, rootUrl } = await newSiteWithWorkspace();
     const llm = fakeLlmClient();
-    expect((await run(siteId, fakeCrawl(pages), identity, llm.client)).status).toBe('succeeded');
+    expect((await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client)).status).toBe('succeeded');
     const content = (await versions(workspaceId))[0]!.llms_txt_content;
     expect(content).toContain('> Acme, summarised.');
     expect(content).toContain(`- [Docs](${rootUrl}/docs): Assessed Docs.`);
@@ -189,9 +190,9 @@ describe('runPipeline with an LLM', () => {
   it('does not ask again for unchanged pages, and publishes nothing new', async () => {
     const { siteId, workspaceId } = await newSiteWithWorkspace();
     const llm = fakeLlmClient();
-    await run(siteId, fakeCrawl(pages), identity, llm.client);
+    await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client);
     expect(llm.calls).toEqual({ assessPage: 3, writeSiteSummary: 1 });
-    expect((await run(siteId, fakeCrawl(pages), identity, llm.client)).status).toBe('unchanged');
+    expect((await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client)).status).toBe('unchanged');
     expect(llm.calls).toEqual({ assessPage: 3, writeSiteSummary: 1 });
     expect(await versions(workspaceId)).toHaveLength(1);
   });
@@ -199,9 +200,9 @@ describe('runPipeline with an LLM', () => {
   it('fails the run and keeps the file when the LLM is down for a new page', async () => {
     const { siteId, workspaceId } = await newSiteWithWorkspace();
     const llm = fakeLlmClient();
-    await run(siteId, fakeCrawl(pages), identity, llm.client);
+    await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client);
     llm.behaviour.failWith = new Error('overloaded');
-    const failed = await run(siteId, fakeCrawl([...pages, { path: '/pricing', title: 'Pricing' }]), identity, llm.client);
+    const failed = await run(siteId, fakeCrawl([...pages, { path: '/pricing', title: 'Pricing' }]), identity, databasePool, llm.client);
     expect(failed.status).toBe('failed');
     expect(failed.error_message).toMatch(/could not be reached/);
     expect(await versions(workspaceId)).toHaveLength(1);
@@ -210,10 +211,10 @@ describe('runPipeline with an LLM', () => {
   it('keeps an older assessment when the LLM is down for a changed page', async () => {
     const { siteId, workspaceId, rootUrl } = await newSiteWithWorkspace();
     const llm = fakeLlmClient();
-    await run(siteId, fakeCrawl(pages), identity, llm.client);
+    await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client);
     llm.behaviour.failWith = new Error('overloaded');
     const changed = pages.map((page) => (page.path === '/docs' ? { ...page, title: 'Docs v2' } : page));
-    expect((await run(siteId, fakeCrawl(changed), identity, llm.client)).status).not.toBe('failed');
+    expect((await run(siteId, fakeCrawl(changed), identity, databasePool, llm.client)).status).not.toBe('failed');
     expect((await versions(workspaceId)).at(-1)!.llms_txt_content).toContain(`(${rootUrl}/docs): Assessed Docs.`);
   });
 
@@ -226,7 +227,7 @@ describe('runPipeline with an LLM', () => {
       return assessPage(input);
     };
     const withPricing = [...pages, { path: '/pricing', title: 'Pricing' }];
-    expect((await run(siteId, fakeCrawl(withPricing), identity, llm.client)).status).toBe('succeeded');
+    expect((await run(siteId, fakeCrawl(withPricing), identity, databasePool, llm.client)).status).toBe('succeeded');
     const content = (await versions(workspaceId))[0]!.llms_txt_content;
     expect(content).toContain(`${rootUrl}/pricing`);
     expect(content).not.toContain(`${rootUrl}/docs`);
@@ -317,6 +318,37 @@ describe('runPipeline', () => {
     expect(workspace.rows[0]?.site_id).toBe(existing.siteId);
     expect((await versions(redirecting.workspaceId))[0]?.llms_txt_content).toContain(`${existing.rootUrl}/docs`);
     expect(await versions(existing.workspaceId)).toHaveLength(1);
+  });
+
+  it('still publishes for a workspace that joins after the run read its workspaces', async () => {
+    const { siteId, workspaceId } = await newSiteWithWorkspace();
+    let lateWorkspaceId: string | undefined;
+    // Adds a workspace straight after the run's first read of the site's workspaces.
+    const pool = new Proxy(databasePool, {
+      get(target, property) {
+        if (property !== 'query') {
+          const value = Reflect.get(target, property) as unknown;
+          return typeof value === 'function' ? value.bind(target) : value;
+        }
+        return async (text: string, values?: unknown[]) => {
+          const result = await target.query(text, values);
+          if (lateWorkspaceId === undefined && text.includes('from site_workspaces where site_id')) {
+            lateWorkspaceId = await createWorkspace(target, {
+              siteId,
+              accessTokenHash: crypto.randomUUID(),
+              publicSlug: crypto.randomUUID(),
+              creatorIpHash: null,
+            });
+          }
+          return result;
+        };
+      },
+    });
+
+    const outcome = await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }]), undefined, pool);
+    expect(outcome.status).toBe('succeeded');
+    expect(await versions(workspaceId)).toHaveLength(1);
+    expect(await versions(lateWorkspaceId!)).toHaveLength(1);
   });
 
   it('fails the run with the error when a stage throws', async () => {

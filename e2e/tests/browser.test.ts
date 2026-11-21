@@ -68,7 +68,6 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
   const siteHeading = () => page.locator('.site-heading').getByRole('heading', { level: 1, name: 'Editable Co' });
 
   async function rawLlmsTxt(): Promise<string> {
-    await page.getByRole('tab', { name: 'Raw' }).click();
     return page.locator('pre.raw-text').innerText();
   }
 
