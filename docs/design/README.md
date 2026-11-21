@@ -117,7 +117,7 @@ The full DDL with comments is in [`db/schema.sql`](../../db/schema.sql).
 - **Column groups in `pages` have one writer each.** Crawler, extractor and generator each own a set of columns, so a stage can be re-run without clobbering another's output.
 - **User edits are stored as inputs.** Overrides are applied by the generator on every run, so an edit survives regeneration. Only the description and an exclude flag can be overridden.
 - **Rows are keyed on the normalised URL.** That is the URL after cleanup that needs no fetch: lowercase host, fragment and tracking parameters removed, query sorted, trailing slash stripped. The canonical URL a page declares is only known after fetching, so it is stored as a plain column and used to drop duplicates at selection.
-- **Publishing is a single pointer update.** A version becomes live when `site_workspaces.published_version_id` moves to it. Rollback is the same operation.
+- **Publishing is a single pointer update.** A version becomes live when `site_workspaces.published_version_id` moves to it. Choosing an older version is the same operation, and sets `is_published_version_pinned`: runs then still record new versions, compared with the newest version rather than the live one so nothing is recorded twice, but the pointer stays until the user unpins it and returns to the newest.
 - **Raw HTML is not stored.** Only extracted markdown and hashes are kept. Improving the extractor means re-fetching pages.
 
 ### Where SQL lives
@@ -198,9 +198,10 @@ Entries are regenerated only for changed pages. The file is rendered per workspa
 - **Result:** rendered preview next to raw text, spec validation status, copy and download.
 - **Editing:** override a page's description or exclude a page.
 - **Secret link:** `/w/{public_slug}#token=…`. The token is in the fragment, which browsers never send, and the browser keeps the links it created so the home page can list them.
-- **API:** `POST /api/sites` submits a URL. `GET /api/workspaces/{public_slug}` is what the workspace screen polls: the latest run, the published file with its validation result, and monitoring. `DELETE /api/workspaces/{public_slug}` deletes the workspace. `POST /api/workspaces/{public_slug}/checks` is "check now" and renews monitoring. The workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
+- **API:** `POST /api/sites` submits a URL. `GET /api/workspaces/{public_slug}` is what the workspace screen polls: the latest run, the published file with its validation result, and monitoring. `DELETE /api/workspaces/{public_slug}` deletes the workspace. `POST /api/workspaces/{public_slug}/checks` is "check now" and renews monitoring. `PUT /api/workspaces/{public_slug}/published-version` makes a version live and pins it, and `DELETE` on the same path unpins it. The workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
 - **Hosted URL:** a stable `/w/{public_slug}/llms.txt`. The spec puts llms.txt at the site's own root, so the site owner redirects or proxies to this URL. The [root README](../../README.md#serving-llmstxt-from-your-own-domain) explains how.
-- **Monitoring:** on for every workspace with an expiry, a "check now" button that renews it, and version history with diffs.
+- **Monitoring:** on for every workspace with an expiry, and a "check now" button that renews it.
+- **Versions:** a list of versions with counts of pages added, removed and changed, from which the user makes one live and pins it, or returns to following the latest. Line-by-line diffs are not built.
 
 ## 7. Security and abuse limits
 

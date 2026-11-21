@@ -33,6 +33,19 @@ export interface WorkspaceView {
     createdAt: string;
     validation: { isValid: boolean; problems: string[] };
   } | null;
+  /** True when the user chose the published version, so new versions do not go live. */
+  isPublishedVersionPinned: boolean;
+  /** Newest first. */
+  versions: VersionSummaryView[];
+}
+
+export interface VersionSummaryView {
+  versionNumber: number;
+  listedPageCount: number;
+  addedPageCount: number;
+  removedPageCount: number;
+  changedPageCount: number;
+  createdAt: string;
 }
 
 export function isActiveRunStatus(status: PipelineRunStatus): boolean {

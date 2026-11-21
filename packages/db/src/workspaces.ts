@@ -142,6 +142,7 @@ export interface WorkspaceOverview {
   /** In the past once monitoring has lapsed; null for a workspace that never had it. */
   monitoringEnabledUntil: Date | null;
   nextMonitorCheckAt: Date | null;
+  isPublishedVersionPinned: boolean;
   publishedVersion: {
     versionNumber: number;
     llmsTxtContent: string;
@@ -156,12 +157,14 @@ export async function loadWorkspaceOverview(database: Queryable, workspaceId: st
     site_title: string | null;
     monitoring_enabled_until: Date | null;
     next_monitor_check_at: Date | null;
+    is_published_version_pinned: boolean;
     version_number: number | null;
     llms_txt_content: string | null;
     listed_page_count: number | null;
     version_created_at: Date | null;
   }>(
     `select sites.root_url, sites.site_title, workspaces.monitoring_enabled_until, sites.next_monitor_check_at,
+            workspaces.is_published_version_pinned,
             versions.version_number, versions.llms_txt_content, versions.listed_page_count,
             versions.created_at as version_created_at
        from site_workspaces workspaces
@@ -177,6 +180,7 @@ export async function loadWorkspaceOverview(database: Queryable, workspaceId: st
     siteTitle: row.site_title,
     monitoringEnabledUntil: row.monitoring_enabled_until,
     nextMonitorCheckAt: row.next_monitor_check_at,
+    isPublishedVersionPinned: row.is_published_version_pinned,
     publishedVersion:
       row.version_number === null
         ? null

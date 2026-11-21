@@ -82,7 +82,8 @@ export function LlmsTxtResult({ view, siteHost }: { view: WorkspaceView; siteHos
               </button>
             </div>
             <p className="hint">
-              Redirect or proxy https://{siteHost}/llms.txt to this URL. It always serves the latest version.
+              Redirect or proxy https://{siteHost}/llms.txt to this URL. It serves{' '}
+              {view.isPublishedVersionPinned ? 'the version you pinned' : 'the latest version'}.
             </p>
           </div>
         </>

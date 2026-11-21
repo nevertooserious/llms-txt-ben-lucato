@@ -4,7 +4,7 @@ import {
   adoptResolvedSiteRoot,
   finishPipelineRun,
   loadGeneratorPages,
-  loadPublishedVersion,
+  loadNewestVersion,
   loadSiteForRun,
   loadStoredPages,
   loadWorkspaceIdsForSite,
@@ -232,8 +232,8 @@ export async function runPipelineStages(
         pages: generatorPages,
         overrides: await loadWorkspaceOverrides(databasePool, workspaceId),
       });
-      const published = await loadPublishedVersion(databasePool, workspaceId);
-      const decision = decidePublication(published?.llmsTxtContent ?? null, rendered);
+      const newestVersion = await loadNewestVersion(databasePool, workspaceId);
+      const decision = decidePublication(newestVersion?.llmsTxtContent ?? null, rendered);
       if (decision.kind === 'unchanged') continue;
 
       const version = await withTransaction(databasePool, async (transaction) => {
@@ -253,7 +253,12 @@ export async function runPipelineStages(
       });
       // The user deleted this workspace during the run.
       if (version === null) continue;
-      logger.info('published', { workspaceId, versionNumber: version.versionNumber, ...decision.pageChanges });
+      logger.info('published', {
+        workspaceId,
+        versionNumber: version.versionNumber,
+        isLive: version.isLive,
+        ...decision.pageChanges,
+      });
       publishedCount += 1;
     }
 

@@ -3,14 +3,13 @@
 // only Postgres. This file is the composition root: it reads the configuration and
 // builds every long-lived dependency once.
 import { PgBoss } from 'pg-boss';
-import { QUEUE_NAMES } from '@llms-txt/contracts';
 import { crawlSite, HeadlessRenderer, resolveSiteRootUrl } from '@llms-txt/crawler';
 import { createDatabasePool } from '@llms-txt/db';
 import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
 import { createAnthropicLlmClient } from './anthropic-llm-client';
 import { readWorkerConfig } from './worker-config';
-import { startWorkerJobs } from './worker-jobs';
+import { scheduleMonitorTick, startWorkerJobs } from './worker-jobs';
 
 const config = readWorkerConfig();
 const logger = createLogger({ level: config.logLevel, fields: { process: 'worker' } });
@@ -35,7 +34,7 @@ await startWorkerJobs({
   llmClient,
 });
 // The monitor tick: every five minutes, reap stale runs and enqueue due checks.
-await queue.schedule(QUEUE_NAMES.monitorTick, '*/5 * * * *');
+await scheduleMonitorTick(queue);
 
 logger.info('worker started', { pipelineRunConcurrency: config.pipelineRunConcurrency });
 

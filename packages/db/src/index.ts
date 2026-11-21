@@ -70,8 +70,12 @@ export {
   type StoredPage,
 } from './pages';
 export {
-  loadPublishedVersion,
+  loadNewestVersion,
+  loadVersionHistory,
+  pinPublishedVersion,
   publishLlmsTxtVersion,
+  unpinPublishedVersion,
   type NewLlmsTxtVersion,
-  type PublishedVersion,
+  type NewestVersion,
+  type VersionSummary,
 } from './llms-txt-versions';

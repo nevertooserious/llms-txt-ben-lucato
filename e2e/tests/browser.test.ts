@@ -123,6 +123,40 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     expect(await rawLlmsTxt()).toContain(`- [Intro](${site.origin}/docs/intro): Begin here instead.`);
   });
 
+  it('makes an older version live, keeps it through a check, and follows the latest again', async () => {
+    await generateFromHomePage();
+    const hostedPath = await page.getByRole('link', { name: 'Open', exact: true }).getAttribute('href');
+    const firstVersion = await (await page.request.get(hostedPath!)).text();
+    const moveRunsOutOfCooldown = () =>
+      stack.databasePool.query(
+        `update pipeline_runs set created_at = created_at - interval '1 hour'
+          where site_id = (select id from sites where root_url = $1)`,
+        [site.origin],
+      );
+
+    siteState.pages['/docs/intro']!.description = 'The second version.';
+    await moveRunsOutOfCooldown();
+    await page.getByRole('button', { name: /check now/i }).click();
+    await visible(page.getByText('Version 2', { exact: true }), RUN_TIMEOUT_MS);
+    await visible(runStatus('Generated'));
+
+    await page.getByRole('button', { name: 'Make v1 live' }).click();
+    await visible(page.getByText('Version 1', { exact: true }));
+    await visible(page.getByText(/^Pinned to v1\./));
+    expect(await (await page.request.get(hostedPath!)).text()).toBe(firstVersion);
+
+    // A later check records a version without publishing it.
+    siteState.pages['/docs/intro']!.description = 'The third version.';
+    await moveRunsOutOfCooldown();
+    await page.getByRole('button', { name: /check now/i }).click();
+    await visible(page.getByRole('button', { name: 'Make v3 live' }), RUN_TIMEOUT_MS);
+    expect(await (await page.request.get(hostedPath!)).text()).toBe(firstVersion);
+
+    await page.getByRole('button', { name: 'Follow latest' }).click();
+    await visible(page.getByText('Version 3', { exact: true }));
+    expect(await (await page.request.get(hostedPath!)).text()).toContain('The third version.');
+  });
+
   it('shows no page counts and no way to turn monitoring off', async () => {
     await generateFromHomePage();
     await visible(page.getByText('Watching for changes'));

@@ -93,6 +93,9 @@ create table site_workspaces (
   -- The version served at the hosted URL. Null until the first run succeeds.
   -- Foreign key is added below, after llms_txt_versions exists.
   published_version_id      uuid,
+  -- True when the user chose the published version. New versions are still recorded,
+  -- but the pointer stays until the user unpins it.
+  is_published_version_pinned boolean not null default false,
 
   -- SHA-256 of the submitter's IP, for per-IP submission rate limiting.
   creator_ip_hash           text,

@@ -44,7 +44,7 @@ export class WebAppStack {
   ) {}
 
   static async start(serverDatabaseUrl: string): Promise<WebAppStack> {
-    const { databaseUrl, dropDatabase } = await createDatabase(serverDatabaseUrl);
+    const { databaseUrl, dropDatabase } = await createE2eDatabase(serverDatabaseUrl);
 
     const allowedPorts = new Set<number>();
     const networkPolicy = allowLoopbackPorts(allowedPorts);
@@ -140,8 +140,11 @@ export class WebAppStack {
   }
 }
 
-async function createDatabase(serverDatabaseUrl: string): Promise<{ databaseUrl: string; dropDatabase: () => Promise<void> }> {
-  const databaseName = `llms_txt_browser_e2e_${randomBytes(6).toString('hex')}`;
+/** A new database with db/schema.sql applied, for a test whose queue must not be shared. */
+export async function createE2eDatabase(
+  serverDatabaseUrl: string,
+): Promise<{ databaseUrl: string; dropDatabase: () => Promise<void> }> {
+  const databaseName = `llms_txt_e2e_${randomBytes(6).toString('hex')}`;
   const serverPool = createDatabasePool(serverDatabaseUrl);
   await serverPool.query(`create database ${databaseName}`);
   const databaseUrl = new URL(serverDatabaseUrl);

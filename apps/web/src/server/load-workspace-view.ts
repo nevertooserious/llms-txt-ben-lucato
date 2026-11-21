@@ -1,5 +1,6 @@
 import {
   loadLatestPipelineRunSummary,
+  loadVersionHistory,
   loadWorkspaceOverview,
   type DatabasePool,
   type PipelineRunSummary,
@@ -8,15 +9,18 @@ import {
 import { validateLlmsTxt } from '@llms-txt/generator';
 import type { PipelineRunView, WorkspaceView } from '../shared/workspace-view';
 
+const MAX_LISTED_VERSIONS = 50;
+
 /** Everything the workspace screen shows: the site, its latest run, the published file. */
 export async function loadWorkspaceView(
   workspace: WorkspaceAccess,
   publicSlug: string,
   dependencies: { databasePool: DatabasePool; now?: Date },
 ): Promise<WorkspaceView | null> {
-  const [overview, latestRun] = await Promise.all([
+  const [overview, latestRun, versions] = await Promise.all([
     loadWorkspaceOverview(dependencies.databasePool, workspace.id),
     loadLatestPipelineRunSummary(dependencies.databasePool, workspace.siteId),
+    loadVersionHistory(dependencies.databasePool, workspace.id, MAX_LISTED_VERSIONS),
   ]);
   if (overview === null) return null;
   const now = dependencies.now ?? new Date();
@@ -43,6 +47,8 @@ export async function loadWorkspaceView(
             createdAt: version.createdAt.toISOString(),
             validation: validateLlmsTxt(version.llmsTxtContent),
           },
+    isPublishedVersionPinned: overview.isPublishedVersionPinned,
+    versions: versions.map((summary) => ({ ...summary, createdAt: summary.createdAt.toISOString() })),
   };
 }
 
