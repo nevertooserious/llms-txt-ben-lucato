@@ -6,6 +6,8 @@ export interface WebConfig {
   logLevel: LogLevel;
   /** New workspaces one IP may create per hour (docs/design/README.md, section 7). */
   submissionsPerIpPerHour: number;
+  /** Least time between a site's last run and a "check now" (docs/design/README.md, section 7). */
+  checkNowCooldownSeconds: number;
 }
 
 export function readWebConfig(environment: Environment = process.env): WebConfig {
@@ -13,5 +15,6 @@ export function readWebConfig(environment: Environment = process.env): WebConfig
     databaseUrl: requiredString(environment, 'DATABASE_URL'),
     logLevel: logLevel(environment, 'LOG_LEVEL', 'info'),
     submissionsPerIpPerHour: positiveInteger(environment, 'SUBMISSIONS_PER_IP_PER_HOUR', 10),
+    checkNowCooldownSeconds: 5 * 60,
   };
 }

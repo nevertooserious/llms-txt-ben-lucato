@@ -3,14 +3,13 @@
 // only Postgres. This file is the composition root: it reads the configuration and
 // builds every long-lived dependency once.
 import { PgBoss } from 'pg-boss';
-import { QUEUE_NAMES, type PipelineRunJob } from '@llms-txt/contracts';
+import { QUEUE_NAMES } from '@llms-txt/contracts';
 import { crawlSite, HeadlessRenderer } from '@llms-txt/crawler';
-import { createDatabasePool, createPipelineQueues } from '@llms-txt/db';
+import { createDatabasePool } from '@llms-txt/db';
 import { generateLlmsTxt } from '@llms-txt/generator';
-import { runMonitorTick } from '@llms-txt/monitor';
 import { createLogger } from '@llms-txt/runtime';
-import { runPipeline } from './run-pipeline';
 import { readWorkerConfig } from './worker-config';
+import { startWorkerJobs } from './worker-jobs';
 
 const config = readWorkerConfig();
 const logger = createLogger({ level: config.logLevel, fields: { process: 'worker' } });
@@ -22,37 +21,16 @@ queue.on('error', (error) => logger.error('queue error', { error }));
 const headlessRenderer = new HeadlessRenderer();
 
 await queue.start();
-await createPipelineQueues(queue);
-
-await queue.work<PipelineRunJob>(
-  QUEUE_NAMES.pipelineRun,
-  { localConcurrency: config.pipelineRunConcurrency },
-  async ([job]) => {
-    if (job === undefined) return;
-    await runPipeline(job.data, {
-      databasePool,
-      logger: logger.child({ pipelineRunId: job.data.pipelineRunId, siteId: job.data.siteId }),
-      heartbeatIntervalMs: config.heartbeatIntervalMs,
-      settings: { crawlPageBudget: config.crawlPageBudget, maxFailedFetchShare: config.maxFailedFetchShare },
-      crawl: (options) => crawlSite({ ...options, headlessRenderer }),
-      renderLlmsTxt: generateLlmsTxt,
-    });
-  },
-);
-
-await queue.schedule(QUEUE_NAMES.monitorTick, '*/5 * * * *');
-await queue.work(QUEUE_NAMES.monitorTick, async () => {
-  const outcome = await runMonitorTick({
-    databasePool,
-    queue,
-    thresholds: {
-      heartbeatStaleAfterSeconds: config.heartbeatStaleAfterSeconds,
-      queuedStaleAfterSeconds: config.queuedStaleAfterSeconds,
-    },
-    maxChecksPerTick: config.maxMonitorChecksPerTick,
-  });
-  logger.info('monitor tick', { ...outcome });
+await startWorkerJobs({
+  queue,
+  databasePool,
+  logger,
+  config,
+  crawl: (options) => crawlSite({ ...options, headlessRenderer }),
+  renderLlmsTxt: generateLlmsTxt,
 });
+// The monitor tick: every five minutes, reap stale runs and enqueue due checks.
+await queue.schedule(QUEUE_NAMES.monitorTick, '*/5 * * * *');
 
 logger.info('worker started', { pipelineRunConcurrency: config.pipelineRunConcurrency });
 

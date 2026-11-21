@@ -95,6 +95,33 @@ export async function lockRunningPipelineRun(transaction: Transaction, pipelineR
   return result.rowCount === 1;
 }
 
+export interface LatestPipelineRun {
+  id: string;
+  isActive: boolean;
+  /** Seconds since the run was created. */
+  ageSeconds: number;
+}
+
+/**
+ * The site's most recently created run, or null if it has none. An active (queued or
+ * running) run is always the latest, since a site has at most one and no run can be
+ * created while it lasts.
+ */
+export async function loadLatestPipelineRun(database: Queryable, siteId: string): Promise<LatestPipelineRun | null> {
+  const result = await database.query<{ id: string; is_active: boolean; age_seconds: number }>(
+    `select id,
+            status in ('queued', 'running') as is_active,
+            extract(epoch from now() - created_at)::float8 as age_seconds
+       from pipeline_runs
+      where site_id = $1
+      order by created_at desc
+      limit 1`,
+    [siteId],
+  );
+  const row = result.rows[0];
+  return row === undefined ? null : { id: row.id, isActive: row.is_active, ageSeconds: row.age_seconds };
+}
+
 export interface StalePipelineRunThresholds {
   /** A running run whose heartbeat is older than this has lost its worker. */
   heartbeatStaleAfterSeconds: number;

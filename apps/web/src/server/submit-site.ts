@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import {
   countRecentWorkspacesFromIp,
   createWorkspace,
@@ -9,6 +9,7 @@ import {
   type PipelineRunQueue,
 } from '@llms-txt/db';
 import { normaliseSubmittedUrl } from './normalise-submitted-url';
+import { sha256Hex } from './workspace-access';
 
 export interface SubmitSiteDependencies {
   databasePool: DatabasePool;
@@ -47,7 +48,7 @@ export async function submitSite(
   const rootUrl = normaliseSubmittedUrl(request.submittedUrl);
   if (rootUrl === null) return { kind: 'invalid_url' };
 
-  const creatorIpHash = request.clientIp === null ? null : sha256(request.clientIp);
+  const creatorIpHash = request.clientIp === null ? null : sha256Hex(request.clientIp);
   if (creatorIpHash !== null) {
     const recent = await countRecentWorkspacesFromIp(dependencies.databasePool, creatorIpHash, ONE_HOUR_SECONDS);
     if (recent >= dependencies.submissionsPerIpPerHour) return { kind: 'rate_limited' };
@@ -59,7 +60,7 @@ export async function submitSite(
     const siteId = await findOrCreateSite(transaction, rootUrl);
     const workspaceId = await createWorkspace(transaction, {
       siteId,
-      accessTokenHash: sha256(accessToken),
+      accessTokenHash: sha256Hex(accessToken),
       publicSlug,
       creatorIpHash,
     });
@@ -70,8 +71,4 @@ export async function submitSite(
     });
     return { kind: 'submitted', workspaceId, publicSlug, accessToken, pipelineRunId: run.pipelineRunId };
   });
-}
-
-function sha256(text: string): string {
-  return createHash('sha256').update(text).digest('hex');
 }

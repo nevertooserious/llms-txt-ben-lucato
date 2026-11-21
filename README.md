@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps it up to date as the site changes. The design is in [`docs/design/README.md`](docs/design/README.md).
 
-Status: the extractor, the crawler, the run lifecycle (submission, queueing, reaper, monitor tick) and the run itself (crawl, extract, reconcile, publish) are implemented. The generator's rendering is a stub, so runs fail at the generate stage until it lands.
+Status: the extractor, the crawler, the run lifecycle (submission, queueing, reaper, monitor tick), the run itself (crawl, extract, reconcile, publish) and monitoring (turning it on and off per workspace, scheduled checks, "check now") are implemented. The API is in place; the UI is not. The generator's rendering is a stub, so runs fail at the generate stage until it lands.
 
 ## Layout
 
@@ -45,6 +45,6 @@ Each process reads its configuration once at startup and stops with a message na
 | `scripts/lint.sh` | ESLint, typecheck, and checks on diagrams and scripts |
 | `scripts/test.sh` | Unit tests (Vitest) and tests for `scripts/` |
 | `scripts/validate-schema.sh`, `npm run test:database` | Apply `db/schema.sql` to Postgres and check it against the contracts enums; CI only (`schema` job) |
-| `scripts/test-e2e.sh` | End-to-end tests against local fixture sites; in CI, runs inside the pinned Playwright image (`e2e` job) |
+| `scripts/test-e2e.sh` | End-to-end tests against local fixture sites; in CI, runs inside the pinned Playwright image (`e2e` job). The monitor's test also needs `DATABASE_URL`, and is skipped locally without it |
 
 The same scripts run locally and in CI. The end-to-end tests listen on loopback ports, so a sandbox that blocks local binding will make them fail.

@@ -23,9 +23,10 @@ charset parameter, so a page's own `<meta charset>` decides its encoding.
 | `conventions-site` | One route per open convention: robots.txt served as `text/html`, gzipped and plain-text sitemaps, a redirect into a disallowed path, a URL that only works with its trailing slash, `X-Robots-Tag: nofollow`, `noindex`, and 503 with `Retry-After` |
 | `robots-unreachable-site` | robots.txt answers 500 |
 | `crawl-delay-site` | robots.txt sets `Crawl-delay: 1`, and every page links to another |
+| `changing-site` | Only scripted routes: a homepage linking to pages whose titles, descriptions, statuses and links a test changes between monitor checks |
 | `hostile-site` | Only scripted routes: redirect chains and loops, open redirects, timeouts, oversized bodies, error statuses, non-HTML types, and a page whose scripts reach for private addresses |
 
 Tests reach these sites through `allowLoopbackPorts` in `e2e/support/local-network-policy.ts`,
 which opens exactly the fixture ports and nothing else. `../tests/crawler.test.ts`, `../tests/crawler-conventions.test.ts`
-and `../tests/http-fetcher.test.ts` test the crawler against these sites. The planned
+and `../tests/http-fetcher.test.ts` test the crawler against these sites. `../tests/monitor.test.ts` runs monitor checks against `changing-site`. The planned
 pipeline-level cases are listed in `../tests/site-flavours.test.ts`.
