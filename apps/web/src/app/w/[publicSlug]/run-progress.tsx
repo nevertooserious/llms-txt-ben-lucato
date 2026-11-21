@@ -1,33 +1,24 @@
 import { isActiveRunStatus, type PipelineRunView } from '../../../shared/workspace-view';
 
-const STAGES = ['Queued', 'Crawl', 'Generate', 'Done'] as const;
-
 const TRIGGER_LABELS: Record<PipelineRunView['triggeredBy'], string> = {
   submission: 'First generation',
   monitor: 'Scheduled check',
   user_check_now: 'Check now',
 };
 
-/** Index into STAGES of the stage the run is at (or failed at). */
-function stageIndex(run: PipelineRunView): number {
-  if (run.status === 'succeeded' || run.status === 'unchanged') return STAGES.length;
-  if (run.currentStage === 'generate') return 2;
-  if (run.currentStage === 'crawl' || run.currentStage === 'extract') return 1;
-  return 0;
-}
-
+/** Where the site is in the process. Extraction happens during the crawl, so it is done once generating starts. */
 function statusText(run: PipelineRunView): string {
   switch (run.status) {
     case 'queued':
-      return 'Waiting for a worker';
+      return 'Queued';
     case 'running':
-      return run.currentStage === 'generate' ? 'Writing the llms.txt' : 'Crawling the site';
+      return run.currentStage === 'generate' ? 'Extracted' : 'Crawling';
     case 'succeeded':
-      return 'Published a new version';
+      return 'Generated';
     case 'unchanged':
-      return 'Checked: nothing changed';
+      return 'Generated, no changes';
     case 'failed':
-      return 'The run failed';
+      return 'Failed';
   }
 }
 
@@ -46,7 +37,6 @@ export function RunProgress({ run, hasPublishedVersion }: { run: PipelineRunView
   }
 
   const isActive = isActiveRunStatus(run.status);
-  const current = stageIndex(run);
   const statusClass = isActive ? 'status-active' : `status-${run.status}`;
   return (
     <>
@@ -62,24 +52,6 @@ export function RunProgress({ run, hasPublishedVersion }: { run: PipelineRunView
         <span className="status-dot" aria-hidden="true" />
         {statusText(run)}
       </div>
-      <ol className="stages" aria-label="Run stages">
-        {STAGES.map((stage, index) => {
-          let className = 'stage';
-          if (index < current) className += ' stage-done';
-          else if (index === current) className += run.status === 'failed' ? ' stage-failed' : ' stage-current';
-          return (
-            <li key={stage} className={className} aria-current={index === current ? 'step' : undefined}>
-              {stage}
-            </li>
-          );
-        })}
-      </ol>
-      <dl className="counters">
-        <Counter label="Discovered" value={run.pagesDiscoveredCount} />
-        <Counter label="Fetched" value={run.pagesFetchedCount} />
-        <Counter label="Changed" value={run.pagesChangedCount} />
-        <Counter label="Failed" value={run.pagesFailedCount} />
-      </dl>
       {run.status === 'failed' && (
         <p className="notice notice-danger">
           {run.errorMessage ?? 'The run stopped without a reason.'}
@@ -87,14 +59,5 @@ export function RunProgress({ run, hasPublishedVersion }: { run: PipelineRunView
         </p>
       )}
     </>
-  );
-}
-
-function Counter({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="counter">
-      <dt>{label}</dt>
-      <dd>{value}</dd>
-    </div>
   );
 }

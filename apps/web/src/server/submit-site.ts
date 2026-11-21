@@ -2,12 +2,14 @@ import { randomBytes } from 'node:crypto';
 import {
   countRecentWorkspacesFromIp,
   createWorkspace,
+  enableWorkspaceMonitoring,
   findOrCreateSite,
   startPipelineRun,
   withTransaction,
   type DatabasePool,
   type PipelineRunQueue,
 } from '@llms-txt/db';
+import { MONITORING_DURATION_SECONDS } from './monitoring-duration';
 import { normaliseSubmittedUrl } from './normalise-submitted-url';
 import { sha256Hex } from './workspace-access';
 
@@ -39,7 +41,8 @@ const ONE_HOUR_SECONDS = 3600;
 
 /**
  * A URL submission: rate-limit by IP, then in one transaction find or create the site,
- * create the submitter's workspace, and start a run (or join the site's active one).
+ * create the submitter's workspace with monitoring on, and start a run (or join the
+ * site's active one).
  */
 export async function submitSite(
   request: SubmitSiteRequest,
@@ -63,6 +66,11 @@ export async function submitSite(
       accessTokenHash: sha256Hex(accessToken),
       publicSlug,
       creatorIpHash,
+    });
+    await enableWorkspaceMonitoring(transaction, {
+      workspaceId,
+      siteId,
+      durationSeconds: MONITORING_DURATION_SECONDS,
     });
     const run = await startPipelineRun(transaction, dependencies.queue, {
       siteId,

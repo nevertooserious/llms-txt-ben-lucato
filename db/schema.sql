@@ -7,7 +7,7 @@
 --   pages                     current state of each known URL of a site; mutable
 --   workspace_page_overrides  a workspace's edits to individual pages
 --   pipeline_runs             one row per execution of crawl -> extract -> generate for a site;
---                             the audit log and the source of progress shown in the UI
+--                             the audit log and the source of the status shown in the UI
 --   llms_txt_versions         every published llms.txt of a workspace; append-only
 --
 -- Crawl results (sites, pages) are shared by every workspace on the same site, so a
@@ -87,8 +87,8 @@ create table site_workspaces (
   -- Public, read-only identifier in the hosted URL: /w/{public_slug}/llms.txt.
   public_slug               text not null unique,
 
-  -- Monitoring is opt-in and expires, so abandoned submissions stop being re-crawled.
-  -- Null means monitoring is off.
+  -- Set for 30 days by the submission and renewed by "check now". It expires so that
+  -- abandoned submissions stop being re-crawled.
   monitoring_enabled_until  timestamptz,
 
   -- The version served at the hosted URL. Null until the first run succeeds.
@@ -128,7 +128,7 @@ create table pipeline_runs (
   -- one-active-run-per-site slot below.
   last_heartbeat_at          timestamptz,
 
-  -- Progress counters, updated as the run proceeds and polled by the frontend.
+  -- Counters for the audit log, updated as the run proceeds.
   pages_discovered_count     integer not null default 0,
   pages_fetched_count        integer not null default 0,
   pages_changed_count        integer not null default 0,

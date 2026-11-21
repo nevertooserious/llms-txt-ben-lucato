@@ -30,6 +30,15 @@ export function saveWorkspace(workspace: SavedWorkspace): void {
   }
 }
 
+export function forgetWorkspace(publicSlug: string): void {
+  const remaining = loadSavedWorkspaces().filter((saved) => saved.publicSlug !== publicSlug);
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining));
+  } catch {
+    // Storage blocked: there is nothing saved to remove.
+  }
+}
+
 /** The path of a workspace's secret link. */
 export function secretLinkPath(publicSlug: string, accessToken: string): string {
   return `/w/${encodeURIComponent(publicSlug)}#token=${encodeURIComponent(accessToken)}`;

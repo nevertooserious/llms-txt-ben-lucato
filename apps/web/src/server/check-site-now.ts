@@ -1,4 +1,5 @@
 import {
+  enableWorkspaceMonitoring,
   loadLatestPipelineRun,
   startPipelineRun,
   withTransaction,
@@ -6,6 +7,7 @@ import {
   type PipelineRunQueue,
   type WorkspaceAccess,
 } from '@llms-txt/db';
+import { MONITORING_DURATION_SECONDS } from './monitoring-duration';
 
 export interface CheckSiteNowDependencies {
   databasePool: DatabasePool;
@@ -24,13 +26,19 @@ export type CheckSiteNowOutcome =
  * "Check now": runs the same pipeline as a scheduled monitor check, ahead of scheduled
  * checks in the queue. A run already in progress for the site is joined. Otherwise a
  * site is checked at most once per cooldown, counted from its last run of any kind, so
- * one secret link cannot keep a site under constant crawling.
+ * one secret link cannot keep a site under constant crawling. Pressing it also renews
+ * the workspace's monitoring, whatever the outcome: it shows the workspace is still used.
  */
 export async function checkSiteNow(
   workspace: WorkspaceAccess,
   dependencies: CheckSiteNowDependencies,
 ): Promise<CheckSiteNowOutcome> {
   return withTransaction(dependencies.databasePool, async (transaction) => {
+    await enableWorkspaceMonitoring(transaction, {
+      workspaceId: workspace.id,
+      siteId: workspace.siteId,
+      durationSeconds: MONITORING_DURATION_SECONDS,
+    });
     const latest = await loadLatestPipelineRun(transaction, workspace.siteId);
     if (latest?.isActive) return { kind: 'joined', pipelineRunId: latest.id };
     if (latest !== null && latest.ageSeconds < dependencies.checkNowCooldownSeconds) {

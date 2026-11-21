@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { accessTokenFor, saveWorkspace } from '../../../browser/saved-workspaces';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { accessTokenFor, forgetWorkspace, saveWorkspace } from '../../../browser/saved-workspaces';
 import { isActiveRunStatus, type WorkspaceView } from '../../../shared/workspace-view';
 import { LlmsTxtResult } from './llms-txt-result';
 import { MonitoringPanel } from './monitoring-panel';
@@ -17,6 +17,8 @@ export function WorkspaceScreen({ publicSlug }: { publicSlug: string }) {
   const [token, setToken] = useState<TokenState>({ kind: 'reading' });
   const [view, setView] = useState<WorkspaceView | null>(null);
   const [loadError, setLoadError] = useState<WorkspaceApiError | null>(null);
+  // Set on delete, so a poll already in flight cannot save the workspace back.
+  const isDeleted = useRef(false);
 
   // The token lives in the URL fragment or localStorage, so it can only be read here.
   useEffect(() => {
@@ -30,13 +32,21 @@ export function WorkspaceScreen({ publicSlug }: { publicSlug: string }) {
     if (accessToken === null) return;
     try {
       const loaded = await fetchWorkspaceView(publicSlug, accessToken);
+      if (isDeleted.current) return;
       setView(loaded);
       setLoadError(null);
       saveWorkspace({ publicSlug, accessToken, rootUrl: loaded.rootUrl, createdAt: new Date().toISOString() });
     } catch (error) {
+      if (isDeleted.current) return;
       setLoadError(error instanceof WorkspaceApiError ? error : new WorkspaceApiError('Could not reach the server.', 0));
     }
   }, [publicSlug, accessToken]);
+
+  const handleDeleted = useCallback(() => {
+    isDeleted.current = true;
+    forgetWorkspace(publicSlug);
+    window.location.assign('/');
+  }, [publicSlug]);
 
   // Poll quickly while a run is queued or running, slowly otherwise.
   const isRunActive = view?.latestRun ? isActiveRunStatus(view.latestRun.status) : false;
@@ -98,7 +108,7 @@ export function WorkspaceScreen({ publicSlug }: { publicSlug: string }) {
           <RunProgress run={view.latestRun} hasPublishedVersion={view.publishedVersion !== null} />
         </section>
         <section className="cell cell-narrow">
-          <MonitoringPanel view={view} accessToken={accessToken} onChanged={refresh} />
+          <MonitoringPanel view={view} accessToken={accessToken} onChanged={refresh} onDeleted={handleDeleted} />
         </section>
         <section className="cell">
           <LlmsTxtResult view={view} siteHost={siteHost} />

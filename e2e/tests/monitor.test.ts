@@ -9,7 +9,7 @@ import { readWorkerConfig } from '../../apps/worker/src/worker-config';
 import { startWorkerJobs } from '../../apps/worker/src/worker-jobs';
 import { POST as submitSiteRoute } from '../../apps/web/src/app/api/sites/route';
 import { POST as checkNowRoute } from '../../apps/web/src/app/api/workspaces/[publicSlug]/checks/route';
-import { PUT as monitoringRoute } from '../../apps/web/src/app/api/workspaces/[publicSlug]/monitoring/route';
+import { DELETE as deleteWorkspaceRoute } from '../../apps/web/src/app/api/workspaces/[publicSlug]/route';
 import { GET as hostedLlmsTxtRoute } from '../../apps/web/src/app/w/[publicSlug]/llms.txt/route';
 import { webServices } from '../../apps/web/src/server/web-services';
 import { changingSite } from '../fixture-sites/changing-site/routes';
@@ -17,7 +17,7 @@ import { startFixtureSite, type FixtureSite } from '../support/fixture-site-serv
 import { allowLoopbackPorts } from '../support/local-network-policy';
 
 // The monitor end to end: a site is submitted through the web app's route handlers,
-// monitoring is turned on, and scheduled checks and "check now" run through the real
+// which turns monitoring on, and scheduled checks and "check now" run through the real
 // queue (pg-boss), the worker's job handlers, and the real crawler against a fixture
 // site that the test changes between checks. Ticks are sent to the queue by hand
 // instead of waiting for the worker's five-minute cron, and a check is made due by
@@ -183,25 +183,14 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
     expect(llmsTxt).toContain(`- [Launch post](${site.origin}/blog/launch)`);
   });
 
-  it('monitoring is changed only with the workspace token', async () => {
-    const wrongToken = await monitoringRoute(apiRequest('PUT', { enabled: true }, 'not-the-token'), slugParams());
-    expect(wrongToken.status).toBe(401);
-    const noToken = await monitoringRoute(apiRequest('PUT', { enabled: true }, null), slugParams());
-    expect(noToken.status).toBe(401);
-    const unknownSlug = await monitoringRoute(apiRequest('PUT', { enabled: true }), {
-      params: Promise.resolve({ publicSlug: 'no-such-workspace' }),
-    });
-    expect(unknownSlug.status).toBe(404);
-    expect((await monitorSchedule()).next_check_in_days).toBeNull();
-  });
-
-  it('turning monitoring on schedules the first check a full interval out', async () => {
-    const response = await monitoringRoute(apiRequest('PUT', { enabled: true }), slugParams());
-    expect(response.status).toBe(200);
-    const body = (await response.json()) as { monitoringEnabledUntil: string; nextMonitorCheckAt: string };
-    const daysUntil = (iso: string) => (Date.parse(iso) - Date.now()) / 86_400_000;
-    expect(daysUntil(body.monitoringEnabledUntil)).toBeCloseTo(30, 1);
-    expect(daysUntil(body.nextMonitorCheckAt)).toBeCloseTo(7, 1);
+  it('a submission schedules the first check a full interval out', async () => {
+    const workspaces = await databasePool.query<{ monitoring_days: number }>(
+      `select extract(epoch from monitoring_enabled_until - now())::float8 / 86400 as monitoring_days
+         from site_workspaces where public_slug = $1`,
+      [publicSlug],
+    );
+    expect(workspaces.rows[0]!.monitoring_days).toBeCloseTo(30, 1);
+    expect((await monitorSchedule()).next_check_in_days).toBeCloseTo(7, 1);
 
     // Not due yet, so a tick leaves the site alone.
     const before = await runIds();
@@ -279,13 +268,15 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
     expect((await checkNowRoute(apiRequest('POST', undefined, 'not-the-token'), slugParams())).status).toBe(401);
   });
 
-  it('turning monitoring off stops the scheduled checks', async () => {
-    const response = await monitoringRoute(apiRequest('PUT', { enabled: false }), slugParams());
-    expect(await response.json()).toEqual({ monitoringEnabledUntil: null, nextMonitorCheckAt: null });
+  it('a site is deleted only with the workspace token, and its file and checks stop', async () => {
+    expect((await deleteWorkspaceRoute(apiRequest('DELETE', undefined, 'not-the-token'), slugParams())).status).toBe(401);
+    expect((await deleteWorkspaceRoute(apiRequest('DELETE', undefined, null), slugParams())).status).toBe(401);
+    expect((await hostedLlmsTxtRoute(new Request('http://app.test/llms.txt'), slugParams())).status).toBe(200);
 
-    const before = await runIds();
-    await runMonitorTick();
-    expect(await runIds()).toEqual(before);
-    expect((await monitorSchedule()).next_check_in_days).toBeNull();
+    expect((await deleteWorkspaceRoute(apiRequest('DELETE'), slugParams())).status).toBe(204);
+    expect((await hostedLlmsTxtRoute(new Request('http://app.test/llms.txt'), slugParams())).status).toBe(404);
+    expect((await deleteWorkspaceRoute(apiRequest('DELETE'), slugParams())).status).toBe(404);
+    const sites = await databasePool.query('select 1 from sites where id = $1', [siteId]);
+    expect(sites.rowCount).toBe(0);
   });
 });

@@ -34,13 +34,17 @@ export interface NewLlmsTxtVersion {
 
 /**
  * Appends a version and makes it the published one. The workspace row is locked first,
- * so a user edit and a run cannot take the same version number.
+ * so a user edit and a run cannot take the same version number. Returns null if the
+ * workspace has been deleted.
  */
 export async function publishLlmsTxtVersion(
   transaction: Transaction,
   version: NewLlmsTxtVersion,
-): Promise<{ id: string; versionNumber: number }> {
-  await transaction.query('select 1 from site_workspaces where id = $1 for update', [version.workspaceId]);
+): Promise<{ id: string; versionNumber: number } | null> {
+  const workspace = await transaction.query('select 1 from site_workspaces where id = $1 for update', [
+    version.workspaceId,
+  ]);
+  if (workspace.rowCount !== 1) return null;
   const inserted = await transaction.query<{ id: string; version_number: number }>(
     `insert into llms_txt_versions (
        workspace_id, pipeline_run_id, version_number, llms_txt_content, llms_txt_content_hash,
