@@ -123,6 +123,10 @@ A run's `status` is `queued`, `running`, `succeeded`, `unchanged` or `failed`. W
 
 Errors are JSON with a message and a stable code, such as `{"error": "This site has no such run.", "code": "run_not_found"}`. The codes are `unauthorized`, `invalid_request`, `invalid_url`, `invalid_version_number`, `site_not_found`, `run_not_found`, `version_not_found`, `run_in_progress`, `run_produced_no_version`, `rate_limited`, `cooldown_active` and `internal_error`. Plain-text versions have an `ETag` and answer `If-None-Match` with 304.
 
+## Examples
+
+[`docs/examples`](docs/examples/README.md) holds files generated for real sites of different kinds (documentation, a browser-rendered app, a shop, a blog, a site not in English). `node scripts/generate-examples.mjs` regenerates them against a running stack.
+
 ## Checks
 
 | Command | What it runs |

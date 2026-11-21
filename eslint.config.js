@@ -75,6 +75,20 @@ export default tseslint.config(
       },
     },
   },
+  // Node scripts run by hand, outside the workspaces.
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        Buffer: 'readonly',
+        fetch: 'readonly',
+        URL: 'readonly',
+        setTimeout: 'readonly',
+      },
+    },
+  },
   {
     files: ['packages/extractor/src/**/*.ts'],
     ignores: ['**/*.test.ts'],
