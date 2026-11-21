@@ -34,6 +34,8 @@ export function RunProgress({ run, hasPublishedVersion }: { run: PipelineRunView
         <dd>{RUN_TYPE_LABELS[run.triggeredBy]}</dd>
         <dt>Started:</dt>
         <dd>{new Date(run.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</dd>
+        <dt>Pages:</dt>
+        <dd>{pageCountsLabel(run)}</dd>
       </dl>
       {run.status === 'failed' && (
         <p className="notice notice-danger">
@@ -43,4 +45,12 @@ export function RunProgress({ run, hasPublishedVersion }: { run: PipelineRunView
       )}
     </>
   );
+}
+
+/** "12 of 40 fetched, 3 changed, 1 failed"; the counters rise while the run crawls. */
+function pageCountsLabel(run: PipelineRunView): string {
+  const parts = [`${run.pagesFetchedCount} of ${run.pagesDiscoveredCount} fetched`];
+  if (run.pagesChangedCount > 0) parts.push(`${run.pagesChangedCount} changed`);
+  if (run.pagesFailedCount > 0) parts.push(`${run.pagesFailedCount} failed`);
+  return parts.join(', ');
 }

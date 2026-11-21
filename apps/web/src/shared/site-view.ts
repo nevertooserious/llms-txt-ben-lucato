@@ -12,14 +12,14 @@ export interface PipelineRunView {
   createdAt: string;
   startedAt: string | null;
   finishedAt: string | null;
-}
-
-/** GET /api/sites/{publicSlug}/runs/{runId}. */
-export interface PipelineRunDetailView extends PipelineRunView {
   pagesDiscoveredCount: number;
   pagesFetchedCount: number;
   pagesChangedCount: number;
   pagesFailedCount: number;
+}
+
+/** GET /api/sites/{publicSlug}/runs/{runId}. */
+export interface PipelineRunDetailView extends PipelineRunView {
   /** The version this run published; null while active, or if it changed nothing or failed. */
   versionNumber: number | null;
   /** Where to get that version's text, or null if there is none. */
