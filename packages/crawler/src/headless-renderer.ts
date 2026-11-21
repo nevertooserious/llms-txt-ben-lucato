@@ -50,7 +50,7 @@ export interface RenderedPage {
 export interface RenderFailure {
   kind: 'failed';
   requestedUrl: string;
-  reason: 'blocked_address' | 'disallowed_by_robots' | 'timeout' | 'render_error';
+  reason: 'blocked_address' | 'disallowed_by_robots' | 'unsupported_content_type' | 'timeout' | 'render_error';
   message: string;
   blockedRequestUrls: string[];
 }
@@ -89,6 +89,8 @@ interface NavigationState {
   redirectTarget: string | null;
   /** Set when robots.txt refused the main frame's URL. */
   wasDisallowedByRobots: boolean;
+  /** Set when the main frame's response was not an HTML document (a PDF, say). */
+  wasNotHtml: boolean;
 }
 
 /** How long the page's text must stay the same before it counts as settled. */
@@ -154,7 +156,7 @@ export class HeadlessRenderer {
       javaScriptEnabled: true,
     });
     const blockedRequestUrls: string[] = [];
-    const navigation: NavigationState = { redirectTarget: null, wasDisallowedByRobots: false };
+    const navigation: NavigationState = { redirectTarget: null, wasDisallowedByRobots: false, wasNotHtml: false };
     const deadline = Date.now() + this.timeoutMs;
 
     try {
@@ -194,6 +196,8 @@ export class HeadlessRenderer {
       const message = error instanceof Error ? error.message : String(error);
       const reason = navigation.wasDisallowedByRobots
         ? 'disallowed_by_robots'
+        : navigation.wasNotHtml
+          ? 'unsupported_content_type'
         : /ERR_BLOCKED_BY_CLIENT/.test(message)
           ? 'blocked_address'
           : /timeout/i.test(message)
@@ -263,6 +267,13 @@ export class HeadlessRenderer {
           continue;
         }
 
+        if (isMainFrameNavigation && response.statusCode >= 200 && response.statusCode < 300 && !isHtmlResponse(response.headers)) {
+          navigation.wasNotHtml = true;
+          await response.body.dump().catch(() => undefined);
+          await route.abort('blockedbyclient').catch(() => undefined);
+          return;
+        }
+
         await route.fulfill({
           status: response.statusCode,
           headers: forwardableResponseHeaders(response.headers),
@@ -279,6 +290,14 @@ export class HeadlessRenderer {
       await route.abort(error instanceof ResponseTooLargeError ? 'failed' : 'connectionfailed').catch(() => undefined);
     }
   }
+}
+
+/** A missing Content-Type counts as HTML, as it does for the plain HTTP fetcher. */
+function isHtmlResponse(headers: Record<string, string | string[] | undefined>): boolean {
+  const contentType = headers['content-type'];
+  if (typeof contentType !== 'string') return true;
+  const mediaType = contentType.split(';')[0]!.trim().toLowerCase();
+  return mediaType === '' || mediaType === 'text/html' || mediaType === 'application/xhtml+xml';
 }
 
 async function forwardableRequestHeaders(browserRequest: BrowserRequest): Promise<Record<string, string>> {
