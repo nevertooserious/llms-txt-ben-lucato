@@ -12,8 +12,11 @@ export default defineConfig({
       },
       {
         // Needs DATABASE_URL pointing at a database with db/schema.sql applied; CI only.
+        // Files run one at a time: they share the database, and a monitor tick in one
+        // file claims every due site, including another file's.
         test: {
           name: 'database',
+          fileParallelism: false,
           include: ['packages/*/src/**/*.database.test.ts', 'apps/*/src/**/*.database.test.ts'],
         },
       },

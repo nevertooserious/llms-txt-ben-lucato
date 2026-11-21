@@ -12,7 +12,6 @@
     "@llms-txt/db": "*",
     "@llms-txt/generator": "*",
     "@llms-txt/runtime": "*",
-    "@llms-txt/worker": "*",
     "pg-boss": "^12.38.2"
   }
 }

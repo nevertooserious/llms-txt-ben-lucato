@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import type { PageChanges } from '@llms-txt/generator';
-import { HeadlessRenderer } from '@llms-txt/crawler';
+import { PgBoss } from 'pg-boss';
+import { generateLlmsTxt, type PageChanges } from '@llms-txt/generator';
+import { crawlSite, HeadlessRenderer } from '@llms-txt/crawler';
 import {
+  createDatabasePool,
   createWorkspace,
   findOrCreateSite,
   loadPublishedLlmsTxt,
@@ -10,7 +12,8 @@ import {
   type DatabasePool,
 } from '@llms-txt/db';
 import { createLogger } from '@llms-txt/runtime';
-import { readWorkerConfig, startWorker, type RunningWorker } from '@llms-txt/worker';
+import { readWorkerConfig } from '../../apps/worker/src/worker-config';
+import { startWorkerJobs } from '../../apps/worker/src/worker-jobs';
 import { startFixtureSite, type FixtureSite } from './fixture-site-server';
 import { allowLoopbackPorts } from './local-network-policy';
 
@@ -20,6 +23,11 @@ import { allowLoopbackPorts } from './local-network-policy';
 //
 // Needs DATABASE_URL pointing at a database with db/schema.sql applied. In CI the e2e job
 // provides one; locally, tests that need it are skipped with a message when it is unset.
+//
+// The queue lives in its own pg-boss schema. monitor.test.ts runs another worker on the
+// same database at the same time; on a shared queue each worker could take the other's
+// jobs, and its network policy would refuse the other file's fixture sites.
+const QUEUE_SCHEMA = 'pgboss_site_flavours';
 
 export const databaseUrl = process.env.DATABASE_URL ?? null;
 if (databaseUrl === null && process.env.CI) {
@@ -66,14 +74,11 @@ export class PipelineHarness {
   private readonly startedSites: FixtureSite[] = [];
 
   private constructor(
-    private readonly worker: RunningWorker,
+    readonly databasePool: DatabasePool,
+    private readonly queue: PgBoss,
     private readonly headlessRenderer: HeadlessRenderer,
     private readonly allowedPorts: Set<number>,
   ) {}
-
-  get databasePool(): DatabasePool {
-    return this.worker.databasePool;
-  }
 
   static async start(options: { crawlPageBudget?: number } = {}): Promise<PipelineHarness> {
     const allowedPorts = new Set<number>();
@@ -84,20 +89,26 @@ export class PipelineHarness {
       crawlPageBudget: options.crawlPageBudget ?? 30,
       pipelineRunConcurrency: 4,
     };
-    const worker = await startWorker({
-      config,
+    const databasePool = createDatabasePool(databaseUrl!);
+    // No cron: this file starts every run itself.
+    const queue = new PgBoss({ connectionString: databaseUrl!, schema: QUEUE_SCHEMA, schedule: false });
+    await queue.start();
+    await startWorkerJobs({
+      queue,
+      databasePool,
       logger: createLogger({ level: 'warn', fields: { process: 'e2e-worker' } }),
-      crawlOverrides: { networkPolicy, minRequestIntervalMs: 0 },
-      headlessRenderer,
+      config,
+      crawl: (options) => crawlSite({ ...options, networkPolicy, headlessRenderer, minRequestIntervalMs: 0 }),
+      renderLlmsTxt: generateLlmsTxt,
       pollingIntervalSeconds: 0.5,
-      runMonitorTick: false,
     });
-    return new PipelineHarness(worker, headlessRenderer, allowedPorts);
+    return new PipelineHarness(databasePool, queue, headlessRenderer, allowedPorts);
   }
 
   async stop(): Promise<void> {
-    await this.worker.stop();
+    await this.queue.stop({ graceful: true });
     await this.headlessRenderer.close();
+    await this.databasePool.end();
     await Promise.all(this.startedSites.map((site) => site.close()));
   }
 
@@ -122,7 +133,7 @@ export class PipelineHarness {
           publicSlug,
           creatorIpHash: null,
         });
-        const run = await startPipelineRun(transaction, this.worker.queue, {
+        const run = await startPipelineRun(transaction, this.queue, {
           siteId,
           triggeredBy: 'submission',
           requestedByWorkspaceId: workspaceId,
@@ -137,7 +148,7 @@ export class PipelineHarness {
   /** A user pressing "check now": another run through the same pipeline. Waits for it. */
   async checkNow(submitted: SubmittedSite): Promise<PipelineRunRow> {
     const run = await withTransaction(this.databasePool, (transaction) =>
-      startPipelineRun(transaction, this.worker.queue, {
+      startPipelineRun(transaction, this.queue, {
         siteId: submitted.siteId,
         triggeredBy: 'user_check_now',
         requestedByWorkspaceId: submitted.workspaceId,

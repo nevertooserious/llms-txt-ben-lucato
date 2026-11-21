@@ -14,11 +14,13 @@ export {
 export {
   claimPipelineRun,
   finishPipelineRun,
+  loadLatestPipelineRun,
   lockRunningPipelineRun,
   reapStalePipelineRuns,
   recordPipelineRunHeartbeat,
   recordPipelineRunProgress,
   type FinishedPipelineRunStatus,
+  type LatestPipelineRun,
   type PipelineRunProgress,
   type PipelineRunStage,
   type StalePipelineRunThresholds,
@@ -36,10 +38,18 @@ export {
   countRecentWorkspacesFromIp,
   createWorkspace,
   loadPublishedLlmsTxt,
+  loadWorkspaceAccess,
   loadWorkspaceIdsForSite,
   loadWorkspaceOverrides,
   type NewWorkspace,
+  type WorkspaceAccess,
 } from './workspaces';
+export {
+  disableWorkspaceMonitoring,
+  enableWorkspaceMonitoring,
+  type MonitorSchedule,
+  type WorkspaceMonitoringChange,
+} from './monitor-schedule';
 export {
   loadGeneratorPages,
   loadStoredPages,

@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps that file up to date as the site changes.
 
-Status: the extractor, the crawler, the run lifecycle and the worker's run of the stages are implemented. The generator renders and validates; its LLM calls are not wired in yet, so it uses the heuristic fallbacks (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
+Status: the extractor, the crawler, the run lifecycle, the worker's run of the stages, the generator and the monitor's scheduling are implemented. The generator's LLM calls are not wired in yet, so it uses the heuristic fallbacks (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
 
 ## Contents
 
@@ -131,6 +131,15 @@ All SQL is hand-written in `packages/db`, one module per table, and the rest of 
 
 A check runs on a fixed interval per site (default 7 days) or when a user presses "check now". A site is only scheduled while at least one of its workspaces has unexpired monitoring.
 
+### Scheduling
+
+The monitor only acts on a schedule. A request to check now arrives over HTTP, so the web app takes it and queues the run itself, through the same `startPipelineRun`. The two never call each other.
+
+- **Turning monitoring on:** monitoring is opt-in per workspace and lasts 30 days. Turning it on again renews it for 30 days from then. If the site has no check scheduled, it gets one a full interval out: the site was just crawled, so checking sooner would find nothing.
+- **Turning it off:** the site stays scheduled while another of its workspaces is monitoring, and is unscheduled otherwise. Both changes lock the site row first, so two workspaces changing monitoring at once cannot leave the schedule wrong (`packages/db/src/monitor-schedule.ts`).
+- **The tick:** every 5 minutes, a pg-boss cron job in the worker reaps stale runs (section 4). Then it claims up to 100 due sites, skipping rows another tick has locked, moves each one's next check on by its interval, and queues a monitor run behind user requests. A due site whose workspaces have all let monitoring lapse is unscheduled at that point, so expiry needs no job of its own.
+- **Check now:** the same pipeline as a scheduled check, queued ahead of scheduled checks. A run already in progress is joined. Otherwise the site is checked at most once per 5 minutes, counted from its last run of any kind.
+
 ### Change detection
 
 Discovery runs on every check to find new URLs. Then every known page is checked by the first method it supports:
@@ -175,6 +184,7 @@ Entries are regenerated only for changed pages. The file is rendered per workspa
 - **Generate:** URL input, then progress polled from `pipeline_runs` (pages discovered, fetched, changed).
 - **Result:** rendered preview next to raw text, spec validation status, copy and download.
 - **Editing:** override a page's description or exclude a page.
+- **API:** `POST /api/sites` submits a URL. `PUT /api/workspaces/{public_slug}/monitoring` with `{"enabled": true | false}` turns monitoring on, renews it or turns it off. `POST /api/workspaces/{public_slug}/checks` is "check now". Both workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
 - **Hosted URL:** a stable `/w/{public_slug}/llms.txt`. The spec puts llms.txt at the site's own root, so the site owner redirects or proxies to this URL. The README has to explain how.
 - **Monitoring:** opt-in per workspace with an expiry, a "check now" button, and version history with diffs.
 
@@ -187,6 +197,7 @@ The app is public, has no accounts, and fetches URLs that users supply.
 - **Fetch limits:** 15 seconds per fetch including redirects, 5 MB per response, 5 redirects, and only `http` and `https`; a page budget per run. A response of a type the caller did not ask for is dropped without reading its body.
 - **Submission limits:** a per-IP rate limit using `site_workspaces.creator_ip_hash` (10 new workspaces per hour by default), and a global concurrency cap from the queue. The IP is the first `X-Forwarded-For` entry, which is only trustworthy behind the hosting platform's proxy.
 - **Monitor expiry:** `monitoring_enabled_until` stops abandoned submissions from being re-crawled forever.
+- **Check-now cooldown:** a site is checked by hand at most once per 5 minutes, so one secret link cannot keep a site under constant crawling. The active-run index already stops parallel crawls, but not back-to-back ones.
 - **Served files:** `text/plain` with `X-Content-Type-Options: nosniff`.
 - **Preview:** crawled titles and descriptions are untrusted and are escaped before display.
 
@@ -219,6 +230,7 @@ Checked against llmstxt.org.
 Not yet decided or designed.
 
 - **Hosting:** Railway or Fly is proposed, not decided.
+- **Update notifications from sites:** a site cannot yet tell us it changed (from a deploy hook, say). Proposal: a web-app route that does what "check now" does, authorised by the workspace token and held to the same cooldown. The monitor would not change.
 - **Redirects:** a page that now returns a permanent redirect is not handled. Proposal: treat it as an immediate removal of the old URL and add the target as a page if it is in scope. Needs one new column on `pages` for the redirect target.
 - **Soft 404s:** sites that answer a deleted URL with 200 and a "not found" body are not handled. Proposal: an extractor check that counts the same as a real 404.
 - **Slow removal:** with a 7-day interval, waiting for two checks can leave a dead link in the file for two weeks. Proposal: schedule a follow-up check 24 hours after any run that sees a first 404.

@@ -34,8 +34,8 @@ jobs:
     # Pinned to the playwright version in package-lock.json; scripts/lint.sh checks the two match.
     container:
       image: mcr.microsoft.com/playwright:v1.65.1-noble
-    # The pipeline tests run the real worker against Postgres. Inside a container job the
-    # service is reached by its name, not localhost.
+    # The pipeline and monitor tests run the queue and the worker against Postgres. Inside
+    # a container job the service is reached by its name, not localhost.
     services:
       postgres:
         image: postgres:14

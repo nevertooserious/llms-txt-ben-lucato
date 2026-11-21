@@ -1,10 +1,10 @@
 import { listedEntries, validateLlmsTxt } from '@llms-txt/generator';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  changingSiteStates,
-  initialChangingSiteState,
-  type ChangingSiteState,
-} from '../fixture-sites/changing-site/routes';
+  editableSiteStates,
+  initialEditableSiteState,
+  type EditableSiteState,
+} from '../fixture-sites/editable-site/routes';
 import type { FixtureSite } from '../support/fixture-site-server';
 import { databaseUrl, PipelineHarness, urlOf, type SubmittedSite } from '../support/pipeline-harness';
 
@@ -13,9 +13,8 @@ import { databaseUrl, PipelineHarness, urlOf, type SubmittedSite } from '../supp
 // One fixture site per case, in e2e/fixture-sites. The crawler-level versions of the
 // rendering, discovery and hostile-input cases are in crawler.test.ts.
 //
-// All pipeline tests live in this one file on purpose: they share one worker, and a
-// second worker on the same database could take this file's jobs without the network
-// policy that opens its fixture sites.
+// The tests share one worker, whose queue is in its own pg-boss schema (see
+// pipeline-harness.ts) so monitor.test.ts's worker never takes these jobs.
 
 if (databaseUrl === null) {
   console.warn('site-flavours.test.ts: DATABASE_URL is not set, so the pipeline tests are skipped.');
@@ -212,7 +211,7 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
     });
 
     it('survives timeouts and 5xx without removing pages', async () => {
-      const { submitted, state } = await submitChangingSite();
+      const { submitted, state } = await submitEditableSite();
       state.pages['/docs/setup']!.httpStatusCode = 500;
       expect(await harness.checkNow(submitted)).toMatchObject({ status: 'unchanged', pagesFailedCount: 1 });
       expect((await harness.storedPage(submitted, '/docs/setup'))?.removed_at).toBeNull();
@@ -220,7 +219,7 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
     });
 
     it('fails the run and keeps the published file when most fetches fail', async () => {
-      const { submitted, state } = await submitChangingSite();
+      const { submitted, state } = await submitEditableSite();
       for (const path of ['/docs/intro', '/docs/setup', '/blog/hello', '/pricing', '/about']) {
         state.pages[path]!.httpStatusCode = 503;
       }
@@ -233,21 +232,21 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
 
   describe('monitoring over time', () => {
     it('no change: no new version, and re-checks are conditional GETs', async () => {
-      const { submitted, state } = await submitChangingSite();
+      const { submitted, state } = await submitEditableSite();
       expect(await harness.checkNow(submitted)).toMatchObject({ status: 'unchanged', pagesChangedCount: 0 });
       expect(await harness.versions(submitted)).toHaveLength(1);
       expect(state.notModifiedResponseCount).toBeGreaterThan(0);
     });
 
     it('noise-only change: no new version', async () => {
-      const { submitted, state } = await submitChangingSite();
+      const { submitted, state } = await submitEditableSite();
       state.pages['/about']!.body = state.pages['/about']!.body.replace('3 days ago. 1,204', '5 days ago. 1,377');
       expect(await harness.checkNow(submitted)).toMatchObject({ status: 'unchanged', pagesChangedCount: 0 });
       expect(await harness.versions(submitted)).toHaveLength(1);
     });
 
     it('description change: new version, only that entry changed', async () => {
-      const { submitted, state } = await submitChangingSite();
+      const { submitted, state } = await submitEditableSite();
       state.pages['/docs/setup']!.description = 'Install it in one command.';
       expect(await harness.checkNow(submitted)).toMatchObject({ status: 'succeeded', pagesChangedCount: 1 });
       const versions = await harness.versions(submitted);
@@ -257,7 +256,7 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
     });
 
     it('new page: entry added', async () => {
-      const { submitted, state } = await submitChangingSite();
+      const { submitted, state } = await submitEditableSite();
       state.pages['/docs/advanced'] = { title: 'Advanced', description: 'For experts.', body: '<p>Deep things.</p>' };
       expect(await harness.checkNow(submitted)).toMatchObject({ status: 'succeeded' });
       const versions = await harness.versions(submitted);
@@ -265,7 +264,7 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
     });
 
     it('404 once keeps the page; 404 twice removes it', async () => {
-      const { submitted, state } = await submitChangingSite();
+      const { submitted, state } = await submitEditableSite();
       const url = urlOf(submitted.site, '/blog/hello');
       state.pages['/blog/hello']!.httpStatusCode = 404;
 
@@ -280,7 +279,7 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
     });
 
     it('a removed page that answers again is listed again', async () => {
-      const { submitted, state } = await submitChangingSite();
+      const { submitted, state } = await submitEditableSite();
       state.pages['/blog/hello']!.httpStatusCode = 404;
       await harness.checkNow(submitted);
       await harness.checkNow(submitted);
@@ -291,7 +290,7 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
     });
 
     it('a page nothing links to any more is re-checked, not removed', async () => {
-      const { submitted, state } = await submitChangingSite();
+      const { submitted, state } = await submitEditableSite();
       state.pages['/pricing']!.isUnlinked = true;
       const run = await harness.checkNow(submitted);
       expect(run.status).not.toBe('failed');
@@ -300,7 +299,7 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
     });
 
     it('user overrides survive an upstream change', async () => {
-      const { submitted, state } = await submitChangingSite();
+      const { submitted, state } = await submitEditableSite();
       await harness.setOverride(submitted, '/docs/setup', { descriptionOverride: 'Our own words.' });
       await harness.setOverride(submitted, '/pricing', { isExcluded: true });
       state.pages['/docs/setup']!.description = 'Upstream rewrote this.';
@@ -315,7 +314,7 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
     });
 
     it('a second workspace on the same site gets its own file from the shared crawl', async () => {
-      const { submitted } = await submitChangingSite();
+      const { submitted } = await submitEditableSite();
       await harness.setOverride(submitted, '/pricing', { isExcluded: true });
       const second = await harness.submit(submitted.site);
       expect(second.firstRun.status).toBe('succeeded');
@@ -327,15 +326,15 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
   });
 });
 
-/** A fresh copy of changing-site, submitted and published once. Its state is the test's to edit. */
-async function submitChangingSite(): Promise<{ submitted: SubmittedSite; state: ChangingSiteState; site: FixtureSite }> {
-  const site = await harness.startSite('changing-site');
-  const state = initialChangingSiteState();
-  changingSiteStates.set(site.port, state);
+/** A fresh copy of editable-site, submitted and published once. Its state is the test's to edit. */
+async function submitEditableSite(): Promise<{ submitted: SubmittedSite; state: EditableSiteState; site: FixtureSite }> {
+  const site = await harness.startSite('editable-site');
+  const state = initialEditableSiteState();
+  editableSiteStates.set(site.port, state);
   const submitted = await harness.submit(site);
   expect(submitted.firstRun, submitted.firstRun.errorMessage ?? undefined).toMatchObject({ status: 'succeeded' });
   const llmsTxt = (await harness.publishedLlmsTxt(submitted))!;
-  expect(llmsTxt).toContain('# Changing Co\n\n> A site that changes between checks.');
+  expect(llmsTxt).toContain('# Editable Co\n\n> A site that changes between checks.');
   expect(listedUrls(llmsTxt)).toHaveLength(5);
   return { submitted, state, site };
 }
