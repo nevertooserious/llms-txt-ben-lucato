@@ -23,7 +23,17 @@ An npm workspaces monorepo. Each design component is its own package, so its bou
 
 ESLint enforces the boundaries: the extractor may not import network, filesystem or database modules; only the crawler may import network modules; only `packages/db` may import `pg`; and contracts, the extractor, the generator and the crawler may not touch the database or the queue.
 
-## Setup
+## Quick start with Docker
+
+```sh
+docker compose up --build                # http://localhost:3000
+```
+
+This starts Postgres (with `db/schema.sql` applied on first boot), the web app and the worker. No configuration is needed. To use Claude rather than heuristics, put `ANTHROPIC_API_KEY` in a `.env` file at the repository root and run the command again. `WEB_PORT` (default 3000) and `POSTGRES_PORT` (default 5433) change the host ports.
+
+The schema is applied only to an empty database, so after changing it run `docker compose down --volumes`, which deletes all local data. The crawler's SSRF guard refuses private addresses, so this stack cannot crawl a site running on your machine.
+
+## Setup without Docker
 
 Needs Node 24 and Postgres 14 or later.
 
