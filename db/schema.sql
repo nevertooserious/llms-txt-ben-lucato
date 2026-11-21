@@ -163,6 +163,9 @@ create table pages (
   normalised_url                       text not null,
 
   -- Crawler: fetch fingerprint and discovery signals.
+  -- The URL as the site last linked it, which is what a re-check requests. The crawler
+  -- never requests a form the site did not link, and normalised_url may not be one.
+  fetch_url                            text not null,
   http_status_code                     integer,
   http_etag                            text,
   http_last_modified                   text,   -- stored verbatim for If-Modified-Since

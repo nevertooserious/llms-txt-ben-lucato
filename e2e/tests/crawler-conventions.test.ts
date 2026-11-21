@@ -1,4 +1,5 @@
-import { crawlSite, HeadlessRenderer, type CrawlResult, type CrawlSiteOptions, type NetworkPolicy } from '@llms-txt/crawler';
+import { HeadlessRenderer, type CrawlSiteOptions, type NetworkPolicy } from '@llms-txt/crawler';
+import { collectCrawl, type CollectedCrawl } from '../support/collect-crawl';
 import type { RawPage } from '@llms-txt/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startFixtureSite, type FixtureSite } from '../support/fixture-site-server';
@@ -15,7 +16,7 @@ const sites = {} as Record<SiteName, FixtureSite>;
 let networkPolicy: NetworkPolicy;
 let headlessRenderer: HeadlessRenderer;
 /** The conventions site is crawled once and the result shared by most tests. */
-let conventionsCrawl: CrawlResult;
+let conventionsCrawl: CollectedCrawl;
 
 beforeAll(async () => {
   const started = await Promise.all(SITE_NAMES.map((name) => startFixtureSite(name)));
@@ -30,8 +31,8 @@ afterAll(async () => {
   await Promise.all(Object.values(sites).map((site) => site.close()));
 });
 
-function crawl(siteName: SiteName, options: Partial<CrawlSiteOptions> = {}): Promise<CrawlResult> {
-  return crawlSite({
+function crawl(siteName: SiteName, options: Partial<Omit<CrawlSiteOptions, 'onPage'>> = {}): Promise<CollectedCrawl> {
+  return collectCrawl({
     rootUrl: sites[siteName].origin,
     pageBudget: 50,
     networkPolicy,
@@ -41,7 +42,7 @@ function crawl(siteName: SiteName, options: Partial<CrawlSiteOptions> = {}): Pro
   });
 }
 
-function pageAt(result: CrawlResult, site: FixtureSite, path: string): RawPage | undefined {
+function pageAt(result: CollectedCrawl, site: FixtureSite, path: string): RawPage | undefined {
   const url = path === '/' ? site.origin : `${site.origin}${path}`;
   return result.pages.find((page) => page.normalisedUrl === url);
 }

@@ -1,5 +1,6 @@
-import { crawlSite, HeadlessRenderer, type CrawlResult, type CrawlSiteOptions, type NetworkPolicy } from '@llms-txt/crawler';
-import type { RawPage } from '@llms-txt/contracts';
+import { HeadlessRenderer, type CrawlSiteOptions, type NetworkPolicy } from '@llms-txt/crawler';
+import { collectCrawl, type CollectedCrawl } from '../support/collect-crawl';
+import type { KnownPage, RawPage } from '@llms-txt/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startFixtureSite, type FixtureSite } from '../support/fixture-site-server';
 import { allowLoopbackPorts } from '../support/local-network-policy';
@@ -41,8 +42,8 @@ afterAll(async () => {
   await Promise.all([...Object.values(sites), internalService].map((site) => site?.close()));
 });
 
-function crawl(siteName: SiteName, options: Partial<CrawlSiteOptions> = {}): Promise<CrawlResult> {
-  return crawlSite({
+function crawl(siteName: SiteName, options: Partial<Omit<CrawlSiteOptions, 'onPage'>> = {}): Promise<CollectedCrawl> {
+  return collectCrawl({
     rootUrl: sites[siteName].origin,
     pageBudget: 50,
     networkPolicy,
@@ -52,7 +53,7 @@ function crawl(siteName: SiteName, options: Partial<CrawlSiteOptions> = {}): Pro
   });
 }
 
-function pageAt(result: CrawlResult, site: FixtureSite, path: string): RawPage {
+function pageAt(result: CollectedCrawl, site: FixtureSite, path: string): RawPage {
   const url = path === '/' ? site.origin : `${site.origin}${path}`;
   const page = result.pages.find((candidate) => candidate.normalisedUrl === url);
   if (page === undefined) {
@@ -61,7 +62,7 @@ function pageAt(result: CrawlResult, site: FixtureSite, path: string): RawPage {
   return page;
 }
 
-const paths = (result: CrawlResult, site: FixtureSite) =>
+const paths = (result: CollectedCrawl, site: FixtureSite) =>
   result.pages.map((page) => page.normalisedUrl.slice(site.origin.length) || '/').sort();
 
 const requestsFor = (site: FixtureSite, pattern: RegExp) => site.requestLog.filter((path) => pattern.test(path));
@@ -141,13 +142,59 @@ describe('rendering', () => {
   });
 });
 
+describe('re-checking known pages', () => {
+  const knownPage = (site: FixtureSite, path: string, fields: Partial<KnownPage> = {}): KnownPage => ({
+    normalisedUrl: `${site.origin}${path}`,
+    fetchUrl: `${site.origin}${path}`,
+    crawlDepth: 1,
+    discoveredVia: 'page_link',
+    httpEtag: null,
+    httpLastModified: null,
+    sitemapLastModifiedAt: null,
+    ...fields,
+  });
+
+  it('re-checks a known page that nothing links to any more, so its 404 is seen', async () => {
+    const site = sites['static-site'];
+    const result = await crawl('static-site', { knownPages: [knownPage(site, '/docs/retired')] });
+    expect(pageAt(result, site, '/docs/retired').httpStatusCode).toBe(404);
+  });
+
+  it('asks with the stored ETag, and passes on a 304 with no body', async () => {
+    const site = sites['static-site'];
+    const first = pageAt(await crawl('static-site'), site, '/about');
+    expect(first.headers.etag).toBeDefined();
+    const result = await crawl('static-site', {
+      knownPages: [knownPage(site, '/about', { fetchUrl: first.fetchUrl, httpEtag: first.headers.etag ?? null })],
+    });
+    const about = pageAt(result, site, '/about');
+    expect(about.httpStatusCode).toBe(304);
+    expect(about.html).toBe('');
+    // The homepage is never asked conditionally: its links are where discovery starts.
+    expect(pageAt(result, site, '/').httpStatusCode).toBe(200);
+  });
+
+  it('does not request a page whose trusted sitemap lastmod has not moved', async () => {
+    const site = sites['static-site'];
+    const path = '/docs/unlinked.html';
+    const requestsBefore = requestsFor(site, /^\/docs\/unlinked\.html$/).length;
+    const result = await crawl('static-site', {
+      sitemapLastModifiedIsTrusted: true,
+      knownPages: [knownPage(site, path, { discoveredVia: 'sitemap', sitemapLastModifiedAt: '2026-10-01T00:00:00Z' })],
+    });
+    expect(result.unchangedPerSitemapUrls).toEqual([`${site.origin}${path}`]);
+    expect(result.pages.some((page) => page.normalisedUrl === `${site.origin}${path}`)).toBe(false);
+    expect(requestsFor(site, /^\/docs\/unlinked\.html$/).length).toBe(requestsBefore);
+  });
+});
+
 describe('discovery', () => {
   it('seeds from a sitemap, keeping lastmod', async () => {
     const site = sites['static-site'];
     const result = await crawl('static-site');
     const unlinked = pageAt(result, site, '/docs/unlinked.html');
     expect(unlinked.crawlSignals.discoveredVia).toBe('sitemap');
-    expect(unlinked.crawlSignals.inboundLinkCount).toBe(0);
+    expect(result.linkSignals[unlinked.normalisedUrl]?.inboundLinkCount).toBe(0);
     expect(unlinked.sitemapLastModified).toBe('2026-10-01');
   });
 
@@ -155,9 +202,9 @@ describe('discovery', () => {
     const site = sites['hydrated-site'];
     const result = await crawl('hydrated-site', { requiresHeadlessRendering: false });
     const pricing = pageAt(result, site, '/pricing');
-    expect(pricing.crawlSignals).toMatchObject({ discoveredVia: 'navigation', isInSiteNavigation: true, crawlDepth: 1 });
+    expect(pricing.crawlSignals).toMatchObject({ discoveredVia: 'navigation', crawlDepth: 1 });
     // Linked from the homepage and the blog; its own self-link does not count.
-    expect(pricing.crawlSignals.inboundLinkCount).toBe(2);
+    expect(result.linkSignals[pricing.normalisedUrl]).toEqual({ isInSiteNavigation: true, inboundLinkCount: 2 });
     expect(pageAt(result, site, '/').crawlSignals.crawlDepth).toBe(0);
   });
 
@@ -265,7 +312,7 @@ describe('SSRF guard in the headless browser', () => {
 
   it('records a blocked page as a failed fetch, not a page', async () => {
     const hostile = sites['hostile-site'];
-    const result = await crawlSite({
+    const result = await collectCrawl({
       rootUrl: `${hostile.origin}/redirect?to=${encodeURIComponent('http://169.254.169.254/')}`,
       pageBudget: 5,
       networkPolicy,

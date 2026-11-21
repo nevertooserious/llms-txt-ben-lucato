@@ -1,4 +1,14 @@
-import type { DiscoverySource, FetchMethod, RawPage } from '@llms-txt/contracts';
+import type {
+  CrawlFailure,
+  CrawlFailureReason,
+  CrawlResult,
+  CrawlStopReason,
+  DiscoverySource,
+  FetchMethod,
+  KnownPage,
+  LinkSignals,
+  RawPage,
+} from '@llms-txt/contracts';
 import { HeadlessRenderer } from './headless-renderer';
 import { HttpFetcher, type FetchOutcome, type FetchRequest } from './http-fetcher';
 import { cleanUrlForFetch, isInScope, normaliseUrl } from './normalise-url';
@@ -11,7 +21,6 @@ import {
   robotsTxtUnavailable,
   robotsTxtUnreachable,
   type RobotsRules,
-  type RobotsTxtStatus,
 } from './robots-rules';
 import type { HostnameResolver, NetworkPolicy } from './ssrf-guard';
 
@@ -44,6 +53,23 @@ export interface CrawlSiteOptions {
   headlessRenderer?: HeadlessRenderer;
   /** Called as pages are discovered and fetched, to update pipeline_runs progress. */
   onProgress?: (progress: CrawlProgress) => void;
+  /**
+   * Called with each page as soon as it is fetched, and awaited before the next fetch,
+   * so the caller can extract and store it and let the HTML go. The crawl keeps no page
+   * bodies itself.
+   */
+  onPage: (page: RawPage) => void | Promise<void>;
+  /**
+   * Pages stored from earlier crawls. Each is queued as well as anything discovery finds,
+   * so a page no longer linked is still re-checked and a removal is seen. A known page
+   * with validators is fetched with a conditional GET.
+   */
+  knownPages?: readonly KnownPage[];
+  /**
+   * sites.sitemap_lastmod_is_trusted. When true, a known page whose sitemap <lastmod> has
+   * not moved since the last crawl is not requested at all.
+   */
+  sitemapLastModifiedIsTrusted?: boolean;
 }
 
 export interface CrawlProgress {
@@ -52,30 +78,7 @@ export interface CrawlProgress {
   pagesFailed: number;
 }
 
-export interface CrawlFailure {
-  url: string;
-  reason: string;
-  message: string;
-}
-
-export type CrawlStopReason = 'frontier_exhausted' | 'page_budget' | 'attempt_limit' | 'time_limit' | 'robots_txt_unreachable';
-
-export interface CrawlResult {
-  /**
-   * robots.txt per RFC 9309: `unreachable` (5xx, timeout, network failure) means the
-   * site was not crawled at all, and the run should fail with that reason.
-   */
-  robotsTxtStatus: RobotsTxtStatus;
-  stopReason: CrawlStopReason;
-  /** Every page that answered, including 404s and 410s, which the monitor needs. */
-  pages: RawPage[];
-  /** Pages that could not be fetched (timeouts, 5xx, blocks). They count toward the safety gate. */
-  failedFetches: CrawlFailure[];
-  /** For sites.requires_headless_rendering. */
-  requiresHeadlessRendering: boolean;
-  /** True when this crawl made the decision, so the caller can stamp when it was made. */
-  decidedHeadlessRendering: boolean;
-}
+export type { CrawlFailure, CrawlResult, CrawlStopReason };
 
 const HTML_TYPES = ['text/html', 'application/xhtml+xml'];
 /** The sitemaps protocol caps a sitemap file at 50 MB uncompressed. */
@@ -148,12 +151,10 @@ class SiteCrawl {
   private readonly fetchedUrls = new Set<string>();
   private readonly inboundLinkSources = new Map<string, Set<string>>();
   private readonly navigationUrls = new Set<string>();
-  private readonly results: Array<{
-    entry: FrontierEntry;
-    page: FetchedPage;
-    markdownVariantUrl: string | null;
-    hasNoindexDirective: boolean;
-  }> = [];
+  private readonly knownPages = new Map<string, KnownPage>();
+  /** Normalised URLs of the pages passed to onPage, in order. */
+  private readonly emittedUrls: string[] = [];
+  private readonly unchangedPerSitemapUrls: string[] = [];
   private readonly failedFetches: CrawlFailure[] = [];
   private markdownProbeMisses = 0;
   private markdownVariantsFound = false;
@@ -172,6 +173,7 @@ class SiteCrawl {
     this.ownsRenderer = options.headlessRenderer === undefined;
     this.requestIntervalMs = options.minRequestIntervalMs ?? 500;
     this.requiresHeadlessRendering = options.requiresHeadlessRendering ?? null;
+    for (const knownPage of options.knownPages ?? []) this.knownPages.set(knownPage.normalisedUrl, knownPage);
   }
 
   async run(): Promise<CrawlResult> {
@@ -182,9 +184,10 @@ class SiteCrawl {
     this.addToFrontier(this.fetchRootUrl, 0, 'navigation', null);
     await this.seedFromSitemaps();
     await this.seedFromExistingLlmsTxt();
+    this.seedFromKnownPages();
 
     for (;;) {
-      if (this.results.length >= this.options.pageBudget) return this.result('page_budget', decidedBefore);
+      if (this.emittedUrls.length >= this.options.pageBudget) return this.result('page_budget', decidedBefore);
       if (this.fetchedUrls.size >= this.options.pageBudget * ATTEMPTS_PER_BUDGETED_PAGE) {
         return this.result('attempt_limit', decidedBefore);
       }
@@ -200,7 +203,9 @@ class SiteCrawl {
     return {
       robotsTxtStatus: this.robots.status,
       stopReason,
-      pages: this.results.map((result) => this.toRawPage(result)),
+      pagesFetchedCount: this.emittedUrls.length,
+      linkSignals: Object.fromEntries(this.emittedUrls.map((url) => [url, this.linkSignalsFor(url)])),
+      unchangedPerSitemapUrls: this.unchangedPerSitemapUrls,
       failedFetches: this.failedFetches,
       requiresHeadlessRendering: this.requiresHeadlessRendering ?? false,
       decidedHeadlessRendering: !decidedBefore && this.requiresHeadlessRendering !== null,
@@ -235,7 +240,7 @@ class SiteCrawl {
     if (status >= 200 && status < 300) this.robots = parseRobotsTxt(outcome.finalUrl, outcome.body);
     else if (status >= 500) {
       this.robots = robotsTxtUnreachable;
-      this.recordFailure(robotsTxtUrl, 'robots_txt_unreachable', `HTTP ${status}`);
+      this.recordFailure(robotsTxtUrl, 'robots_txt_unreachable', `HTTP ${status}`, status);
     } else this.robots = robotsTxtUnavailable;
 
     if (this.robots.crawlDelaySeconds !== null) {
@@ -292,6 +297,16 @@ class SiteCrawl {
     }
   }
 
+  /**
+   * Known pages go in after discovery, so a URL discovery found keeps the form the site
+   * links today. Scope and robots.txt apply to them as to any other URL.
+   */
+  private seedFromKnownPages(): void {
+    for (const knownPage of this.knownPages.values()) {
+      this.addToFrontier(knownPage.fetchUrl, knownPage.crawlDepth, knownPage.discoveredVia, null);
+    }
+  }
+
   /** robots.txt rules for a URL on this site's host. robots.txt itself is always allowed. */
   private isAllowedByRobots(url: string): boolean {
     return this.robots.isAllowed(url);
@@ -341,6 +356,10 @@ class SiteCrawl {
 
   private async crawlPage(entry: FrontierEntry): Promise<void> {
     if (this.fetchedUrls.has(entry.url)) return;
+    if (this.isUnchangedPerSitemap(entry)) {
+      this.unchangedPerSitemapUrls.push(entry.url);
+      return;
+    }
     this.fetchedUrls.add(entry.url);
 
     const page = await this.fetchPage(entry);
@@ -364,7 +383,44 @@ class SiteCrawl {
       this.followLinks(entry, signals);
       markdownVariantUrl = await this.probeMarkdownVariant(page.finalUrl);
     }
-    this.results.push({ entry, page, markdownVariantUrl, hasNoindexDirective });
+    this.emittedUrls.push(entry.url);
+    await this.options.onPage({
+      normalisedUrl: entry.url,
+      fetchUrl: entry.fetchUrl,
+      finalUrl: page.finalUrl,
+      httpStatusCode: page.httpStatusCode,
+      headers: page.headers,
+      html: page.html,
+      fetchMethod: page.fetchMethod,
+      crawlSignals: { crawlDepth: entry.crawlDepth, discoveredVia: entry.discoveredVia, hasNoindexDirective },
+      markdownVariantUrl,
+      sitemapLastModified: entry.sitemapLastModified,
+    });
+  }
+
+  /**
+   * A known page whose sitemap <lastmod> is the same as last time, on a site whose
+   * lastmod has proved reliable. The homepage is always fetched: navigation comes from it.
+   */
+  private isUnchangedPerSitemap(entry: FrontierEntry): boolean {
+    if (this.options.sitemapLastModifiedIsTrusted !== true || entry.crawlDepth === 0) return false;
+    const stored = this.knownPages.get(entry.url)?.sitemapLastModifiedAt ?? null;
+    if (stored === null || entry.sitemapLastModified === null) return false;
+    const storedTime = Date.parse(stored);
+    return !Number.isNaN(storedTime) && storedTime === Date.parse(entry.sitemapLastModified);
+  }
+
+  /**
+   * Validators for a conditional GET of a known page. Not for the homepage, whose links
+   * discovery needs; a 304 has no body to read them from.
+   */
+  private conditionalRequestHeaders(entry: FrontierEntry): Pick<FetchRequest, 'ifNoneMatch' | 'ifModifiedSince'> {
+    const knownPage = this.knownPages.get(entry.url);
+    if (knownPage === undefined || entry.crawlDepth === 0) return {};
+    return {
+      ...(knownPage.httpEtag !== null && { ifNoneMatch: knownPage.httpEtag }),
+      ...(knownPage.httpLastModified !== null && { ifModifiedSince: knownPage.httpLastModified }),
+    };
   }
 
   /** Fetches one page the way the site needs. Null when there is nothing to keep. */
@@ -375,18 +431,16 @@ class SiteCrawl {
       url: entry.fetchUrl,
       acceptedContentTypes: HTML_TYPES,
       isRedirectAllowed: this.isRedirectAllowed,
+      ...this.conditionalRequestHeaders(entry),
     });
     if (outcome.kind === 'failed') {
       // Not an HTML page, or a redirect into a disallowed path: not part of the site's
       // llms.txt, and not a failure of the site either.
-      const isSkip = outcome.reason === 'unsupported_content_type' || outcome.reason === 'disallowed_by_robots';
-      if (!isSkip) this.recordFailure(entry.fetchUrl, outcome.reason, outcome.message);
+      if (outcome.reason === 'unsupported_content_type' || outcome.reason === 'disallowed_by_robots') return null;
+      this.recordFailure(entry.fetchUrl, outcome.reason, outcome.message);
       return null;
     }
-    if (outcome.httpStatusCode >= 500 || outcome.httpStatusCode === 429) {
-      this.recordFailure(entry.fetchUrl, `http_${outcome.httpStatusCode}`, `HTTP ${outcome.httpStatusCode}`);
-      return null;
-    }
+    if (this.recordErrorStatus(entry.fetchUrl, outcome.httpStatusCode)) return null;
 
     const plainPage: FetchedPage = {
       finalUrl: outcome.finalUrl,
@@ -439,8 +493,8 @@ class SiteCrawl {
       if (recordFailure && outcome.reason !== 'disallowed_by_robots') this.recordFailure(url, outcome.reason, outcome.message);
       return null;
     }
-    if (outcome.httpStatusCode >= 500 || outcome.httpStatusCode === 429) {
-      if (recordFailure) this.recordFailure(url, `http_${outcome.httpStatusCode}`, `HTTP ${outcome.httpStatusCode}`);
+    if (isErrorStatus(outcome.httpStatusCode)) {
+      if (recordFailure) this.recordErrorStatus(url, outcome.httpStatusCode);
       return null;
     }
     return {
@@ -520,47 +574,37 @@ class SiteCrawl {
     this.lastRequestAt = Date.now();
   }
 
-  private recordFailure(url: string, reason: string, message: string): void {
-    this.failedFetches.push({ url, reason, message });
+  private recordFailure(url: string, reason: CrawlFailureReason, message: string, httpStatusCode: number | null = null): void {
+    this.failedFetches.push({ url, reason, httpStatusCode, message });
+  }
+
+  /** Records a 5xx or 429 as a failed fetch. Returns whether it was one. */
+  private recordErrorStatus(url: string, httpStatusCode: number): boolean {
+    if (!isErrorStatus(httpStatusCode)) return false;
+    const reason = httpStatusCode === 429 ? 'rate_limited' : 'server_error';
+    this.recordFailure(url, reason, `HTTP ${httpStatusCode}`, httpStatusCode);
+    return true;
   }
 
   private reportProgress(): void {
     this.options.onProgress?.({
       pagesDiscovered: this.frontier.size,
-      pagesFetched: this.results.length,
+      pagesFetched: this.emittedUrls.length,
       pagesFailed: this.failedFetches.length,
     });
   }
 
-  private toRawPage({
-    entry,
-    page,
-    markdownVariantUrl,
-    hasNoindexDirective,
-  }: {
-    entry: FrontierEntry;
-    page: FetchedPage;
-    markdownVariantUrl: string | null;
-    hasNoindexDirective: boolean;
-  }): RawPage {
+  private linkSignalsFor(url: string): LinkSignals {
     return {
-      normalisedUrl: entry.url,
-      finalUrl: page.finalUrl,
-      httpStatusCode: page.httpStatusCode,
-      headers: page.headers,
-      html: page.html,
-      fetchMethod: page.fetchMethod,
-      crawlSignals: {
-        crawlDepth: entry.crawlDepth,
-        discoveredVia: entry.discoveredVia,
-        isInSiteNavigation: this.navigationUrls.has(entry.url),
-        inboundLinkCount: this.inboundLinkSources.get(entry.url)?.size ?? 0,
-        hasNoindexDirective,
-      },
-      markdownVariantUrl,
-      sitemapLastModified: entry.sitemapLastModified,
+      isInSiteNavigation: this.navigationUrls.has(url),
+      inboundLinkCount: this.inboundLinkSources.get(url)?.size ?? 0,
     };
   }
+}
+
+/** A response that says the site is struggling, not that the page is gone. */
+function isErrorStatus(httpStatusCode: number): boolean {
+  return httpStatusCode >= 500 || httpStatusCode === 429;
 }
 
 function compareEntries(a: FrontierEntry, b: FrontierEntry): number {

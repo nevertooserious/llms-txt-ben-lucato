@@ -1,10 +1,12 @@
+import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { extname, join, normalize, resolve } from 'node:path';
 
 // Serves one fixture site from e2e/fixture-sites/<name>/ on its own loopback port.
-// Files are served as-is; a site's routes.ts can add scripted responses (redirects,
+// Files are served as-is, with an ETag that a matching If-None-Match turns into a 304,
+// as static servers do; a site's routes.ts can add scripted responses (redirects,
 // errors, slow or huge bodies) that static files cannot express.
 
 const FIXTURE_SITES_DIRECTORY = resolve(import.meta.dirname, '../fixture-sites');
@@ -57,7 +59,7 @@ export async function startFixtureSite(siteName: string): Promise<FixtureSite> {
     const route = routes[requestUrl.pathname];
     const handled = route
       ? route(request, response, requestUrl)
-      : serveFile(siteDirectory, requestUrl, response, routes['*'] && (() => routes['*']!(request, response, requestUrl)));
+      : serveFile(siteDirectory, request, requestUrl, response, routes['*'] && (() => routes['*']!(request, response, requestUrl)));
     Promise.resolve(handled).catch((error: unknown) => {
       if (!response.headersSent) response.writeHead(500);
       response.end(String(error));
@@ -94,6 +96,7 @@ async function loadRoutes(siteDirectory: string): Promise<FixtureRoutes> {
 
 async function serveFile(
   siteDirectory: string,
+  request: IncomingMessage,
   requestUrl: URL,
   response: ServerResponse,
   fallback: (() => void | Promise<void>) | undefined,
@@ -117,7 +120,12 @@ async function serveFile(
     const body = await readFile(filePath).catch(() => null);
     if (body === null) continue;
     const contentType = CONTENT_TYPES[extname(filePath)] ?? 'application/octet-stream';
-    response.writeHead(200, { 'content-type': contentType, 'content-length': body.length }).end(body);
+    const etag = `"${createHash('sha256').update(body).digest('hex').slice(0, 16)}"`;
+    if (request.headers['if-none-match'] === etag) {
+      response.writeHead(304, { etag }).end();
+      return;
+    }
+    response.writeHead(200, { 'content-type': contentType, 'content-length': body.length, etag }).end(body);
     return;
   }
 

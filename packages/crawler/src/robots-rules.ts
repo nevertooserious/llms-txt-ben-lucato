@@ -1,4 +1,5 @@
 import robotsParser from 'robots-parser';
+import type { RobotsTxtStatus } from '@llms-txt/contracts';
 
 // robots.txt rules for one host, following RFC 9309 (section 2.3.1):
 //
@@ -15,11 +16,7 @@ export const ROBOTS_USER_AGENT_TOKEN = 'LlmsTxtGenerator';
 /** RFC 9309 requires parsing at least 500 KiB; anything after it may be ignored. */
 export const ROBOTS_TXT_MAX_PARSED_BYTES = 500 * 1024;
 
-/**
- * What became of robots.txt. `unreachable` means a 5xx, timeout or network failure: the
- * site is then not crawled at all, and the run should fail with that reason.
- */
-export type RobotsTxtStatus = 'parsed' | 'unavailable' | 'unreachable';
+export type { RobotsTxtStatus };
 
 export interface RobotsRules {
   status: RobotsTxtStatus;
