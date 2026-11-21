@@ -255,7 +255,6 @@ Checked against llmstxt.org.
 Not yet decided or designed.
 
 - **Hosting:** Railway or Fly is proposed, not decided.
-- **Update notifications from sites:** a site cannot yet tell us it changed (from a deploy hook, say). Proposal: a web-app route that does what "check now" does, held to the same cooldown. The monitor would not change.
 - **Redirects:** a page that now returns a permanent redirect is not handled, and neither is a site with stored pages whose homepage moves to another origin (its runs fail and the published file stays). Proposal: treat it as an immediate removal of the old URL and add the target as a page if it is in scope. Needs one new column on `pages` for the redirect target.
 - **Soft 404s:** sites that answer a deleted URL with 200 and a "not found" body are not handled. Proposal: an extractor check that counts the same as a real 404.
 - **Slow removal:** with a 7-day interval, waiting for two checks can leave a dead link in the file for two weeks. Proposal: schedule a follow-up check 24 hours after any run that sees a first 404.
