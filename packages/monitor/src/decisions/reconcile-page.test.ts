@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { RawPage } from '@llms-txt/contracts';
 import type { StoredPage } from '@llms-txt/db';
-import { reconcilePage } from './reconcile-page';
+import { reconcilePage, sitemapDate } from './reconcile-page';
 
 const now = new Date('2026-11-21T12:00:00Z');
 const url = 'https://example.com/docs';
@@ -103,5 +103,24 @@ describe('reconcilePage', () => {
   it('ignores a new URL that does not answer 2xx', () => {
     expect(reconcilePage(undefined, rawPage(404), now)).toEqual({ kind: 'ignored' });
     expect(reconcilePage(undefined, rawPage(403), now)).toEqual({ kind: 'ignored' });
+  });
+});
+
+describe('sitemapDate', () => {
+  it('reads a date or a date and time as ISO 8601', () => {
+    expect(sitemapDate('2026-10-01')).toBe('2026-10-01T00:00:00.000Z');
+    expect(sitemapDate('2026-10-01T12:30:00+02:00')).toBe('2026-10-01T10:30:00.000Z');
+  });
+
+  it('is null for a missing or unreadable lastmod', () => {
+    expect(sitemapDate(null)).toBeNull();
+    expect(sitemapDate('last week')).toBeNull();
+  });
+
+  it('is null for a year the database cannot store', () => {
+    // JavaScript reads these as the years 202401, 0 and -1.
+    expect(sitemapDate('202401')).toBeNull();
+    expect(sitemapDate('0000-01-01T00:00:00Z')).toBeNull();
+    expect(sitemapDate('-000001-01-01T00:00:00Z')).toBeNull();
   });
 });

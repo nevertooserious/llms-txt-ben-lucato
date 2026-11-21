@@ -2,9 +2,10 @@
 -- it after db/schema.sql, only when the data volume is empty. Never apply it to a shared
 -- database. It is served at /w/demo.
 --
--- The site is on the reserved .example domain and has no monitor check scheduled, so the
--- worker never crawls it by itself. "Check now" on it ends in a failed run, which leaves
--- the published version as it is.
+-- The site is on the reserved .example domain and is seeded with no monitor check
+-- scheduled, so the worker does not crawl it by itself until "check now" is pressed, which
+-- also turns monitoring on. A check on it ends in a failed run, which leaves the published
+-- version as it is.
 
 do $seed$
 declare

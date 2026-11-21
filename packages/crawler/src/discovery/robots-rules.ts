@@ -16,8 +16,6 @@ export const ROBOTS_USER_AGENT_TOKEN = 'LlmsTxtGenerator';
 /** RFC 9309 requires parsing at least 500 KiB; anything after it may be ignored. */
 export const ROBOTS_TXT_MAX_PARSED_BYTES = 500 * 1024;
 
-export type { RobotsTxtStatus };
-
 export interface RobotsRules {
   status: RobotsTxtStatus;
   isAllowed(url: string): boolean;
@@ -36,8 +34,17 @@ export function parseRobotsTxt(robotsTxtUrl: string, robotsTxt: string): RobotsR
     // host's URLs; refuse anything else rather than guess.
     isAllowed: (url) => robots.isAllowed(withSchemeOf(robotsTxtUrl, url), ROBOTS_USER_AGENT_TOKEN) ?? false,
     crawlDelaySeconds: crawlDelay === undefined || !Number.isFinite(crawlDelay) || crawlDelay < 0 ? null : crawlDelay,
-    sitemapUrls: robots.getSitemaps(),
+    sitemapUrls: robots.getSitemaps().flatMap((sitemapUrl) => absoluteUrl(sitemapUrl, robotsTxtUrl)),
   };
+}
+
+/** A Sitemap line's URL. The protocol asks for a full URL; a path is taken as on this host. */
+function absoluteUrl(sitemapUrl: string, robotsTxtUrl: string): string[] {
+  try {
+    return [new URL(sitemapUrl, robotsTxtUrl).href];
+  } catch {
+    return [];
+  }
 }
 
 /**

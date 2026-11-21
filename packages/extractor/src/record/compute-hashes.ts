@@ -20,7 +20,7 @@ const VOLATILE_PATTERNS: RegExp[] = [
  * dates, relative times, numbers and whitespace removed, so "updated 3 days ago" or
  * a view counter ticking over is not a change.
  */
-export function normaliseTextForDigest(text: string): string {
+function normaliseTextForDigest(text: string): string {
   return VOLATILE_PATTERNS.reduce((normalised, pattern) => normalised.replace(pattern, ''), text.toLowerCase());
 }
 

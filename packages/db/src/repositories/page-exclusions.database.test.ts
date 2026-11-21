@@ -45,6 +45,17 @@ const excludedUrlsOf = async (siteId: string) =>
   (await loadPageOverrides(pool, siteId)).filter((override) => override.isExcluded).map((override) => override.normalisedUrl);
 
 describe('replaceExcludedPages', () => {
+  it('keeps the exclusion of a removed page, which the site screen cannot send', async () => {
+    const site = await siteWithPages(['/a', '/gone']);
+    const url = (path: string) => `${site.origin}${path}`;
+    await withTransaction(pool, (transaction) => replaceExcludedPages(transaction, site.id, [url('/a'), url('/gone')]));
+    await pool.query('update pages set removed_at = now() where site_id = $1 and normalised_url = $2', [site.id, url('/gone')]);
+
+    await withTransaction(pool, (transaction) => replaceExcludedPages(transaction, site.id, []));
+    expect(await excludedUrlsOf(site.id)).toEqual([url('/gone')]);
+    await deleteSite(pool, site.id);
+  });
+
   it('makes the given pages the whole set, and skips URLs that are not pages of the site', async () => {
     const site = await siteWithPages(['/a', '/b', '/c']);
     const url = (path: string) => `${site.origin}${path}`;

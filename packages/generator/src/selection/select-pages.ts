@@ -13,7 +13,7 @@ const DOCUMENTATION_SHARE_OF_A_FULL_FILE = 2;
 export interface SelectedPage {
   page: GeneratorPage;
   score: number;
-  /** A name from SECTION_NAMES, or OPTIONAL_SECTION_NAME. */
+  /** A name from SECTION_NAMES, an area's name, GENERAL_SECTION_NAME or OPTIONAL_SECTION_NAME. */
   sectionName: string;
   descriptionOverride: string | null;
 }

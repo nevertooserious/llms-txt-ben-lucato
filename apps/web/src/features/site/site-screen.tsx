@@ -20,16 +20,22 @@ export function SiteScreen({ publicSlug }: { publicSlug: string }) {
   const [loadError, setLoadError] = useState<SiteApiError | null>(null);
   // Set on delete, so a poll already in flight cannot save the site back.
   const isDeleted = useRef(false);
+  // A poll can overlap the refresh after a change (a pin, a save). Only the newest
+  // request's answer is shown, so a poll sent before the change cannot undo it on screen.
+  const latestRequestNumber = useRef(0);
 
   const refresh = useCallback(async () => {
+    latestRequestNumber.current += 1;
+    const requestNumber = latestRequestNumber.current;
+    const isOutdated = () => isDeleted.current || requestNumber !== latestRequestNumber.current;
     try {
       const loaded = await fetchSiteView(publicSlug);
-      if (isDeleted.current) return;
+      if (isOutdated()) return;
       setView(loaded);
       setLoadError(null);
       saveSite({ publicSlug, rootUrl: loaded.rootUrl, createdAt: new Date().toISOString() });
     } catch (error) {
-      if (isDeleted.current) return;
+      if (isOutdated()) return;
       setLoadError(error instanceof SiteApiError ? error : new SiteApiError('Could not reach the server.', 0));
     }
   }, [publicSlug]);
@@ -115,9 +121,8 @@ export function SiteScreen({ publicSlug }: { publicSlug: string }) {
           <section className="cell">
             <VersionComparison
               publicSlug={publicSlug}
-             
+              versions={view.versions}
               publishedVersionNumber={view.publishedVersion.versionNumber}
-              newestVersionNumber={view.versions[0]?.versionNumber ?? view.publishedVersion.versionNumber}
             />
           </section>
         )}

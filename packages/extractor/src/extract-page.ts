@@ -26,6 +26,7 @@ const TITLE_SEPARATORS = [' | ', ' - ', ' – ', ' — ', ' · ', ' :: '];
 const MAXIMUM_SITE_NAME_LENGTH = 60;
 
 /**
+ * Meta names are matched whatever their case (`<META NAME="Description">`).
  * Title: on an inner page whose <title> is a page name plus the site name the page
  * declares (`Downloads | Acme` with og:site_name `Acme`), that page name. Otherwise the
  * Open Graph title, then <title>, then the first <h1>; and on an inner page whose Open
@@ -42,11 +43,12 @@ export function extractPage(input: ExtractPageInput): PageRecord {
   // Metadata is read before content selection, which removes elements.
   const { heading, headingWithAnchor } = firstHeading($);
   const openGraphTitle = withoutHeadingAnchor(metaContent($, 'meta[property="og:title"]'), heading, headingWithAnchor);
-  const titleTag = withoutHeadingAnchor(nonEmptyText($('title').first().text()), heading, headingWithAnchor);
+  // An inline <svg>'s <title> names an icon, not the page.
+  const titleTag = withoutHeadingAnchor(nonEmptyText($('title').not('svg title').first().text()), heading, headingWithAnchor);
   const declaredSiteName = siteNameOrNull(
     metaContent($, 'meta[property="og:site_name"]') ??
       structuredDataWebSiteName($) ??
-      metaContent($, 'meta[name="application-name"]'),
+      metaContent($, 'meta[name="application-name" i]'),
   );
   const pageNameInTitleTag =
     input.isHomepage || titleTag === null || declaredSiteName === null
@@ -58,7 +60,7 @@ export function extractPage(input: ExtractPageInput): PageRecord {
       ? (heading ?? titleTag)
       : (openGraphTitle ?? titleTag ?? heading));
   const metadataDescription =
-    metaContent($, 'meta[name="description"]') ?? metaContent($, 'meta[property="og:description"]');
+    metaContent($, 'meta[name="description" i]') ?? metaContent($, 'meta[property="og:description"]');
   const canonicalHref = $('link[rel~="canonical"][href]').first().attr('href');
   const canonicalUrl = canonicalHref ? resolveUrl(canonicalHref, baseUrl) : null;
   const languageCode = nonEmptyText($('html').attr('lang'))?.toLowerCase() ?? null;
@@ -120,12 +122,17 @@ function siteNameOrNull(text: string | null): string | null {
 /**
  * The first <h1> with text, without the permalink anchor documentation tools add
  * (`Title¶`, or an icon font's `Titlelink`), and the same heading with the anchor's text.
+ * A `#` counts as an anchor only when it is a link of its own: `C#` is a name.
  */
 function firstHeading($: CheerioAPI): { heading: string | null; headingWithAnchor: string | null } {
   for (const element of $('h1').toArray()) {
     const withoutAnchor = $(element).clone();
     withoutAnchor.find('a.headerlink, a.header-anchor, a.header-link, a.anchor, a.hash-link, a[aria-hidden="true"]').remove();
-    const heading = nonEmptyText(withoutAnchor.text().replace(/[¶#§]\s*$/, ''));
+    withoutAnchor
+      .find('a')
+      .filter((_, link) => /^[¶#§]$/.test($(link).text().trim()))
+      .remove();
+    const heading = nonEmptyText(withoutAnchor.text().replace(/[¶§]\s*$/, ''));
     if (heading !== null) return { heading, headingWithAnchor: nonEmptyText($(element).text()) };
   }
   return { heading: null, headingWithAnchor: null };

@@ -21,6 +21,7 @@ import {
   siteNameFrom,
 } from '@llms-txt/generator';
 import type { PageExclusions, SaveExclusionsResult, SitePagesView } from '@/shared/site-pages';
+import { isActiveRunStatus } from '@/shared/site-view';
 
 /** More pages than any crawl stores for one site, and more paths than a site has areas. */
 const MAX_EXCLUDED_URLS = 5_000;
@@ -58,7 +59,9 @@ function normaliseUrlPrefix(urlPrefix: string): string | null {
     return null;
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
-  return `${parsed.origin}${parsed.pathname.replace(/\/+$/, '')}`;
+  // Parsing percent-encodes, so the stored form can be far longer than what was sent.
+  const normalised = `${parsed.origin}${parsed.pathname.replace(/\/+$/, '')}`;
+  return normalised.length <= MAX_URL_LENGTH ? normalised : null;
 }
 
 /** The site's crawled pages, with what the user ignores and where each page is listed. */
@@ -111,7 +114,7 @@ export async function savePageExclusions(
     loadLatestPipelineRunSummary(databasePool, siteId),
     loadNewestVersion(databasePool, siteId),
   ]);
-  const isRunActive = latestRun?.status === 'queued' || latestRun?.status === 'running';
+  const isRunActive = latestRun !== null && isActiveRunStatus(latestRun.status);
   if (isRunActive || newestVersion === null) return { kind: 'applied_by_next_run' };
 
   const [site, loadedPages, overrides, excludedUrlPrefixes] = await Promise.all([

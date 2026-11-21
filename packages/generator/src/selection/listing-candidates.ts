@@ -16,14 +16,12 @@ const MINIMUM_PAGES_IN_COLLAPSED_FAMILY = 5;
 export function listingCandidates(pages: readonly GeneratorPage[]): GeneratorPage[] {
   const siteLanguage = primaryLanguageOf(pages);
   const homepage = homepageOf(pages);
-  const homepageVariantKey = homepage === undefined ? null : urlVariantKey(homepage);
   return withoutLargeDeepFamilies(
     keepOnePerUrlVariant(
       pages.filter(
         (page) =>
           page.record.pageType !== 'home' &&
           page.crawlSignals.crawlDepth > 0 &&
-          urlVariantKey(page) !== homepageVariantKey &&
           page.record.contentDigest !== homepage?.record.contentDigest &&
           !page.crawlSignals.hasNoindexDirective &&
           !isPaginationUrl(page.record.normalisedUrl) &&

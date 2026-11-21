@@ -172,35 +172,22 @@ export interface PipelineRunSummary {
   pagesFailedCount: number;
 }
 
-/** The site's most recently created run, for the frontend to poll, or null if it has none. */
-export async function loadLatestPipelineRunSummary(
-  database: Queryable,
-  siteId: string,
-): Promise<PipelineRunSummary | null> {
-  const result = await database.query<{
-    id: string;
-    status: PipelineRunStatus;
-    current_stage: PipelineRunStage | null;
-    triggered_by: PipelineTrigger;
-    error_message: string | null;
-    created_at: Date;
-    started_at: Date | null;
-    finished_at: Date | null;
-    pages_discovered_count: number;
-    pages_fetched_count: number;
-    pages_changed_count: number;
-    pages_failed_count: number;
-  }>(
-    `select id, status, current_stage, triggered_by, error_message, created_at, started_at, finished_at,
-            pages_discovered_count, pages_fetched_count, pages_changed_count, pages_failed_count
-       from pipeline_runs
-      where site_id = $1
-      order by created_at desc
-      limit 1`,
-    [siteId],
-  );
-  const row = result.rows[0];
-  if (row === undefined) return null;
+interface PipelineRunSummaryRow {
+  id: string;
+  status: PipelineRunStatus;
+  current_stage: PipelineRunStage | null;
+  triggered_by: PipelineTrigger;
+  error_message: string | null;
+  created_at: Date;
+  started_at: Date | null;
+  finished_at: Date | null;
+  pages_discovered_count: number;
+  pages_fetched_count: number;
+  pages_changed_count: number;
+  pages_failed_count: number;
+}
+
+function pipelineRunSummaryFrom(row: PipelineRunSummaryRow): PipelineRunSummary {
   return {
     id: row.id,
     status: row.status,
@@ -215,6 +202,24 @@ export async function loadLatestPipelineRunSummary(
     pagesChangedCount: row.pages_changed_count,
     pagesFailedCount: row.pages_failed_count,
   };
+}
+
+/** The site's most recently created run, for the frontend to poll, or null if it has none. */
+export async function loadLatestPipelineRunSummary(
+  database: Queryable,
+  siteId: string,
+): Promise<PipelineRunSummary | null> {
+  const result = await database.query<PipelineRunSummaryRow>(
+    `select id, status, current_stage, triggered_by, error_message, created_at, started_at, finished_at,
+            pages_discovered_count, pages_fetched_count, pages_changed_count, pages_failed_count
+       from pipeline_runs
+      where site_id = $1
+      order by created_at desc
+      limit 1`,
+    [siteId],
+  );
+  const row = result.rows[0];
+  return row === undefined ? null : pipelineRunSummaryFrom(row);
 }
 
 /** One run of a site, with what it did and the version it published, if any. */
@@ -229,21 +234,7 @@ export async function loadPipelineRunDetail(
   siteId: string,
   pipelineRunId: string,
 ): Promise<PipelineRunDetail | null> {
-  const result = await database.query<{
-    id: string;
-    status: PipelineRunStatus;
-    current_stage: PipelineRunStage | null;
-    triggered_by: PipelineTrigger;
-    error_message: string | null;
-    created_at: Date;
-    started_at: Date | null;
-    finished_at: Date | null;
-    pages_discovered_count: number;
-    pages_fetched_count: number;
-    pages_changed_count: number;
-    pages_failed_count: number;
-    version_number: number | null;
-  }>(
+  const result = await database.query<PipelineRunSummaryRow & { version_number: number | null }>(
     `select runs.id, runs.status, runs.current_stage, runs.triggered_by, runs.error_message,
             runs.created_at, runs.started_at, runs.finished_at,
             runs.pages_discovered_count, runs.pages_fetched_count,
@@ -255,20 +246,5 @@ export async function loadPipelineRunDetail(
     [siteId, pipelineRunId],
   );
   const row = result.rows[0];
-  if (row === undefined) return null;
-  return {
-    id: row.id,
-    status: row.status,
-    currentStage: row.current_stage,
-    triggeredBy: row.triggered_by,
-    errorMessage: row.error_message,
-    createdAt: row.created_at,
-    startedAt: row.started_at,
-    finishedAt: row.finished_at,
-    pagesDiscoveredCount: row.pages_discovered_count,
-    pagesFetchedCount: row.pages_fetched_count,
-    pagesChangedCount: row.pages_changed_count,
-    pagesFailedCount: row.pages_failed_count,
-    versionNumber: row.version_number,
-  };
+  return row === undefined ? null : { ...pipelineRunSummaryFrom(row), versionNumber: row.version_number };
 }

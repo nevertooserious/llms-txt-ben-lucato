@@ -10,7 +10,9 @@ export function singleLine(text: string): string {
 
 export function truncate(text: string): string {
   if (text.length <= MAXIMUM_DESCRIPTION_LENGTH) return text;
-  const cut = text.slice(0, MAXIMUM_DESCRIPTION_LENGTH - 1);
+  // Not through the middle of a character: half of one is stored as a different character
+  // than was rendered, and the file would then differ from its published version on every run.
+  const cut = text.slice(0, MAXIMUM_DESCRIPTION_LENGTH - 1).replace(/[\uD800-\uDBFF]$/, '');
   const lastSpace = cut.lastIndexOf(' ');
   return `${(lastSpace > MAXIMUM_DESCRIPTION_LENGTH / 2 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
