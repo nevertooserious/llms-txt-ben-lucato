@@ -7,9 +7,9 @@ import { crawlSite, HeadlessRenderer, resolveSiteRootUrl } from '@llms-txt/crawl
 import { createDatabasePool } from '@llms-txt/db';
 import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
-import { createAnthropicLlmClient } from './anthropic-llm-client';
-import { readWorkerConfig } from './worker-config';
-import { scheduleMonitorTick, startWorkerJobs } from './worker-jobs';
+import { createAnthropicLlmClient } from './llm/anthropic-llm-client';
+import { readWorkerConfig } from './config/worker-config';
+import { scheduleMonitorTick, startWorkerJobs } from './jobs/worker-jobs';
 
 const config = readWorkerConfig();
 const logger = createLogger({ level: config.logLevel, fields: { process: 'worker' } });

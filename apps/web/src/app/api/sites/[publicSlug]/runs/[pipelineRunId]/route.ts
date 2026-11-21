@@ -1,8 +1,8 @@
 import { loadPipelineRunDetail } from '@llms-txt/db';
-import { apiError, isPipelineRunId, runApiPath } from '../../../../../../server/api-response';
-import { requestedSite } from '../../../../../../server/requested-site';
-import { webServices } from '../../../../../../server/web-services';
-import { isActiveRunStatus, type PipelineRunDetailView } from '../../../../../../shared/site-view';
+import { apiError, isPipelineRunId, runApiPath } from '@/server/http/api-response';
+import { requestedSite } from '@/server/http/requested-site';
+import { webServices } from '@/server/composition/web-services';
+import { isActiveRunStatus, type PipelineRunDetailView } from '@/shared/site-view';
 
 /** How soon a client polling an active run should ask again. */
 const ACTIVE_RUN_POLL_SECONDS = 2;

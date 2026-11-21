@@ -1,8 +1,8 @@
 import { deleteSite } from '@llms-txt/db';
-import { apiError } from '../../../../server/api-response';
-import { loadSiteView } from '../../../../server/load-site-view';
-import { webServices } from '../../../../server/web-services';
-import { requestedSite } from '../../../../server/requested-site';
+import { apiError } from '@/server/http/api-response';
+import { loadSiteView } from '@/server/sites/load-site-view';
+import { webServices } from '@/server/composition/web-services';
+import { requestedSite } from '@/server/http/requested-site';
 
 // The site screen's state, polled while a run is active.
 export async function GET(

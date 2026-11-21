@@ -1,8 +1,8 @@
 import { loadLlmsTxtVersionFile, loadPipelineRunDetail } from '@llms-txt/db';
-import { apiError, isPipelineRunId, llmsTxtFileResponse } from '../../../../../../../server/api-response';
-import { requestedSite } from '../../../../../../../server/requested-site';
-import { webServices } from '../../../../../../../server/web-services';
-import { isActiveRunStatus } from '../../../../../../../shared/site-view';
+import { apiError, isPipelineRunId, llmsTxtFileResponse } from '@/server/http/api-response';
+import { requestedSite } from '@/server/http/requested-site';
+import { webServices } from '@/server/composition/web-services';
+import { isActiveRunStatus } from '@/shared/site-view';
 
 // The file a run published, as text/plain. A run that changed nothing or failed published
 // none, and this says so instead of answering with some other run's file.

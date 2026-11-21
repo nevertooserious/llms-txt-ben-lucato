@@ -8,6 +8,15 @@ import tseslint from 'typescript-eslint';
 //   - only @llms-txt/db may import `pg`, so every SQL query lives there;
 //   - the pure stages (extractor, generator) and contracts do not touch the database or
 //     the queue: the worker loads their inputs and stores their outputs.
+//
+// Layers inside a component (README.md, "Inside a component"):
+//   - in the crawler, only `network/` may open a connection, so every request is made by
+//     code that sits beside the SSRF guard;
+//   - in @llms-txt/db, only `connection/` may import `pg`;
+//   - in the worker, the pipeline is handed its dependencies and does not reach for the
+//     composition root's;
+//   - in the web app, `app/` routes call `server/` and render `features/`; `server/` and
+//     the browser code (`features/`, `browser/`) share only `shared/`.
 // Builtins match with or without the `node:` prefix; all modules match subpaths too.
 // ESLint does not merge `no-restricted-imports` across config blocks, so each group of
 // files gets exactly one block below with its full list.
@@ -17,8 +26,16 @@ const databasePackages = ['pg', 'pg-boss', '@llms-txt/db'];
 const ioBuiltins = [...networkBuiltins, 'fs'];
 const ioPackages = [...networkPackages, ...databasePackages, '@llms-txt/crawler'];
 
+/** Imports of the web app's `src/<layer>` folders, through the `@/` alias or a relative path. */
+const webLayers = (/** @type {string[]} */ layers, /** @type {string} */ message) => ({
+  regex: `^(@/|(\\.\\./)+)(${layers.join('|')})(/.*)?$`,
+  message,
+});
 const NETWORK_MESSAGE = 'The crawler owns all fetching of target sites, behind the SSRF guard.';
 const SQL_MESSAGE = 'SQL lives in @llms-txt/db; call its functions instead of importing pg.';
+const CRAWLER_STORAGE_MESSAGE = 'The crawler returns what it fetched; the worker stores it.';
+const BROWSER_MESSAGE = 'Browser code reaches the server only through the app\'s /api routes.';
+const PG_PATTERN = { regex: '^pg(/.*)?$', message: SQL_MESSAGE };
 const PURE_MESSAGE = 'Contracts and pure stages do not touch the database or the queue; the worker does.';
 
 const restrict = (
@@ -76,16 +93,67 @@ export default tseslint.config(
     ]),
   },
   {
+    files: ['packages/crawler/src/network/**/*.ts'],
+    rules: restrict([], databasePackages, CRAWLER_STORAGE_MESSAGE),
+  },
+  {
     files: ['packages/crawler/src/**/*.ts'],
-    rules: restrict([], databasePackages, 'The crawler returns what it fetched; the worker stores it.'),
+    ignores: ['packages/crawler/src/network/**'],
+    rules: restrict(networkBuiltins, networkPackages, 'Only the crawler\'s network/ folder opens connections, beside the SSRF guard.', [
+      { regex: `^(${databasePackages.join('|')})(/.*)?$`, message: CRAWLER_STORAGE_MESSAGE },
+    ]),
   },
   {
     files: ['packages/{monitor,runtime}/src/**/*.ts', 'apps/**/*.{ts,tsx}'],
-    rules: restrict(networkBuiltins, networkPackages, NETWORK_MESSAGE, [{ regex: '^pg(/.*)?$', message: SQL_MESSAGE }]),
+    rules: restrict(networkBuiltins, networkPackages, NETWORK_MESSAGE, [PG_PATTERN]),
+  },
+  {
+    files: ['packages/db/src/connection/**/*.ts'],
+    rules: restrict(networkBuiltins, networkPackages, NETWORK_MESSAGE),
   },
   {
     files: ['packages/db/src/**/*.ts'],
-    rules: restrict(networkBuiltins, networkPackages, NETWORK_MESSAGE),
+    ignores: ['packages/db/src/connection/**'],
+    rules: restrict(networkBuiltins, networkPackages, NETWORK_MESSAGE, [
+      { regex: '^pg(/.*)?$', message: 'Only connection/ imports pg; queries take a Queryable from it.' },
+    ]),
+  },
+  // The layers of the two apps. Each block repeats the apps' base restrictions above,
+  // because a later `no-restricted-imports` replaces an earlier one.
+  {
+    files: ['apps/worker/src/pipeline/**/*.ts'],
+    rules: restrict(networkBuiltins, networkPackages, NETWORK_MESSAGE, [
+      PG_PATTERN,
+      {
+        regex: '^(\\.\\./)+(config|jobs|llm|main)(/.*)?$',
+        message: 'The pipeline is handed its dependencies (pipeline-dependencies.ts); it does not import the worker\'s wiring.',
+      },
+    ]),
+  },
+  {
+    files: ['apps/web/src/server/**/*.ts'],
+    rules: restrict(networkBuiltins, networkPackages, NETWORK_MESSAGE, [
+      PG_PATTERN,
+      webLayers(['app', 'features', 'browser'], 'Server code shares only shared/ with the browser code.'),
+    ]),
+  },
+  {
+    files: ['apps/web/src/{features,browser}/**/*.{ts,tsx}'],
+    rules: restrict(networkBuiltins, [...networkPackages, ...databasePackages], BROWSER_MESSAGE, [
+      webLayers(['app', 'server'], BROWSER_MESSAGE),
+    ]),
+  },
+  {
+    files: ['apps/web/src/browser/**/*.ts'],
+    rules: restrict(networkBuiltins, [...networkPackages, ...databasePackages], BROWSER_MESSAGE, [
+      webLayers(['app', 'server', 'features'], 'browser/ holds the API client and local storage; components in features/ call it, not the reverse.'),
+    ]),
+  },
+  {
+    files: ['apps/web/src/shared/**/*.ts'],
+    rules: restrict(networkBuiltins, [...networkPackages, ...databasePackages], BROWSER_MESSAGE, [
+      webLayers(['app', 'server', 'features', 'browser'], 'shared/ is imported by both sides and imports neither.'),
+    ]),
   },
   // Server code may not call fetch either (LLM calls go through the Anthropic SDK);
   // browser components in apps/web may still fetch the app's own /api.

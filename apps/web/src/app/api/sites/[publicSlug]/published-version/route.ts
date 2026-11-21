@@ -1,8 +1,8 @@
 import { pinPublishedVersion, unpinPublishedVersion, withTransaction } from '@llms-txt/db';
-import { webServices } from '../../../../../server/web-services';
-import { apiError } from '../../../../../server/api-response';
-import { requestedSite } from '../../../../../server/requested-site';
-import { isVersionNumber } from '../../../../../server/version-number';
+import { webServices } from '@/server/composition/web-services';
+import { apiError } from '@/server/http/api-response';
+import { requestedSite } from '@/server/http/requested-site';
+import { isVersionNumber } from '@/server/http/version-number';
 
 // Chooses the version served at the hosted URL. PUT { "versionNumber": n } makes that
 // version live and pins it, so later checks record new versions without publishing them.

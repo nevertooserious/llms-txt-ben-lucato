@@ -1,7 +1,7 @@
-import { apiError, hostedLlmsTxtPath, runApiPath } from '../../../server/api-response';
-import { clientIpFrom } from '../../../server/client-ip';
-import { submitSite } from '../../../server/submit-site';
-import { webServices } from '../../../server/web-services';
+import { apiError, hostedLlmsTxtPath, runApiPath } from '@/server/http/api-response';
+import { clientIpFrom } from '@/server/http/client-ip';
+import { submitSite } from '@/server/sites/submit-site';
+import { webServices } from '@/server/composition/web-services';
 
 // Submit a URL. The work is in server/submit-site.ts; this handler only parses the
 // request and shapes the response.

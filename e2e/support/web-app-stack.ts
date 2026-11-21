@@ -8,8 +8,8 @@ import { crawlSite, HeadlessRenderer, resolveSiteRootUrl } from '@llms-txt/crawl
 import { createDatabasePool, type DatabasePool } from '@llms-txt/db';
 import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
-import { readWorkerConfig } from '../../apps/worker/src/worker-config';
-import { startWorkerJobs } from '../../apps/worker/src/worker-jobs';
+import { readWorkerConfig } from '../../apps/worker/src/config/worker-config';
+import { startWorkerJobs } from '../../apps/worker/src/jobs/worker-jobs';
 import { startFixtureSite, type FixtureSite } from './fixture-site-server';
 import { allowLoopbackPorts } from './local-network-policy';
 

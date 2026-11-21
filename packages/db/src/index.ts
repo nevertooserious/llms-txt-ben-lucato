@@ -1,8 +1,8 @@
 // Database access. db/schema.sql is the source of truth for the schema; every query is
 // hand-written SQL in this package, grouped by the table it writes, and the rest of the
 // code calls these functions. Only this package may import `pg` (eslint.config.js).
-export { createDatabasePool, type DatabasePool } from './database-pool';
-export { withTransaction, type Queryable, type Transaction } from './transaction';
+export { createDatabasePool, type DatabasePool } from './connection/database-pool';
+export { withTransaction, type Queryable, type Transaction } from './connection/transaction';
 export {
   createPipelineQueues,
   PIPELINE_RUN_QUEUE_OPTIONS,
@@ -10,7 +10,7 @@ export {
   type PipelineRunQueue,
   type StartPipelineRunOutcome,
   type StartPipelineRunRequest,
-} from './pipeline-run-queue';
+} from './queue/pipeline-run-queue';
 export {
   claimPipelineRun,
   finishPipelineRun,
@@ -29,7 +29,7 @@ export {
   type PipelineRunStatus,
   type PipelineRunSummary,
   type StalePipelineRunThresholds,
-} from './pipeline-runs';
+} from './repositories/pipeline-runs';
 export {
   claimDueMonitorChecks,
   countRecentSitesFromIp,
@@ -48,8 +48,8 @@ export {
   type SiteCrawlOutcome,
   type SiteForRun,
   type SiteOverview,
-} from './sites';
-export { enableSiteMonitoring, type MonitorSchedule } from './monitor-schedule';
+} from './repositories/sites';
+export { enableSiteMonitoring, type MonitorSchedule } from './repositories/monitor-schedule';
 export {
   loadGeneratorPages,
   loadStoredPages,
@@ -59,7 +59,7 @@ export {
   savePageAssessment,
   type CrawledPageWrite,
   type StoredPage,
-} from './pages';
+} from './repositories/pages';
 export {
   listLlmsTxtVersions,
   loadLlmsTxtVersionContent,
@@ -72,4 +72,4 @@ export {
   type LlmsTxtVersionSummary,
   type NewLlmsTxtVersion,
   type NewestVersion,
-} from './llms-txt-versions';
+} from './repositories/llms-txt-versions';

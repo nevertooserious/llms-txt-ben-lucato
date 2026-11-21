@@ -1,8 +1,8 @@
 import { listLlmsTxtVersions } from '@llms-txt/db';
-import { webServices } from '../../../../../server/web-services';
-import { apiError } from '../../../../../server/api-response';
-import { requestedSite } from '../../../../../server/requested-site';
-import type { LlmsTxtVersionSummaryView } from '../../../../../shared/site-view';
+import { webServices } from '@/server/composition/web-services';
+import { apiError } from '@/server/http/api-response';
+import { requestedSite } from '@/server/http/requested-site';
+import type { LlmsTxtVersionSummaryView } from '@/shared/site-view';
 
 // The site's version history, newest first, without the file contents.
 export async function GET(

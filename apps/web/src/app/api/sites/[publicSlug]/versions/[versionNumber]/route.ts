@@ -1,8 +1,8 @@
 import { loadLlmsTxtVersionContent } from '@llms-txt/db';
-import { webServices } from '../../../../../../server/web-services';
-import { apiError } from '../../../../../../server/api-response';
-import { requestedSite } from '../../../../../../server/requested-site';
-import { parseVersionNumber } from '../../../../../../server/version-number';
+import { webServices } from '@/server/composition/web-services';
+import { apiError } from '@/server/http/api-response';
+import { requestedSite } from '@/server/http/requested-site';
+import { parseVersionNumber } from '@/server/http/version-number';
 
 // The text of one version.
 export async function GET(

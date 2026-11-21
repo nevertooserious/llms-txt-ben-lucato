@@ -1,7 +1,7 @@
-import { apiError, runApiPath } from '../../../../../server/api-response';
-import { checkSiteNow } from '../../../../../server/check-site-now';
-import { requestedSite } from '../../../../../server/requested-site';
-import { webServices } from '../../../../../server/web-services';
+import { apiError, runApiPath } from '@/server/http/api-response';
+import { checkSiteNow } from '@/server/sites/check-site-now';
+import { requestedSite } from '@/server/http/requested-site';
+import { webServices } from '@/server/composition/web-services';
 
 // Re-triggers the site ("check now"). Answers 202 with the run to poll, which may be one
 // already in progress, or 429 with Retry-After when the site was checked within the cooldown.

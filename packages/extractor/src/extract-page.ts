@@ -1,10 +1,10 @@
 import type { CheerioAPI } from 'cheerio/slim';
 import type { PageRecord } from '@llms-txt/contracts';
-import { classifyPageType } from './classify-page-type';
-import { computeContentDigest, computeListingFieldsHash } from './compute-hashes';
-import { convertToMarkdown } from './convert-to-markdown';
-import { collapseWhitespace, documentBaseUrl, nonEmptyText, parseHtml, resolveUrl } from './parse-html';
-import { removeNonContent, selectMainContent } from './select-main-content';
+import { classifyPageType } from './record/classify-page-type';
+import { computeContentDigest, computeListingFieldsHash } from './record/compute-hashes';
+import { convertToMarkdown } from './record/convert-to-markdown';
+import { collapseWhitespace, documentBaseUrl, nonEmptyText, parseHtml, resolveUrl } from './html/parse-html';
+import { removeNonContent, selectMainContent } from './html/select-main-content';
 
 export interface ExtractPageInput {
   /** Raw response body or headless-rendered DOM; the extractor does not care which. */
