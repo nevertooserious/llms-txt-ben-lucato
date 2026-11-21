@@ -15,6 +15,8 @@ import tseslint from 'typescript-eslint';
 //   - in @llms-txt/db, only `connection/` may import `pg`;
 //   - in the worker, the pipeline is handed its dependencies and does not reach for the
 //     composition root's;
+//   - the worker's `pipeline/decisions/` is pure: no I/O, and only types from @llms-txt/db;
+//   - the monitor only schedules runs, so it does not import the stages a run calls;
 //   - in the web app, `app/` routes call `server/` and render `features/`; `server/` and
 //     the browser code (`features/`, `browser/`) share only `shared/`.
 // Builtins match with or without the `node:` prefix; all modules match subpaths too.
@@ -37,6 +39,8 @@ const CRAWLER_STORAGE_MESSAGE = 'The crawler returns what it fetched; the worker
 const BROWSER_MESSAGE = 'Browser code reaches the server only through the app\'s /api routes.';
 const PG_PATTERN = { regex: '^pg(/.*)?$', message: SQL_MESSAGE };
 const PURE_MESSAGE = 'Contracts and pure stages do not touch the database or the queue; the worker does.';
+const DECISIONS_MESSAGE = 'Pipeline decisions are pure: a stage loads their inputs and saves what they return.';
+const PIPELINE_WIRING_MESSAGE = 'The pipeline is handed its dependencies (pipeline-dependencies.ts); it does not import the worker\'s wiring.';
 
 const restrict = (
   /** @type {string[]} */ builtins,
@@ -122,6 +126,16 @@ export default tseslint.config(
     rules: restrict(networkBuiltins, networkPackages, NETWORK_MESSAGE, [PG_PATTERN]),
   },
   {
+    files: ['packages/monitor/src/**/*.ts'],
+    rules: restrict(networkBuiltins, networkPackages, NETWORK_MESSAGE, [
+      PG_PATTERN,
+      {
+        regex: '^@llms-txt/(crawler|extractor|generator)(/.*)?$',
+        message: 'The monitor only schedules runs; the worker\'s pipeline calls the stages.',
+      },
+    ]),
+  },
+  {
     files: ['packages/db/src/connection/**/*.ts'],
     rules: restrict(networkBuiltins, networkPackages, NETWORK_MESSAGE),
   },
@@ -138,11 +152,22 @@ export default tseslint.config(
     files: ['apps/worker/src/pipeline/**/*.ts'],
     rules: restrict(networkBuiltins, networkPackages, NETWORK_MESSAGE, [
       PG_PATTERN,
-      {
-        regex: '^(\\.\\./)+(config|jobs|llm|main)(/.*)?$',
-        message: 'The pipeline is handed its dependencies (pipeline-dependencies.ts); it does not import the worker\'s wiring.',
-      },
+      { regex: '^(\\.\\./)+(config|jobs|llm|main)(/.*)?$', message: PIPELINE_WIRING_MESSAGE },
     ]),
+  },
+  // Type imports from @llms-txt/db are allowed, which the core rule cannot express.
+  {
+    files: ['apps/worker/src/pipeline/decisions/**/*.ts'],
+    rules: {
+      ...restrict(ioBuiltins, [...networkPackages, 'pg', 'pg-boss', '@llms-txt/crawler'], DECISIONS_MESSAGE, [
+        { regex: '^(\\.\\./)+(config|jobs|llm|main)(/.*)?$', message: PIPELINE_WIRING_MESSAGE },
+        { regex: '^\\.\\./(stages|run-pipeline|run-pipeline-stages|pipeline-dependencies)(/.*)?$', message: DECISIONS_MESSAGE },
+      ]),
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        { patterns: [{ regex: '^@llms-txt/db(/.*)?$', allowTypeImports: true, message: DECISIONS_MESSAGE }] },
+      ],
+    },
   },
   {
     files: ['apps/web/src/server/**/*.ts'],

@@ -10,14 +10,13 @@ import {
   type StoredPage,
 } from '@llms-txt/db';
 import { extractPage } from '@llms-txt/extractor';
+import { reconcilePage, type PageReconciliation } from '../decisions/reconcile-page';
+import { evaluateSafetyGate } from '../decisions/safety-gate';
 import {
   assessSitemapLastModifiedTrust,
-  evaluateSafetyGate,
   observeSitemapLastModified,
-  reconcilePage,
-  type PageReconciliation,
   type SitemapLastModifiedObservation,
-} from '@llms-txt/monitor';
+} from '../decisions/sitemap-trust';
 import type { PipelineStageDependencies } from '../pipeline-dependencies';
 import { PipelineRunFailure } from '../pipeline-run-failure';
 
