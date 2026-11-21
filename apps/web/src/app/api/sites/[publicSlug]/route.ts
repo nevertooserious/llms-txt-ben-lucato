@@ -1,4 +1,5 @@
 import { deleteSite } from '@llms-txt/db';
+import { apiError } from '../../../../server/api-response';
 import { loadSiteView } from '../../../../server/load-site-view';
 import { webServices } from '../../../../server/web-services';
 import { requestedSite } from '../../../../server/requested-site';
@@ -14,11 +15,11 @@ export async function GET(
     const { siteId, response } = await requestedSite(services.databasePool, publicSlug);
     if (response) return response;
     const view = await loadSiteView(siteId, publicSlug, { databasePool: services.databasePool });
-    if (view === null) return Response.json({ error: 'There is no site here.' }, { status: 404 });
+    if (view === null) return apiError(404, 'site_not_found', 'There is no site here.');
     return Response.json(view, { headers: { 'cache-control': 'no-store' } });
   } catch (error) {
     services.logger.error('loading site failed', { error });
-    return Response.json({ error: 'The site could not be loaded.' }, { status: 500 });
+    return apiError(500, 'internal_error', 'The site could not be loaded.');
   }
 }
 
@@ -35,6 +36,6 @@ export async function DELETE(
     return new Response(null, { status: 204 });
   } catch (error) {
     services.logger.error('deleting site failed', { error });
-    return Response.json({ error: 'The site could not be deleted.' }, { status: 500 });
+    return apiError(500, 'internal_error', 'The site could not be deleted.');
   }
 }

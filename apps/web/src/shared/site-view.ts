@@ -14,6 +14,18 @@ export interface PipelineRunView {
   finishedAt: string | null;
 }
 
+/** GET /api/sites/{publicSlug}/runs/{runId}. */
+export interface PipelineRunDetailView extends PipelineRunView {
+  pagesDiscoveredCount: number;
+  pagesFetchedCount: number;
+  pagesChangedCount: number;
+  pagesFailedCount: number;
+  /** The version this run published; null while active, or if it changed nothing or failed. */
+  versionNumber: number | null;
+  /** Where to get that version's text, or null if there is none. */
+  llmsTxtUrl: string | null;
+}
+
 export interface SiteView {
   publicSlug: string;
   rootUrl: string;
