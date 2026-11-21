@@ -79,6 +79,14 @@ export interface LinkSignals {
    * the generator uses to order pages that score the same.
    */
   navigationPosition: number | null;
+  /**
+   * The order in which the crawl first saw a link to the page, from 0: pages are read
+   * nearest the homepage first and links in the order they stand on a page, so this is
+   * the order of the site's own menus and sidebars. Null when no page read in this crawl
+   * links it (a page found only through the sitemap, or linked only from pages that
+   * answered 304). The generator uses it to order pages that score the same.
+   */
+  firstLinkPosition: number | null;
 }
 
 /** Discovery signals the generator uses to score pages. */

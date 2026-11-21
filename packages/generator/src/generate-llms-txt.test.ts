@@ -24,6 +24,7 @@ interface PageOptions {
   contentMarkdown?: string;
   navigationLabel?: string | null;
   navigationPosition?: number | null;
+  firstLinkPosition?: number | null;
   declaredSiteName?: string | null;
   assessment?: StoredPageAssessment;
 }
@@ -53,6 +54,7 @@ function page(path: string, options: PageOptions = {}): GeneratorPage {
       inboundLinkCount: options.inboundLinkCount ?? 0,
       navigationLabel: options.navigationLabel ?? null,
       navigationPosition: options.navigationPosition ?? null,
+      firstLinkPosition: options.firstLinkPosition ?? null,
     },
     markdownVariantUrl: options.markdownVariantUrl ?? null,
   };
@@ -380,6 +382,19 @@ describe('which pages are listed', () => {
     const linkedEverywhere = page('/filters', { inboundLinkCount: 5000 });
     const inNavigation = page('/product', { isInSiteNavigation: true });
     expect(listedUrls([linkedEverywhere, inNavigation])).toEqual([`${ORIGIN}/product`, `${ORIGIN}/filters`]);
+  });
+
+  it('orders pages that score the same and are not in the navigation as the site links them', () => {
+    // A docs sidebar: every page links every other, so they all score the same.
+    const pages = [
+      page('/docs/accent-color', { firstLinkPosition: 40 }),
+      page('/docs/installation', { firstLinkPosition: 2 }),
+      page('/docs/core-concepts', { firstLinkPosition: 3 }),
+      page('/docs/found-in-sitemap-only'),
+    ];
+    expect(listedUrls(pages)).toEqual(
+      ['installation', 'core-concepts', 'accent-color', 'found-in-sitemap-only'].map((name) => `${ORIGIN}/docs/${name}`),
+    );
   });
 
   it('orders pages that score the same as the navigation does', () => {

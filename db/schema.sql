@@ -188,6 +188,11 @@ create table pages (
   -- Where that link comes among the homepage's navigation links, from 0. The site's
   -- own order, used to order pages that score the same.
   navigation_position                  integer,
+  -- The order in which a crawl first saw a link to this page, from 0: the order of the
+  -- site's own menus and sidebars. Written by the first crawl that sees one and kept,
+  -- so the order of a published file does not move between checks. Orders pages that
+  -- score the same and that the navigation does not order.
+  first_link_position                  integer,
   sitemap_last_modified_at             timestamptz,
   -- Consecutive direct fetches that returned 404 or 410. removed_at is set at 2.
   -- Not being reached by a crawl does not count; only the page's own response does.

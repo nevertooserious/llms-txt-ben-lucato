@@ -163,6 +163,8 @@ class SiteCrawl {
   private readonly inboundLinkSources = new Map<string, Set<string>>();
   /** The first homepage navigation link to each URL: its text and where it comes among them. */
   private readonly navigationLinks = new Map<string, { label: string | null; position: number }>();
+  /** Each linked URL's place in the order the crawl first saw links, from 0. */
+  private readonly firstLinkPositions = new Map<string, number>();
   /** robots.txt rules of the site's other hosts, by origin, loaded when first needed. */
   private readonly relatedHostRobots = new Map<string, RobotsRules>();
   /** The related-host URLs the homepage navigation links, up to MAX_RELATED_HOST_PAGES. */
@@ -673,6 +675,7 @@ class SiteCrawl {
       let sources = this.inboundLinkSources.get(url);
       if (sources === undefined) this.inboundLinkSources.set(url, (sources = new Set()));
       sources.add(sourceUrl);
+      if (!this.firstLinkPositions.has(url)) this.firstLinkPositions.set(url, this.firstLinkPositions.size);
       this.addToFrontier(link, entry.crawlDepth + 1, 'page_link', null);
     }
   }
@@ -757,6 +760,7 @@ class SiteCrawl {
       inboundLinkCount: this.inboundLinkSources.get(url)?.size ?? 0,
       navigationLabel: this.navigationLinks.get(url)?.label ?? null,
       navigationPosition: this.navigationLinks.get(url)?.position ?? null,
+      firstLinkPosition: this.firstLinkPositions.get(url) ?? null,
     };
   }
 }
