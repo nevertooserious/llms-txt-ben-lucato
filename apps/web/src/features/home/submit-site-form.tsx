@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
+import { goToLoginIfSignedOut } from '@/browser/login-redirect';
 import { saveSite, sitePath } from '@/browser/saved-sites';
 
 interface SubmitResponse {
@@ -28,6 +29,7 @@ export function SubmitSiteForm() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ url }),
       });
+      goToLoginIfSignedOut(response);
       const body = (await response.json().catch(() => ({}))) as SubmitResponse;
       if (!response.ok || !body.publicSlug) {
         throw new Error(body.error ?? 'The site could not be submitted.');

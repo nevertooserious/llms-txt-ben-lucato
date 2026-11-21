@@ -43,12 +43,13 @@ describe('isAuthorised', () => {
 });
 
 describe('isPublicPath', () => {
-  it.each(['/w/abc/llms.txt', '/_next/static/chunks/app.js', '/_next/webpack-hmr'])('leaves %s public', (path) => {
+  it.each(['/login', '/w/abc/llms.txt', '/_next/static/chunks/app.js', '/_next/webpack-hmr'])('leaves %s public', (path) => {
     expect(isPublicPath(path)).toBe(true);
   });
 
   it.each([
     '/',
+    '/login/extra',
     '/w/abc',
     '/w/abc/llms.txt/extra',
     '/w/a/b/llms.txt',
