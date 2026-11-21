@@ -191,6 +191,11 @@ describe('generateLlmsTxt', () => {
     );
   });
 
+  it('titles a machine-readable file by its path as written when the path cannot be decoded', () => {
+    const llmsTxt = generate({ pages: [homepage], machineReadableResourceUrls: [`${ORIGIN}/docs%ff/llms.txt`] });
+    expect(llmsTxt).toContain(`- [docs%ff/llms.txt](${ORIGIN}/docs%ff/llms.txt): `);
+  });
+
   it('has no notes and no section of machine-readable files when there are none', () => {
     const pages = [homepage, page('/docs', { pageType: 'docs' })];
     expect(generate({ pages, siteNotes: [], machineReadableResourceUrls: [] })).toBe(generate({ pages }));
@@ -381,6 +386,13 @@ describe('generateLlmsTxt', () => {
     expect(line.endsWith('word…')).toBe(true);
     expect(line.length).toBeLessThan(400);
   });
+
+  it('does not cut a long description through the middle of a character', () => {
+    // No spaces to cut at, and the cut would fall between the two halves of the first emoji.
+    const llmsTxt = generate({ pages: [homepage, page('/long', { description: `${'a'.repeat(298)}${'😀'.repeat(10)}` })] });
+    const line = llmsTxt.split('\n').find((candidate) => candidate.includes('/long'))!;
+    expect(line.endsWith(`${'a'.repeat(298)}…`)).toBe(true);
+  });
 });
 
 describe('which pages are listed', () => {
@@ -524,6 +536,11 @@ describe('sections', () => {
       ],
     });
     expect(Object.keys(sections(llmsTxt))).toEqual(['Docs']);
+  });
+
+  it('gives no section to an area whose path segment has nothing to name it by', () => {
+    const llmsTxt = generate({ pages: [homepage, page('/-/one'), page('/-/two'), page('/-/three')] });
+    expect(Object.keys(sections(llmsTxt))).toEqual(['Pages']);
   });
 
   it('puts a job board under Optional', () => {

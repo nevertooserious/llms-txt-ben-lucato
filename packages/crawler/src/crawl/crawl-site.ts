@@ -85,7 +85,7 @@ export interface CrawlProgress {
   pagesFailed: number;
 }
 
-export type { CrawlFailure, CrawlResult, CrawlStopReason };
+export type { CrawlResult };
 
 const HTML_TYPES = ['text/html', 'application/xhtml+xml'];
 /** The sitemaps protocol caps a sitemap file at 50 MB uncompressed. */

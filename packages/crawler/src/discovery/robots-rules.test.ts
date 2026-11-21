@@ -45,6 +45,11 @@ describe('parseRobotsTxt', () => {
     expect(rules.crawlDelaySeconds).toBe(60);
   });
 
+  it('takes a Sitemap line that gives only a path as on the host of robots.txt', () => {
+    const rules = parseRobotsTxt(robotsTxtUrl, 'Sitemap: /sitemaps/pages.xml\nSitemap: http://[bad\n');
+    expect(rules.sitemapUrls).toEqual(['https://example.com/sitemaps/pages.xml']);
+  });
+
   it('parses only the first 500 KiB, as RFC 9309 allows', () => {
     const padding = `# ${'x'.repeat(500 * 1024)}\n`;
     const rules = parseRobotsTxt(robotsTxtUrl, `User-agent: *\nDisallow: /early\n${padding}Disallow: /late\n`);

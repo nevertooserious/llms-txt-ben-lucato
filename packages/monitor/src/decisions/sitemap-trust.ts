@@ -7,7 +7,7 @@ import { sitemapDate } from './reconcile-page';
 // an old and a new lastmod and an old and a new content digest.
 
 /** Observations a run needs, with no misses, before lastmod is trusted. */
-export const OBSERVATIONS_BEFORE_TRUST = 5;
+const OBSERVATIONS_BEFORE_TRUST = 5;
 
 export interface SitemapLastModifiedObservation {
   lastModifiedChanged: boolean;

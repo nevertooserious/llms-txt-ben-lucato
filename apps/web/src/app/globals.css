@@ -629,12 +629,6 @@ a.button:hover {
 
 /* --- side panels ---------------------------------------------------------------------- */
 
-.field {
-  margin-bottom: 20px;
-}
-.field:last-child {
-  margin-bottom: 0;
-}
 .hosted-field {
   margin-top: 16px;
 }

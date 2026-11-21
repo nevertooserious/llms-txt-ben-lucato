@@ -33,7 +33,6 @@ export async function createPipelineQueues(queue: Pick<PgBoss, 'createQueue'>): 
 export interface StartPipelineRunRequest {
   siteId: string;
   triggeredBy: PipelineTrigger;
-  /** Null for monitor runs. */
 }
 
 export type StartPipelineRunOutcome =

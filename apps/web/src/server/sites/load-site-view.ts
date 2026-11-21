@@ -6,6 +6,7 @@ import {
   type PipelineRunSummary,
 } from '@llms-txt/db';
 import { validateLlmsTxt } from '@llms-txt/generator';
+import { hostedLlmsTxtPath } from '@/server/http/api-response';
 import type { PipelineRunView, SiteView } from '@/shared/site-view';
 
 /** Everything the site screen shows: the site, its latest run, the published file. */
@@ -27,7 +28,7 @@ export async function loadSiteView(
     publicSlug,
     rootUrl: overview.rootUrl,
     siteTitle: overview.siteTitle,
-    hostedLlmsTxtPath: `/w/${encodeURIComponent(publicSlug)}/llms.txt`,
+    hostedLlmsTxtPath: hostedLlmsTxtPath(publicSlug),
     monitoring: {
       isEnabled: isMonitoringEnabled,
       enabledUntil: isMonitoringEnabled ? overview.monitoringEnabledUntil!.toISOString() : null,

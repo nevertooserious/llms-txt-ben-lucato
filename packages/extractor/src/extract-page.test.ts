@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { PageRecord } from '@llms-txt/contracts';
-import { extractLinks, extractPage, measureContentDensity, type ExtractPageInput } from './index';
+import { extractPage, type ExtractPageInput } from './index';
 
 // Each fixture in packages/extractor/fixtures/ is a saved page. Its expected result is
 // written by hand in fixtures/expected/: <name>.json holds the input and every
@@ -122,6 +122,18 @@ describe('extractPage rules', () => {
       expect(extract(html).title).toBe('Frequently asked questions');
     });
 
+    it('drops a bare permalink anchor, and keeps a heading that ends in the same character', () => {
+      expect(extract(page('', '<h1>Setup<a href="#setup">#</a></h1>')).title).toBe('Setup');
+      expect(extract(page('', '<h1>Setup <span>¶</span></h1>')).title).toBe('Setup');
+      expect(extract(page('<title>Docs - C#</title>', '<h1>C#</h1>')).title).toBe('Docs - C#');
+      expect(extract(page('', '<h1>C#</h1>')).title).toBe('C#');
+    });
+
+    it('does not take an inline icon\'s <title> for the page\'s', () => {
+      const html = page('', '<svg><title>Menu icon</title></svg><h1>From the heading</h1>');
+      expect(extract(html).title).toBe('From the heading');
+    });
+
     it('drops an icon anchor that titles built from the heading have copied', () => {
       const anchor = '<a class="header-link" aria-hidden="true" href="#setup"><i class="material-icons">link</i></a>';
       const head = '<title>Acme - Setuplink</title><meta property="og:title" content="Acme - Setuplink">';
@@ -169,6 +181,11 @@ describe('extractPage rules', () => {
       expect(extract(page('', '<main><h1>Only a heading</h1></main>')).description).toBeNull();
     });
 
+    it('reads meta names whatever their case', () => {
+      const html = page('<META NAME="Description" CONTENT="From the meta tag">', `<main><p>${longParagraph}</p></main>`);
+      expect(extract(html).description).toBe('From the meta tag');
+    });
+
     it('skips paragraphs shorter than 50 characters, such as bylines', () => {
       const body = `<main><p>By Dana Whitfield · 3 March 2026</p><p>${longParagraph}</p></main>`;
       expect(extract(page('', body)).description).toBe(longParagraph);
@@ -191,6 +208,24 @@ describe('extractPage rules', () => {
         { finalUrl: 'https://lumen.example/docs/' },
       );
       expect(record.contentMarkdown).toBe('See [configuration](https://lumen.example/docs/configuration).');
+    });
+
+    it('resolves links and the canonical URL against <base href>, and unlinks non-http targets', () => {
+      const record = extract(
+        page(
+          '<base href="https://lumen.example/v2/"><link rel="canonical" href="page">',
+          '<main><p><a href="intro">Intro</a>, <a href="mailto:help@lumen.example">email</a>, <a>no target</a>.</p></main>',
+        ),
+      );
+      expect(record.canonicalUrl).toBe('https://lumen.example/v2/page');
+      expect(record.contentMarkdown).toBe('[Intro](https://lumen.example/v2/intro), email, no target.');
+    });
+
+    it('numbers an ordered list from its start attribute, zero included', () => {
+      const list = (start: string) => page('', `<main><ol ${start}><li>First</li><li>Second</li></ol></main>`);
+      expect(extract(list('start="0"')).contentMarkdown).toBe('0. First\n1. Second');
+      expect(extract(list('start="x"')).contentMarkdown).toBe('1. First\n2. Second');
+      expect(extract(list('')).contentMarkdown).toBe('1. First\n2. Second');
     });
 
     it('writes ordered and nested lists as compact markdown', () => {
@@ -326,70 +361,5 @@ describe('extractPage rules', () => {
       expect(after.description).toBeNull();
       expect(after.listingFieldsHash).not.toBe(before.listingFieldsHash);
     });
-  });
-});
-
-describe('measureContentDensity', () => {
-  it('reports low density for an empty client-side app shell', () => {
-    expect(measureContentDensity(readFixture('client-app-shell'))).toEqual({ textLength: 0, linkCount: 0 });
-  });
-
-  it('reports high density for a server-rendered page', () => {
-    const density = measureContentDensity(readFixture('server-rendered-hydrated'));
-    expect(density.textLength).toBeGreaterThan(400);
-    // Every link in the body counts, chrome included: header (4) and footer (2).
-    expect(density.linkCount).toBe(6);
-  });
-
-  it('reports high density for a client-side app once rendered', () => {
-    const density = measureContentDensity(readFixture('client-app-rendered'));
-    expect(density.textLength).toBeGreaterThan(400);
-    // Top bar (4), sidebar (4) and bottom bar (2).
-    expect(density.linkCount).toBe(10);
-  });
-});
-
-describe('extractLinks', () => {
-  it('resolves relative links against the base URL', () => {
-    const html = page(
-      '',
-      `<a href="/pricing">Pricing</a>
-       <a href="cli#build">Build</a>
-       <a href="../blog/">Blog</a>
-       <a href="https://github.com/lumen-example/lumen">GitHub</a>`,
-    );
-    expect(extractLinks(html, 'https://lumen.example/docs/configuration')).toEqual([
-      'https://lumen.example/pricing',
-      'https://lumen.example/docs/cli',
-      'https://lumen.example/blog/',
-      'https://github.com/lumen-example/lumen',
-    ]);
-  });
-
-  it('honours <base href>, skips non-http schemes and removes duplicates', () => {
-    const html = page(
-      '<base href="https://lumen.example/v2/">',
-      `<a href="intro">Intro</a>
-       <a href="intro#setup">Intro again</a>
-       <a href="mailto:help@lumen.example">Email</a>
-       <a href="javascript:void(0)">Menu</a>
-       <a href="tel:+441234567890">Call</a>
-       <a>No href</a>`,
-    );
-    expect(extractLinks(html, 'https://lumen.example/docs/')).toEqual(['https://lumen.example/v2/intro']);
-  });
-
-  it('returns every link on a saved page, in document order', () => {
-    expect(extractLinks(readFixture('static-docs-page'), 'https://lumen.example/docs/configuration')).toEqual([
-      'https://lumen.example/',
-      'https://lumen.example/docs',
-      'https://lumen.example/blog',
-      'https://lumen.example/pricing',
-      'https://github.com/lumen-example/lumen',
-      'https://lumen.example/docs/installation',
-      'https://lumen.example/docs/configuration',
-      'https://lumen.example/docs/cli',
-      'https://lumen.example/legal/privacy',
-    ]);
   });
 });

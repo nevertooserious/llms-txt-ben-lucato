@@ -99,6 +99,8 @@ export function areaSectionNamesOf(
       return segments?.length === 1 && segments[0] === segment;
     });
     const name = sectionNameFromText(areaPage?.crawlSignals.navigationLabel ?? '') ?? titleCaseOf(segment);
+    // A segment of punctuation alone (`/-/`) names nothing, and an H2 needs a name.
+    if (name === '') continue;
     // An area named like a fixed section joins it, so no heading appears twice.
     names.set(segment, reservedNames.find((reserved) => reserved.toLowerCase() === name.toLowerCase()) ?? name);
   }
