@@ -78,3 +78,22 @@ describe('resolveSiteRootUrl', () => {
     expect(requested).toEqual(['/robots.txt']);
   });
 });
+
+describe('a site that refuses the crawler', () => {
+  it('records a 403 as a blocked fetch and passes no page on', async () => {
+    const port = await serve(() => (_request, response) => {
+      response.writeHead(403, { 'content-type': 'text/html' }).end('Forbidden');
+    });
+    const crawl = await collectCrawl({
+      rootUrl: `http://blocked.test:${port}`,
+      pageBudget: 5,
+      networkPolicy: allowLoopbackPorts([port]),
+      resolveHostname,
+      minRequestIntervalMs: 0,
+      requiresHeadlessRendering: false,
+    });
+    expect(crawl.pages).toEqual([]);
+    expect(crawl.pagesWithContentCount).toBe(0);
+    expect(crawl.failedFetches.map((failure) => failure.reason)).toEqual(['blocked']);
+  });
+});
