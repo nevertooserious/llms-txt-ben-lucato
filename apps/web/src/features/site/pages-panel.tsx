@@ -109,12 +109,28 @@ export function PagesPanel({ view, onChanged }: PagesPanelProps) {
         <span className="pages-panel-counts">
           {loaded === null ? 'Loading…' : `${pages.length} crawled · ${listedCount} listed · ${ignoredCount} ignored`}
         </span>
+        {/* In the summary so they stay in reach with the tree scrolled; a button does not toggle the section. */}
+        {(unsavedChangeCount > 0 || savedMessage) && (
+          <span className="pages-panel-actions" role="status">
+            {unsavedChangeCount > 0 ? (
+              <>
+                <span>
+                  {unsavedChangeCount} unsaved {unsavedChangeCount === 1 ? 'change' : 'changes'}
+                </span>
+                <button type="button" className="button" disabled={isSaving} onClick={() => setDraft(null)}>
+                  Discard
+                </button>
+                <button type="button" className="button" disabled={isSaving} onClick={save}>
+                  {isSaving ? 'Saving…' : 'Save and regenerate'}
+                </button>
+              </>
+            ) : (
+              <span>{savedMessage}</span>
+            )}
+          </span>
+        )}
       </summary>
-      <p className="hint">
-        Every page the crawl found, grouped by path. Untick a page to keep it out of the llms.txt. Untick a path to keep
-        out everything under it, including pages found by later checks. Pages marked “Not listed” were left out by the
-        generator and stay out either way.
-      </p>
+      <p className="hint">Untick a page(s) to tune what is included in your llms.txt.</p>
       {errorMessage && (
         <p className="form-error" role="status">
           {errorMessage}
@@ -127,27 +143,6 @@ export function PagesPanel({ view, onChanged }: PagesPanelProps) {
             <PathTreeNode key={item.label} item={item} depth={0} {...treeProps} />
           ))}
         </ul>
-      )}
-      {(unsavedChangeCount > 0 || savedMessage) && (
-        <div className="save-bar" role="status">
-          {unsavedChangeCount > 0 ? (
-            <>
-              <span>
-                {unsavedChangeCount} unsaved {unsavedChangeCount === 1 ? 'change' : 'changes'}
-              </span>
-              <span className="toolbar">
-                <button type="button" className="button" disabled={isSaving} onClick={() => setDraft(null)}>
-                  Discard
-                </button>
-                <button type="button" className="button" disabled={isSaving} onClick={save}>
-                  {isSaving ? 'Saving…' : 'Save and regenerate'}
-                </button>
-              </span>
-            </>
-          ) : (
-            <span>{savedMessage}</span>
-          )}
-        </div>
       )}
     </details>
   );
