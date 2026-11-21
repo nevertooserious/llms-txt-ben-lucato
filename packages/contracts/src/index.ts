@@ -79,6 +79,14 @@ export interface LinkSignals {
    * the generator uses to order pages that score the same.
    */
   navigationPosition: number | null;
+  /**
+   * The order in which the crawl first saw a link to the page, from 0: pages are read
+   * nearest the homepage first and links in the order they stand on a page, so this is
+   * the order of the site's own menus and sidebars. Null when no page read in this crawl
+   * links it (a page found only through the sitemap, or linked only from pages that
+   * answered 304). The generator uses it to order pages that score the same.
+   */
+  firstLinkPosition: number | null;
 }
 
 /** Discovery signals the generator uses to score pages. */
@@ -165,6 +173,34 @@ export interface CrawlResult {
   requiresHeadlessRendering: boolean;
   /** True when this crawl made the decision, so the caller can stamp when it was made. */
   decidedHeadlessRendering: boolean;
+  /**
+   * The site's own files for machines (see machineReadableResourceKindOf) that answered
+   * this crawl, as the site links them. Null when the crawl could not tell, because it
+   * ran out of time or one of them answered with an error: the caller keeps what it had.
+   */
+  machineReadableResourceUrls: string[] | null;
+}
+
+/**
+ * Files a site publishes for machines to read, which the llms.txt lists beside its pages:
+ * the site's whole content in one file, an llms.txt for one part of the site, and an
+ * OpenAPI description of its API.
+ */
+export const MACHINE_READABLE_RESOURCE_KINDS = ['llms_full_txt', 'llms_txt_index', 'openapi_description'] as const;
+export type MachineReadableResourceKind = (typeof MACHINE_READABLE_RESOURCE_KINDS)[number];
+
+/** Which kind of machine-readable file a URL names, going by its file name; null for any other URL. */
+export function machineReadableResourceKindOf(url: string): MachineReadableResourceKind | null {
+  let fileName: string;
+  try {
+    fileName = new URL(url).pathname.split('/').pop()!.toLowerCase();
+  } catch {
+    return null;
+  }
+  if (fileName === 'llms-full.txt') return 'llms_full_txt';
+  if (fileName === 'llms.txt') return 'llms_txt_index';
+  if (/^(openapi|swagger)\.(json|ya?ml)$/.test(fileName)) return 'openapi_description';
+  return null;
 }
 
 /** Extractor output. Mirrors the extractor's column group in `pages`. */

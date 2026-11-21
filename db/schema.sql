@@ -40,6 +40,10 @@ create table sites (
   -- the homepage's title and description, and the listed navigation pages' titles.
   -- Narrow on purpose, so routine new content does not reword the summary.
   generated_summary_source_hash    text,
+  -- Generator: notes under the summary, each one line, written by the same LLM call as
+  -- the summary and cached on the same hash. Empty for most sites: a note is only for
+  -- something an assistant would get wrong from the links alone.
+  generated_notes                  text[] not null default '{}',
 
   -- Monitor state. A fixed interval; users can also trigger a check by hand.
   monitor_check_interval           interval not null default interval '7 days',
@@ -57,6 +61,10 @@ create table sites (
   -- so a site that moves to server rendering is noticed.
   requires_headless_rendering      boolean,
   headless_rendering_decided_at    timestamptz,
+  -- Crawler: the site's own files for machines, as it links them: llms-full.txt, an
+  -- llms.txt for one part of the site, an OpenAPI description. Each is requested again on
+  -- every crawl and kept while it answers; a crawl that could not tell leaves this alone.
+  machine_readable_resource_urls   text[] not null default '{}',
 
   created_at                       timestamptz not null default now(),
 
@@ -188,6 +196,11 @@ create table pages (
   -- Where that link comes among the homepage's navigation links, from 0. The site's
   -- own order, used to order pages that score the same.
   navigation_position                  integer,
+  -- The order in which a crawl first saw a link to this page, from 0: the order of the
+  -- site's own menus and sidebars. Written by the first crawl that sees one and kept,
+  -- so the order of a published file does not move between checks. Orders pages that
+  -- score the same and that the navigation does not order.
+  first_link_position                  integer,
   sitemap_last_modified_at             timestamptz,
   -- Consecutive direct fetches that returned 404 or 410. removed_at is set at 2.
   -- Not being reached by a crawl does not count; only the page's own response does.

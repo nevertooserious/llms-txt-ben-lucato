@@ -6,4 +6,6 @@
 
 - [Introduction](/guides/intro.md): Start here
 - [Setup](/guides/setup.md): Install and configure
+- [API description](/api/openapi.json): The API, for machines
+- [Guides index](/guides/llms.txt): An index that is not there
 - [Elsewhere](https://example.com/not-in-scope): An external link the crawler must ignore

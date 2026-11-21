@@ -8,6 +8,7 @@ import {
   pageAssessmentSourceHash,
   pagesToAssess,
   siteSummarySourceHash,
+  type GeneratedSiteSummary,
   type LlmClient,
 } from '@llms-txt/generator';
 import type { Logger } from '@llms-txt/runtime';
@@ -27,10 +28,11 @@ export interface LlmEnrichmentRequest {
 export interface LlmEnrichmentResult {
   pages: GeneratorPage[];
   siteSummary: string | null;
+  siteNotes: string[];
 }
 
 /**
- * Assesses pages whose inputs changed, then rewrites the summary if its inputs changed.
+ * Assesses pages whose inputs changed, then rewrites the summary and its notes if their inputs changed.
  * Each result is saved as it arrives, so a failed run does not pay for it twice.
  *
  * A page with an older assessment keeps it when the LLM is unavailable. A new page
@@ -79,20 +81,23 @@ export async function enrichPagesWithLlm(request: LlmEnrichmentRequest): Promise
   const assessedPages = merged.filter((page) => !unassessedCandidates.has(page.record.normalisedUrl));
 
   const sourceHash = siteSummarySourceHash(siteTitle, assessedPages);
+  const previous = { siteSummary: site.generatedSummary, siteNotes: site.generatedNotes };
   if (site.generatedSummary !== null && site.generatedSummarySourceHash === sourceHash) {
-    return { pages: assessedPages, siteSummary: site.generatedSummary };
+    return { pages: assessedPages, ...previous };
   }
-  let text: string;
+  let written: GeneratedSiteSummary;
   try {
-    text = await llmClient.writeSiteSummary(buildSiteSummaryInput(siteTitle, assessedPages, site.generatedSummary));
+    written = await llmClient.writeSiteSummary(
+      buildSiteSummaryInput(siteTitle, assessedPages, { summary: site.generatedSummary, notes: site.generatedNotes }),
+    );
   } catch (error) {
     if (error instanceof LlmOutputRejectedError || site.generatedSummary !== null) {
       logger.warn('site summary not updated', { error });
-      return { pages: assessedPages, siteSummary: site.generatedSummary };
+      return { pages: assessedPages, ...previous };
     }
     logger.warn('site summary failed', { error });
     throw new PipelineRunFailure('The LLM could not be reached to write the site summary; the published file was left alone.');
   }
-  await saveGeneratedSummary(databasePool, site.id, { text, sourceHash });
-  return { pages: assessedPages, siteSummary: text };
+  await saveGeneratedSummary(databasePool, site.id, { text: written.summary, notes: written.notes, sourceHash });
+  return { pages: assessedPages, siteSummary: written.summary, siteNotes: written.notes };
 }

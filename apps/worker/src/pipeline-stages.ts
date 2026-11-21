@@ -168,6 +168,7 @@ export async function runPipelineStages(
     requiresHeadlessRendering: site.requiresHeadlessRendering,
     knownPages: [...storedPages.values()].map(knownPageFrom),
     sitemapLastModifiedIsTrusted: site.sitemapLastModifiedIsTrusted,
+    knownMachineReadableResourceUrls: site.machineReadableResourceUrls,
     onProgress: (progress) => (pagesDiscoveredCount = progress.pagesDiscovered),
     onPage: async (page) => {
       await handlePage(page);
@@ -205,6 +206,7 @@ export async function runPipelineStages(
     requiresHeadlessRendering: crawl.requiresHeadlessRendering,
     decidedHeadlessRendering: crawl.decidedHeadlessRendering,
     sitemapLastModifiedIsTrusted: assessSitemapLastModifiedTrust(site.sitemapLastModifiedIsTrusted, trustObservations),
+    machineReadableResourceUrls: crawl.machineReadableResourceUrls,
   });
 
   // --- generate and publish, per workspace ---------------------------------------------
@@ -217,7 +219,7 @@ export async function runPipelineStages(
   if (siteTitle !== null && renderedSiteTitle !== siteTitle) {
     await saveSiteTitle(databasePool, site.id, renderedSiteTitle);
   }
-  const { pages: generatorPages, siteSummary } = dependencies.llmClient
+  const { pages: generatorPages, siteSummary, siteNotes } = dependencies.llmClient
     ? await enrichPagesWithLlm({
         databasePool,
         logger,
@@ -226,7 +228,7 @@ export async function runPipelineStages(
         siteTitle: renderedSiteTitle,
         pages: loadedPages,
       })
-    : { pages: loadedPages, siteSummary: site.generatedSummary };
+    : { pages: loadedPages, siteSummary: site.generatedSummary, siteNotes: site.generatedNotes };
   // Judged for the site, before any workspace's exclusions: a user may empty their own
   // file. A site that has published before is let through: its pages went one by one, on
   // their own 404s, and the file should lose those links rather than keep them.
@@ -244,6 +246,8 @@ export async function runPipelineStages(
       const rendered = dependencies.renderLlmsTxt({
         siteTitle: renderedSiteTitle,
         siteSummary,
+        siteNotes,
+        machineReadableResourceUrls: crawl.machineReadableResourceUrls ?? site.machineReadableResourceUrls,
         pages: generatorPages,
         overrides: await loadWorkspaceOverrides(databasePool, workspaceId),
       });

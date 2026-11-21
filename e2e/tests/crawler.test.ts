@@ -208,6 +208,19 @@ describe('discovery', () => {
     expect(pageAt(result, site, '/').crawlSignals.crawlDepth).toBe(0);
   });
 
+  it('numbers pages in the order it first saw links to them', async () => {
+    const result = await crawl('hydrated-site', { requiresHeadlessRendering: false });
+    const positions = Object.values(result.linkSignals)
+      .map((signals) => signals.firstLinkPosition)
+      .filter((position) => position !== null);
+    // Every linked page has its own place, counted from 0 with no gaps.
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions.map((_position, index) => index));
+    // The homepage's own links come before those first seen on the pages it links.
+    const depthOneLast = Math.max(...result.pages.filter((page) => page.crawlSignals.crawlDepth === 1).map((page) => result.linkSignals[page.normalisedUrl]!.firstLinkPosition!));
+    const deeper = result.pages.filter((page) => page.crawlSignals.crawlDepth > 1).map((page) => result.linkSignals[page.normalisedUrl]!.firstLinkPosition!);
+    for (const position of deeper) expect(position).toBeGreaterThan(depthOneLast);
+  });
+
   it('respects the page budget on a large sitemap index', async () => {
     const site = sites['large-sitemap-site'];
     const result = await crawl('large-sitemap-site', { pageBudget: 25 });
@@ -227,6 +240,26 @@ describe('discovery', () => {
     const result = await crawl('markdown-site');
     expect(pageAt(result, site, '/guides/setup').crawlSignals.discoveredVia).toBe('existing_llms_txt');
     expect(result.pages.every((page) => page.normalisedUrl.startsWith(site.origin))).toBe(true);
+  });
+
+  it('finds the site’s machine-readable files, and only those that are there', async () => {
+    const site = sites['markdown-site'];
+    const result = await crawl('markdown-site');
+    // /guides/llms.txt is linked but answers 404; the root llms.txt is what the generated file replaces.
+    expect(result.machineReadableResourceUrls).toEqual([`${site.origin}/llms-full.txt`, `${site.origin}/api/openapi.json`]);
+    expect(result.pages.some((page) => page.normalisedUrl.includes('openapi'))).toBe(false);
+  });
+
+  it('checks known machine-readable files again and drops one that has gone', async () => {
+    const site = sites['static-site'];
+    const result = await crawl('static-site', { knownMachineReadableResourceUrls: [`${site.origin}/api/openapi.json`] });
+    expect(result.machineReadableResourceUrls).toEqual([]);
+  });
+
+  it('cannot tell which machine-readable files exist when one answers with an error', async () => {
+    const site = sites['static-site'];
+    const result = await crawl('static-site', { knownMachineReadableResourceUrls: [`${site.origin}/broken/openapi.json`] });
+    expect(result.machineReadableResourceUrls).toBeNull();
   });
 
   it('links .md variants where they exist', async () => {

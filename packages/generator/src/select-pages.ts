@@ -255,7 +255,8 @@ export function homepageOf(pages: readonly GeneratorPage[]): GeneratorPage | und
  * Takes the listing candidates, minus pages a workspace excluded or an assessment judged
  * not to belong; keeps one page per canonical URL; drops pages that score too low; then
  * fills the sections in score order within the limits. Pages that score the same keep
- * the order of the site's navigation, then of their URLs. A page beyond a limit is left
+ * the order of the site's navigation, then the order the crawl first saw links to them,
+ * then of their URLs. A page beyond a limit is left
  * out: Optional holds pages that are secondary by nature, not the overflow. An
  * assessment's page type replaces the extractor's.
  */
@@ -277,6 +278,7 @@ export function selectPages(
       (a, b) =>
         b.score - a.score ||
         navigationOrderOf(a.page) - navigationOrderOf(b.page) ||
+        linkOrderOf(a.page) - linkOrderOf(b.page) ||
         compareText(a.page.record.normalisedUrl, b.page.record.normalisedUrl),
     );
 
@@ -336,6 +338,16 @@ export function selectPages(
 /** Pages that score the same keep the order the site's navigation gives them; the rest follow. */
 function navigationOrderOf(page: GeneratorPage): number {
   return page.crawlSignals.navigationPosition ?? Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * Then the order in which the crawl first saw links to them, which is the order of the
+ * site's sidebars and index pages. A documentation site links every page from every
+ * page, so its pages all score the same, and without this the first entries of a
+ * section would be whichever URLs come first in the alphabet.
+ */
+function linkOrderOf(page: GeneratorPage): number {
+  return page.crawlSignals.firstLinkPosition ?? Number.MAX_SAFE_INTEGER;
 }
 
 /**

@@ -153,7 +153,12 @@ export async function saveCrawledPage(
   );
 }
 
-/** Writes the link signals the crawl only knows at its end. Pages not listed keep theirs. */
+/**
+ * Writes the link signals the crawl only knows at its end. Pages not listed keep theirs.
+ * first_link_position is written once and kept: a later check reads fewer pages (304s
+ * have no links to read), so its numbering is not comparable with the first crawl's,
+ * and an order that moved between checks would republish a file nothing changed in.
+ */
 export async function saveLinkSignals(
   database: Queryable,
   siteId: string,
@@ -166,10 +171,11 @@ export async function saveLinkSignals(
         set is_in_site_navigation = signals.is_in_site_navigation,
             inbound_link_count = signals.inbound_link_count,
             navigation_label = signals.navigation_label,
-            navigation_position = signals.navigation_position
-       from unnest($2::text[], $3::boolean[], $4::integer[], $5::text[], $6::integer[])
+            navigation_position = signals.navigation_position,
+            first_link_position = coalesce(pages.first_link_position, signals.first_link_position)
+       from unnest($2::text[], $3::boolean[], $4::integer[], $5::text[], $6::integer[], $7::integer[])
             as signals (normalised_url, is_in_site_navigation, inbound_link_count, navigation_label,
-                        navigation_position)
+                        navigation_position, first_link_position)
       where pages.site_id = $1 and pages.normalised_url = signals.normalised_url`,
     [
       siteId,
@@ -178,6 +184,7 @@ export async function saveLinkSignals(
       entries.map(([, signals]) => signals.inboundLinkCount),
       entries.map(([, signals]) => signals.navigationLabel),
       entries.map(([, signals]) => signals.navigationPosition),
+      entries.map(([, signals]) => signals.firstLinkPosition),
     ],
   );
 }
@@ -250,6 +257,7 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
     inbound_link_count: number;
     navigation_label: string | null;
     navigation_position: number | null;
+    first_link_position: number | null;
     has_noindex_directive: boolean;
     markdown_variant_url: string | null;
     generated_description: string | null;
@@ -261,7 +269,8 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
     `select normalised_url, fetch_url, canonical_url, extracted_title, extracted_description,
             declared_site_name, page_type, language_code, content_markdown, content_digest,
             listing_fields_hash, crawl_depth, discovered_via, is_in_site_navigation,
-            inbound_link_count, navigation_label, navigation_position, has_noindex_directive,
+            inbound_link_count, navigation_label, navigation_position, first_link_position,
+            has_noindex_directive,
             markdown_variant_url, generated_description, assessed_page_type, listing_value,
             exclusion_reason, assessment_source_hash
        from pages
@@ -302,6 +311,7 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
       inboundLinkCount: row.inbound_link_count,
       navigationLabel: row.navigation_label,
       navigationPosition: row.navigation_position,
+      firstLinkPosition: row.first_link_position,
     },
     markdownVariantUrl: row.markdown_variant_url,
   }));

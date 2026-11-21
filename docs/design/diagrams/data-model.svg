@@ -32,7 +32,7 @@
   <line class="sep" x1="20" y1="72" x2="300" y2="72"/>
   <text class="f" x="34" y="92">id, root_url (unique)</text>
   <text class="f" x="34" y="110">site_title</text>
-  <text class="f" x="34" y="128">generated_summary</text>
+  <text class="f" x="34" y="128">generated_summary, generated_notes</text>
   <text class="f" x="34" y="146">generated_summary_source_hash</text>
   <text class="f" x="34" y="164">monitor_check_interval</text>
   <text class="f" x="34" y="182">next_monitor_check_at</text>
@@ -40,6 +40,7 @@
   <text class="f" x="34" y="218">sitemap_lastmod_is_trusted</text>
   <text class="f" x="34" y="236">requires_headless_rendering</text>
   <text class="f" x="34" y="254">headless_rendering_decided_at</text>
+  <text class="f" x="34" y="272">machine_readable_resource_urls</text>
 
   <!-- site_workspaces -->
   <rect class="b" x="20" y="330" width="280" height="174" rx="6"/>
@@ -68,9 +69,9 @@
   <text class="g" x="394" y="136">crawler</text>
   <text class="f" x="466" y="136">http_status_code, http_etag</text>
   <text class="f" x="466" y="154">http_last_modified, last_fetched_at</text>
-  <text class="f" x="466" y="172">fetch_method, crawl_depth</text>
+  <text class="f" x="466" y="172">crawl_depth, first_link_position</text>
   <text class="f" x="466" y="190">discovered_via, inbound_link_count</text>
-  <text class="f" x="466" y="208">is_in_site_navigation</text>
+  <text class="f" x="466" y="208">is_in_site_navigation, fetch_method</text>
   <text class="f" x="466" y="226">sitemap_last_modified_at</text>
   <text class="f" x="466" y="244">consecutive_not_found_count</text>
   <text class="f" x="466" y="262">markdown_variant_url</text>

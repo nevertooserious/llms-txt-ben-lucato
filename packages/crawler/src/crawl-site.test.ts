@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { machineReadableResourceKindOf } from '@llms-txt/contracts';
 import { htmlUrlForMarkdownLink, markdownVariantUrlFor, parseRetryAfter } from './crawl-site';
 
 // crawlSite itself runs against fixture sites in e2e/tests/crawler.test.ts.
@@ -16,6 +17,20 @@ describe('markdownVariantUrlFor', () => {
   it('does not probe query URLs or markdown URLs', () => {
     expect(markdownVariantUrlFor('https://example.com/search?q=x')).toBeNull();
     expect(markdownVariantUrlFor('https://example.com/a.md')).toBeNull();
+  });
+});
+
+describe('machineReadableResourceKindOf', () => {
+  it.each([
+    ['https://example.com/llms-full.txt', 'llms_full_txt'],
+    ['https://example.com/workers/llms.txt', 'llms_txt_index'],
+    ['https://example.com/api/OpenAPI.yaml?v=2', 'openapi_description'],
+    ['https://example.com/swagger.json', 'openapi_description'],
+    ['https://example.com/docs/openapi', null],
+    ['https://example.com/notes.txt', null],
+    ['not a url', null],
+  ])('%s -> %s', (url, expected) => {
+    expect(machineReadableResourceKindOf(url)).toBe(expected);
   });
 });
 
