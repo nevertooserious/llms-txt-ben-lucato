@@ -106,6 +106,8 @@ export interface SiteForRun {
   siteTitle: string | null;
   generatedSummary: string | null;
   generatedSummarySourceHash: string | null;
+  generatedNotes: string[];
+  machineReadableResourceUrls: string[];
   /** Null when undecided, or decided over 30 days ago, so the crawl decides again. */
   requiresHeadlessRendering: boolean | null;
   sitemapLastModifiedIsTrusted: boolean;
@@ -118,11 +120,13 @@ export async function loadSiteForRun(database: Queryable, siteId: string): Promi
     site_title: string | null;
     generated_summary: string | null;
     generated_summary_source_hash: string | null;
+    generated_notes: string[];
+    machine_readable_resource_urls: string[];
     requires_headless_rendering: boolean | null;
     sitemap_lastmod_is_trusted: boolean;
   }>(
-    `select id, root_url, site_title, generated_summary, generated_summary_source_hash,
-            sitemap_lastmod_is_trusted,
+    `select id, root_url, site_title, generated_summary, generated_summary_source_hash, generated_notes,
+            machine_readable_resource_urls, sitemap_lastmod_is_trusted,
             case when headless_rendering_decided_at > now() - ${HEADLESS_DECISION_MAX_AGE}
                  then requires_headless_rendering end as requires_headless_rendering
        from sites
@@ -137,6 +141,8 @@ export async function loadSiteForRun(database: Queryable, siteId: string): Promi
     siteTitle: row.site_title,
     generatedSummary: row.generated_summary,
     generatedSummarySourceHash: row.generated_summary_source_hash,
+    generatedNotes: row.generated_notes,
+    machineReadableResourceUrls: row.machine_readable_resource_urls,
     requiresHeadlessRendering: row.requires_headless_rendering,
     sitemapLastModifiedIsTrusted: row.sitemap_lastmod_is_trusted,
   };
@@ -147,6 +153,8 @@ export interface SiteCrawlOutcome {
   /** True when this crawl made the rendering decision, which then gets a new timestamp. */
   decidedHeadlessRendering: boolean;
   sitemapLastModifiedIsTrusted: boolean;
+  /** Null when the crawl could not tell, so the stored list stands. */
+  machineReadableResourceUrls: string[] | null;
 }
 
 /** The crawler's site-level findings. */
@@ -159,21 +167,28 @@ export async function saveSiteCrawlOutcome(
     `update sites
         set requires_headless_rendering = case when $3 then $2 else requires_headless_rendering end,
             headless_rendering_decided_at = case when $3 then now() else headless_rendering_decided_at end,
-            sitemap_lastmod_is_trusted = $4
+            sitemap_lastmod_is_trusted = $4,
+            machine_readable_resource_urls = coalesce($5, machine_readable_resource_urls)
       where id = $1`,
-    [siteId, outcome.requiresHeadlessRendering, outcome.decidedHeadlessRendering, outcome.sitemapLastModifiedIsTrusted],
+    [
+      siteId,
+      outcome.requiresHeadlessRendering,
+      outcome.decidedHeadlessRendering,
+      outcome.sitemapLastModifiedIsTrusted,
+      outcome.machineReadableResourceUrls,
+    ],
   );
 }
 
-/** The generator's site-level output: the summary and the hash of its inputs. */
+/** The generator's site-level output: the summary, the notes under it, and the hash of their inputs. */
 export async function saveGeneratedSummary(
   database: Queryable,
   siteId: string,
-  summary: { text: string; sourceHash: string },
+  summary: { text: string; notes: string[]; sourceHash: string },
 ): Promise<void> {
   await database.query(
-    'update sites set generated_summary = $2, generated_summary_source_hash = $3 where id = $1',
-    [siteId, summary.text, summary.sourceHash],
+    'update sites set generated_summary = $2, generated_notes = $3, generated_summary_source_hash = $4 where id = $1',
+    [siteId, summary.text, summary.notes, summary.sourceHash],
   );
 }
 

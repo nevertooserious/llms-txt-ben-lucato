@@ -160,6 +160,11 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
       );
     });
 
+    it('lists the site’s machine-readable files in a section of their own', async () => {
+      const { site, llmsTxt } = await generate('markdown-site');
+      expect(sections(llmsTxt)['Machine-readable resources']).toEqual([`${site.origin}/llms-full.txt`, `${site.origin}/api/openapi.json`]);
+    });
+
     it('stays under a subpath root_url', async () => {
       const result = await generate('static-site', '/docs');
       expect(listedUrls(result.llmsTxt).every((url) => url.startsWith(`${result.site.origin}/docs/`))).toBe(true);

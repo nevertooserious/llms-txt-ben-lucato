@@ -1,4 +1,10 @@
-import type { GeneratorPage, WorkspacePageOverride } from '@llms-txt/contracts';
+import {
+  MACHINE_READABLE_RESOURCE_KINDS,
+  machineReadableResourceKindOf,
+  type GeneratorPage,
+  type MachineReadableResourceKind,
+  type WorkspacePageOverride,
+} from '@llms-txt/contracts';
 import {
   alternativeTitlesOf,
   buildEntryTextContext,
@@ -12,6 +18,7 @@ import {
 import {
   DEFAULT_SELECTION_LIMITS,
   homepageOf,
+  OPTIONAL_SECTION_NAME,
   sectionNamesInOrder,
   selectPages,
   type SelectedPage,
@@ -25,6 +32,10 @@ export interface GenerateLlmsTxtInput {
   siteTitle: string;
   /** Cached site summary; written by the LLM only when its inputs change. Null falls back to the homepage's description. */
   siteSummary: string | null;
+  /** Cached with the summary: one line each, for what the links cannot say. Usually none. */
+  siteNotes?: readonly string[];
+  /** The site's own files for machines (llms-full.txt, a section's llms.txt, an OpenAPI description). */
+  machineReadableResourceUrls?: readonly string[];
   pages: GeneratorPage[];
   overrides: WorkspacePageOverride[];
   limits?: SelectionLimits;
@@ -37,9 +48,15 @@ export interface GenerateLlmsTxtInput {
  *
  *   > Summary
  *
+ *   - A note
+ *
  *   ## Docs
  *
  *   - [Title](url): description
+ *
+ *   ## Machine-readable resources
+ *
+ *   - [llms-full.txt](url): description
  *
  *   ## Optional
  *
@@ -56,13 +73,27 @@ export function generateLlmsTxt(input: GenerateLlmsTxtInput): string {
 
   const blocks: string[] = [`# ${siteTitle || 'Untitled site'}`];
   if (summary !== '') blocks.push(`> ${summary}`);
-  for (const sectionName of sectionNamesInOrder(selected)) {
-    const entries = selected.filter((entry) => entry.sectionName === sectionName);
-    blocks.push(
-      `## ${sectionName}`,
-      entries.map((entry) => renderEntry(entry, titles.get(entry.page.record.normalisedUrl)!, context)).join('\n'),
-    );
+  const notes = (input.siteNotes ?? []).map((note) => truncate(singleLine(note))).filter((note) => note !== '');
+  if (notes.length > 0) blocks.push(notes.map((note) => `- ${note}`).join('\n'));
+
+  const sections = sectionNamesInOrder(selected).map((sectionName) => ({
+    sectionName,
+    lines: selected
+      .filter((entry) => entry.sectionName === sectionName)
+      .map((entry) => renderEntry(entry, titles.get(entry.page.record.normalisedUrl)!, context)),
+  }));
+  const resourceLines = machineReadableResourceLines(input.machineReadableResourceUrls ?? []);
+  if (resourceLines.length > 0) {
+    const sameName = sections.find((section) => section.sectionName === MACHINE_READABLE_SECTION_NAME);
+    if (sameName !== undefined) sameName.lines.push(...resourceLines);
+    else {
+      // Last of what a reader should keep: Optional is what it may skip.
+      const optionalIndex = sections.findIndex((section) => section.sectionName === OPTIONAL_SECTION_NAME);
+      const resourceSection = { sectionName: MACHINE_READABLE_SECTION_NAME, lines: resourceLines };
+      sections.splice(optionalIndex === -1 ? sections.length : optionalIndex, 0, resourceSection);
+    }
   }
+  for (const section of sections) blocks.push(`## ${section.sectionName}`, section.lines.join('\n'));
   const llmsTxt = `${blocks.join('\n\n')}\n`;
 
   const validation = validateLlmsTxt(llmsTxt);
@@ -96,6 +127,31 @@ function renderEntry(entry: SelectedPage, title: string, context: EntryTextConte
   // A description that only repeats the title adds nothing to the line.
   if (normaliseForComparison(description) === normaliseForComparison(title)) description = '';
   return `- [${escapeTitle(title)}](${url})${description === '' ? '' : `: ${description}`}`;
+}
+
+export const MACHINE_READABLE_SECTION_NAME = 'Machine-readable resources';
+
+/** Said of every file of a kind: what it is, not what this site's says, since it is not read. */
+const MACHINE_READABLE_RESOURCE_DESCRIPTIONS: Record<MachineReadableResourceKind, string> = {
+  llms_full_txt: "The full text of the site's pages in one file.",
+  llms_txt_index: 'An llms.txt index for this part of the site.',
+  openapi_description: 'Machine-readable OpenAPI description of the API.',
+};
+
+/** One entry per file, titled by its path (`docs/llms.txt`), kinds in a fixed order and URLs in theirs. */
+function machineReadableResourceLines(urls: readonly string[]): string[] {
+  const resources = [...new Set(urls)]
+    .map((url) => ({ url, kind: machineReadableResourceKindOf(url) }))
+    .filter((resource): resource is { url: string; kind: MachineReadableResourceKind } => resource.kind !== null)
+    .sort(
+      (a, b) =>
+        MACHINE_READABLE_RESOURCE_KINDS.indexOf(a.kind) - MACHINE_READABLE_RESOURCE_KINDS.indexOf(b.kind) ||
+        (a.url < b.url ? -1 : a.url > b.url ? 1 : 0),
+    );
+  return resources.map(({ url, kind }) => {
+    const title = singleLine(decodeURI(new URL(url).pathname).replace(/^\//, ''));
+    return `- [${escapeTitle(title)}](${encodeEntryUrl(url)}): ${MACHINE_READABLE_RESOURCE_DESCRIPTIONS[kind]}`;
+  });
 }
 
 function escapeTitle(title: string): string {

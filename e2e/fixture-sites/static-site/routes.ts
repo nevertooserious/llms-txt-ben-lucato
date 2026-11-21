@@ -6,6 +6,11 @@ import type { FixtureRoutes } from '../../support/fixture-site-server';
 const originOf = (request: IncomingMessage) => `http://${request.headers.host ?? 'localhost'}`;
 
 export const routes: FixtureRoutes = {
+  // A machine-readable file whose server is failing: that says nothing about whether it exists.
+  '/broken/openapi.json': (_request, response) => {
+    response.writeHead(500, { 'content-type': 'text/plain' }).end('internal error');
+  },
+
   '/robots.txt': (request, response) => {
     response.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' }).end(
       ['User-agent: *', 'Disallow: /private/', '', `Sitemap: ${originOf(request)}/sitemap.xml`, ''].join('\n'),

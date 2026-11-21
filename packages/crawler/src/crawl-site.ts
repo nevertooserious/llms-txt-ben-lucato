@@ -1,13 +1,14 @@
-import type {
-  CrawlFailure,
-  CrawlFailureReason,
-  CrawlResult,
-  CrawlStopReason,
-  DiscoverySource,
-  FetchMethod,
-  KnownPage,
-  LinkSignals,
-  RawPage,
+import {
+  machineReadableResourceKindOf,
+  type CrawlFailure,
+  type CrawlFailureReason,
+  type CrawlResult,
+  type CrawlStopReason,
+  type DiscoverySource,
+  type FetchMethod,
+  type KnownPage,
+  type LinkSignals,
+  type RawPage,
 } from '@llms-txt/contracts';
 import { looksLikeBotChallenge } from './detect-bot-challenge';
 import { HeadlessRenderer } from './headless-renderer';
@@ -28,7 +29,7 @@ import type { HostnameResolver, NetworkPolicy } from './ssrf-guard';
 export interface CrawlSiteOptions {
   /** sites.root_url: scheme, host and optional path prefix. */
   rootUrl: string;
-  /** Most pages to fetch. Discovery requests (robots.txt, sitemaps, llms.txt, .md probes) do not count. */
+  /** Most pages to fetch. Discovery requests (robots.txt, sitemaps, llms.txt, .md probes, machine-readable files) do not count. */
   pageBudget: number;
   /**
    * sites.requires_headless_rendering from an earlier crawl. When null or absent, this
@@ -71,6 +72,11 @@ export interface CrawlSiteOptions {
    * not moved since the last crawl is not requested at all.
    */
   sitemapLastModifiedIsTrusted?: boolean;
+  /**
+   * sites.machine_readable_resource_urls from earlier crawls. Each is checked again, so a
+   * file found through a page that answers 304 this time is not lost with the link to it.
+   */
+  knownMachineReadableResourceUrls?: readonly string[];
 }
 
 export interface CrawlProgress {
@@ -99,6 +105,10 @@ const MARKDOWN_PROBES_BEFORE_GIVING_UP = 3;
  * page; its links are not followed. Stored pages on those hosts are re-checked besides.
  */
 const MAX_RELATED_HOST_PAGES = 15;
+/** Most machine-readable files (llms-full.txt, a section's llms.txt, an OpenAPI description) requested per crawl. */
+const MAX_MACHINE_READABLE_RESOURCE_CHECKS = 20;
+/** Enough to learn that such a file is there; its content is not read. */
+const MACHINE_READABLE_RESOURCE_BYTES_READ = 64 * 1024;
 
 // Seeds of the same depth are fetched in this order.
 const SOURCE_PRIORITY: Record<DiscoverySource, number> = {
@@ -170,6 +180,9 @@ class SiteCrawl {
   /** The related-host URLs the homepage navigation links, up to MAX_RELATED_HOST_PAGES. */
   private readonly relatedHostNavigationUrls = new Set<string>();
   private readonly knownPages = new Map<string, KnownPage>();
+  /** URLs that name a machine-readable file, known ones first, to be requested once the pages are read. */
+  private readonly machineReadableResourceCandidateUrls = new Set<string>();
+  private machineReadableResourceUrls: string[] | null = null;
   /** Normalised URLs of the pages passed to onPage, in order. */
   private readonly emittedUrls: string[] = [];
   private readonly unchangedPerSitemapUrls: string[] = [];
@@ -195,21 +208,28 @@ class SiteCrawl {
     this.requestIntervalMs = options.minRequestIntervalMs ?? 500;
     this.requiresHeadlessRendering = options.requiresHeadlessRendering ?? null;
     for (const knownPage of options.knownPages ?? []) this.knownPages.set(knownPage.normalisedUrl, knownPage);
+    for (const url of options.knownMachineReadableResourceUrls ?? []) this.addMachineReadableResourceCandidate(url);
+    this.addMachineReadableResourceCandidate(`${this.rootUrl}/llms-full.txt`);
   }
 
   async run(): Promise<CrawlResult> {
     const decidedBefore = this.requiresHeadlessRendering !== null;
+    let stopReason: CrawlStopReason;
     try {
-      return await this.crawlUntilStopped(decidedBefore);
+      stopReason = await this.crawlUntilStopped();
     } catch (error) {
-      if (error instanceof CrawlDeadlineReached) return this.result('time_limit', decidedBefore);
-      throw error;
+      if (!(error instanceof CrawlDeadlineReached)) throw error;
+      stopReason = 'time_limit';
     }
+    if (stopReason !== 'time_limit' && stopReason !== 'robots_txt_unreachable') {
+      this.machineReadableResourceUrls = await this.findMachineReadableResources();
+    }
+    return this.result(stopReason, decidedBefore);
   }
 
-  private async crawlUntilStopped(decidedBefore: boolean): Promise<CrawlResult> {
+  private async crawlUntilStopped(): Promise<CrawlStopReason> {
     await this.loadRobotsTxt();
-    if (this.robots.status === 'unreachable') return this.result('robots_txt_unreachable', decidedBefore);
+    if (this.robots.status === 'unreachable') return 'robots_txt_unreachable';
 
     if (!this.addToFrontier(this.fetchRootUrl, 0, 'navigation', null)) this.homepageIsDisallowedByRobots = true;
     await this.seedFromSitemaps();
@@ -217,13 +237,11 @@ class SiteCrawl {
     this.seedFromKnownPages();
 
     for (;;) {
-      if (this.emittedUrls.length >= this.options.pageBudget) return this.result('page_budget', decidedBefore);
-      if (this.fetchedUrls.size >= this.options.pageBudget * ATTEMPTS_PER_BUDGETED_PAGE) {
-        return this.result('attempt_limit', decidedBefore);
-      }
-      if (Date.now() >= this.deadline) return this.result('time_limit', decidedBefore);
+      if (this.emittedUrls.length >= this.options.pageBudget) return 'page_budget';
+      if (this.fetchedUrls.size >= this.options.pageBudget * ATTEMPTS_PER_BUDGETED_PAGE) return 'attempt_limit';
+      if (Date.now() >= this.deadline) return 'time_limit';
       const entry = this.takeNextFromFrontier();
-      if (entry === undefined) return this.result('frontier_exhausted', decidedBefore);
+      if (entry === undefined) return 'frontier_exhausted';
       await this.crawlPage(entry);
       this.reportProgress();
     }
@@ -241,6 +259,7 @@ class SiteCrawl {
       failedFetches: this.failedFetches,
       requiresHeadlessRendering: this.requiresHeadlessRendering ?? false,
       decidedHeadlessRendering: !decidedBefore && this.requiresHeadlessRendering !== null,
+      machineReadableResourceUrls: this.machineReadableResourceUrls,
     };
   }
 
@@ -345,11 +364,65 @@ class SiteCrawl {
       });
       if (outcome.kind !== 'response' || outcome.httpStatusCode !== 200) continue;
       for (const match of outcome.body.matchAll(/\]\(\s*<?([^)\s>]+)>?\s*\)/g)) {
+        if (this.addMachineReadableResourceCandidate(match[1]!, outcome.finalUrl)) continue;
         const linkedUrl = htmlUrlForMarkdownLink(match[1]!, outcome.finalUrl);
         if (linkedUrl !== null) this.addToFrontier(linkedUrl, 1, 'existing_llms_txt', null);
       }
       return;
     }
+  }
+
+  /**
+   * Notes a link to one of the site's machine-readable files; returns whether it was one.
+   * The llms.txt at the site's root is not: the generated file stands in for it.
+   */
+  private addMachineReadableResourceCandidate(href: string, baseUrl?: string): boolean {
+    let url: URL;
+    try {
+      url = new URL(href, baseUrl);
+    } catch {
+      return false;
+    }
+    url.hash = '';
+    if (machineReadableResourceKindOf(url.href) === null || !isInScope(url.href, this.rootUrl)) return false;
+    if (url.href === `${this.rootUrl}/llms.txt` || url.href === new URL('/llms.txt', this.rootUrl).href) return false;
+    this.machineReadableResourceCandidateUrls.add(url.href);
+    return true;
+  }
+
+  /**
+   * Requests each candidate and keeps those that are there: a 200 that is not an HTML
+   * page, since a site that answers every path with its app shell has no such file.
+   * Null when a candidate answered with an error or the time ran out, which says nothing
+   * about whether the file exists.
+   */
+  private async findMachineReadableResources(): Promise<string[] | null> {
+    const found: string[] = [];
+    const candidates = [...this.machineReadableResourceCandidateUrls].slice(0, MAX_MACHINE_READABLE_RESOURCE_CHECKS);
+    for (const url of candidates) {
+      if (!this.isAllowedByRobots(url)) continue;
+      let outcome: FetchOutcome;
+      try {
+        outcome = await this.politeFetch({
+          url,
+          acceptedContentTypes: ['*/*'],
+          maxResponseBytes: MACHINE_READABLE_RESOURCE_BYTES_READ,
+          truncateAtMaxBytes: true,
+          isRedirectAllowed: this.isRedirectAllowed,
+        });
+      } catch (error) {
+        if (error instanceof CrawlDeadlineReached) return null;
+        throw error;
+      }
+      if (outcome.kind === 'failed') {
+        if (outcome.reason === 'timeout' || outcome.reason === 'network_error') return null;
+        continue;
+      }
+      if (isErrorStatus(outcome.httpStatusCode)) return null;
+      const isFile = outcome.contentType !== null && !HTML_TYPES.includes(outcome.contentType);
+      if (outcome.httpStatusCode === 200 && isFile && isInScope(outcome.finalUrl, this.rootUrl)) found.push(url);
+    }
+    return found;
   }
 
   /**
@@ -668,6 +741,7 @@ class SiteCrawl {
 
     const sourceUrl = entry.url;
     for (const link of signals.linkUrls) {
+      if (this.addMachineReadableResourceCandidate(link)) continue;
       const url = normaliseUrl(link);
       if (url === null || url === sourceUrl) continue;
       // Links to a related-host page count toward it, but only the navigation queues one.
