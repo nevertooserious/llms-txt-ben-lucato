@@ -25,6 +25,11 @@ export interface RawPage {
   markdownVariantUrl: string | null;
   /** The page's sitemap <lastmod>, verbatim, or null when no sitemap lists it. */
   sitemapLastModified: string | null;
+  /**
+   * The page's links within the site, normalised, in page order, without repeats. Null
+   * when this response had no page to read them from (a 304 or an error).
+   */
+  outboundLinkUrls: string[] | null;
 }
 
 /** Signals known when the page is fetched. */
@@ -56,11 +61,11 @@ export interface LinkSignals {
    */
   navigationPosition: number | null;
   /**
-   * The order in which the crawl first saw a link to the page, from 0: pages are read
-   * nearest the homepage first and links in the order they stand on a page, so this is
-   * the order of the site's own menus and sidebars. Null when no page read in this crawl
-   * links it (a page found only through the sitemap, or linked only from pages that
-   * answered 304). The generator uses it to order pages that score the same.
+   * Where a walk of the site's current links first meets the page, from 0: nearest the
+   * homepage first and links in the order they stand on a page, so this is the order of
+   * the site's own menus and sidebars. Pages that answered 304 count through their stored
+   * links. Null when nothing links it (a page found only through the sitemap). The
+   * generator uses it to order pages that score the same.
    */
   firstLinkPosition: number | null;
 }
@@ -80,6 +85,10 @@ export interface KnownPage {
   httpLastModified: string | null;
   /** The sitemap <lastmod> stored from the last crawl, ISO 8601, or null. */
   sitemapLastModifiedAt: string | null;
+  /** The links stored when the page was last read. Null means it must be read in full. */
+  outboundLinkUrls: string[] | null;
+  /** A removed page's links count only if it answers again. */
+  isRemoved: boolean;
 }
 
 /**
@@ -139,7 +148,10 @@ export interface CrawlResult {
   pagesFetchedCount: number;
   /** Of those, pages that answered 2xx or 304. With none, the crawl learned nothing about the site. */
   pagesWithContentCount: number;
-  /** Final link signals for every page passed to `onPage`, keyed by normalised URL. */
+  /**
+   * Final link signals, keyed by normalised URL: every page passed to `onPage` and, when
+   * the homepage was read, every known page, so all positions come from one walk.
+   */
   linkSignals: Record<string, LinkSignals>;
   /** Known pages not requested because their trusted sitemap <lastmod> has not moved. */
   unchangedPerSitemapUrls: string[];

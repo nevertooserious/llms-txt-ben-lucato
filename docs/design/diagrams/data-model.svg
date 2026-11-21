@@ -65,7 +65,7 @@
   <text class="f" x="466" y="190">discovered_via, inbound_link_count</text>
   <text class="f" x="466" y="208">is_in_site_navigation, fetch_method</text>
   <text class="f" x="466" y="226">sitemap_last_modified_at</text>
-  <text class="f" x="466" y="244">consecutive_not_found_count</text>
+  <text class="f" x="466" y="244">outbound_link_urls</text>
   <text class="f" x="466" y="262">markdown_variant_url</text>
   <text class="f" x="466" y="280">has_noindex_directive, fetch_url</text>
   <text class="f" x="466" y="298">navigation_label, navigation_position</text>

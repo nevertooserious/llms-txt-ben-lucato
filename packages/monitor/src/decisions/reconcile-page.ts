@@ -6,9 +6,6 @@ import type { CrawledPageWrite, StoredPage } from '@llms-txt/db';
 // the result. Pages the crawl did not reach, or could not fetch, never come through
 // here, so they are never changed, let alone removed.
 
-/** Consecutive 404 or 410 responses that remove a page from the file. */
-export const NOT_FOUND_RESPONSES_BEFORE_REMOVAL = 2;
-
 export type PageReconciliation =
   /** 2xx: save, then extract. */
   | { kind: 'fetched'; write: CrawledPageWrite }
@@ -19,7 +16,7 @@ export type PageReconciliation =
    * run that fails changes nothing that could remove a page.
    */
   | { kind: 'not_found'; write: CrawledPageWrite; isNewlyRemoved: boolean }
-  /** Any other status for a stored page: recorded, but the page is neither reset nor counted toward removal. */
+  /** Any other status for a stored page: recorded, but the page is neither restored nor removed. */
   | { kind: 'other_status'; write: CrawledPageWrite }
   /** A new URL that did not answer 2xx: not worth a row. */
   | { kind: 'ignored' };
@@ -33,6 +30,8 @@ export function reconcilePage(stored: StoredPage | undefined, page: RawPage, now
     crawlDepth: page.crawlSignals.crawlDepth,
     discoveredVia: page.crawlSignals.discoveredVia,
     sitemapLastModifiedAt: sitemapDate(page.sitemapLastModified),
+    // Null on a 304 or an error, which keeps the stored links.
+    outboundLinkUrls: page.outboundLinkUrls,
   };
 
   if (status >= 200 && status < 300) {
@@ -45,7 +44,6 @@ export function reconcilePage(stored: StoredPage | undefined, page: RawPage, now
         httpLastModified: page.headers['last-modified'] ?? null,
         markdownVariantUrl: page.markdownVariantUrl,
         hasNoindexDirective: page.crawlSignals.hasNoindexDirective,
-        consecutiveNotFoundCount: 0,
         removedAt: null,
       },
     };
@@ -69,19 +67,15 @@ export function reconcilePage(stored: StoredPage | undefined, page: RawPage, now
         httpStatusCode: stored.httpStatusCode ?? 200,
         httpEtag: page.headers.etag ?? stored.httpEtag,
         httpLastModified: page.headers['last-modified'] ?? stored.httpLastModified,
-        consecutiveNotFoundCount: 0,
         removedAt: null,
       },
     };
   }
 
   if (status === 404 || status === 410) {
-    const consecutiveNotFoundCount = stored.consecutiveNotFoundCount + 1;
-    const removedAt =
-      stored.removedAt ?? (consecutiveNotFoundCount >= NOT_FOUND_RESPONSES_BEFORE_REMOVAL ? now.toISOString() : null);
     return {
       kind: 'not_found',
-      isNewlyRemoved: stored.removedAt === null && removedAt !== null,
+      isNewlyRemoved: stored.removedAt === null,
       write: {
         ...fromThisFetch,
         ...keptFromStore,
@@ -89,8 +83,7 @@ export function reconcilePage(stored: StoredPage | undefined, page: RawPage, now
         // Ask in full next time, so the next answer is a real one.
         httpEtag: null,
         httpLastModified: null,
-        consecutiveNotFoundCount,
-        removedAt,
+        removedAt: stored.removedAt ?? now.toISOString(),
       },
     };
   }
@@ -101,7 +94,6 @@ export function reconcilePage(stored: StoredPage | undefined, page: RawPage, now
       ...fromThisFetch,
       ...keptFromStore,
       httpStatusCode: status,
-      consecutiveNotFoundCount: stored.consecutiveNotFoundCount,
       removedAt: stored.removedAt,
     },
   };

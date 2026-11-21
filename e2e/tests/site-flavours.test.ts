@@ -270,14 +270,10 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
       expect(versions.at(-1)!.page_changes).toEqual({ added: [urlOf(submitted.site, '/docs/advanced')], removed: [], changed: [] });
     });
 
-    it('404 once keeps the page; 404 twice removes it', async () => {
+    it('a 404 removes the page at once', async () => {
       const { submitted, state } = await submitEditableSite();
       const url = urlOf(submitted.site, '/blog/hello');
       state.pages['/blog/hello']!.httpStatusCode = 404;
-
-      expect(await harness.checkNow(submitted)).toMatchObject({ status: 'unchanged' });
-      expect(await harness.storedPage(submitted, '/blog/hello')).toMatchObject({ consecutive_not_found_count: 1, removed_at: null });
-      expect(listedUrls((await harness.publishedLlmsTxt(submitted))!)).toContain(url);
 
       expect(await harness.checkNow(submitted)).toMatchObject({ status: 'succeeded' });
       expect((await harness.storedPage(submitted, '/blog/hello'))?.removed_at).not.toBeNull();
@@ -289,10 +285,9 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
       const { submitted, state } = await submitEditableSite();
       state.pages['/blog/hello']!.httpStatusCode = 404;
       await harness.checkNow(submitted);
-      await harness.checkNow(submitted);
       delete state.pages['/blog/hello']!.httpStatusCode;
       expect(await harness.checkNow(submitted)).toMatchObject({ status: 'succeeded' });
-      expect(await harness.storedPage(submitted, '/blog/hello')).toMatchObject({ consecutive_not_found_count: 0, removed_at: null });
+      expect(await harness.storedPage(submitted, '/blog/hello')).toMatchObject({ removed_at: null });
       expect(listedUrls((await harness.publishedLlmsTxt(submitted))!)).toContain(urlOf(submitted.site, '/blog/hello'));
     });
 

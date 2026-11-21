@@ -33,8 +33,8 @@ async function siteWithPages(paths: string[]): Promise<{ id: string; origin: str
       discoveredVia: 'navigation',
       sitemapLastModifiedAt: null,
       markdownVariantUrl: null,
+      outboundLinkUrls: null,
       hasNoindexDirective: false,
-      consecutiveNotFoundCount: 0,
       removedAt: null,
     });
   }

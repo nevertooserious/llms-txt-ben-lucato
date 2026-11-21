@@ -159,5 +159,7 @@ function knownPageFrom(stored: StoredPage): KnownPage {
     httpEtag: stored.httpEtag,
     httpLastModified: stored.httpLastModified,
     sitemapLastModifiedAt: stored.sitemapLastModifiedAt,
+    outboundLinkUrls: stored.outboundLinkUrls,
+    isRemoved: stored.removedAt !== null,
   };
 }

@@ -1,4 +1,5 @@
 import type { PageType } from '@llms-txt/contracts';
+import { getSubdomain } from 'tldts';
 
 export interface PageTypeSignals {
   url: string;
@@ -77,7 +78,11 @@ function classifyFromMetadata(signals: PageTypeSignals): PageType | null {
   return null;
 }
 
-/** Leading subdomain labels (not www) followed by the path segments, lowercased. */
+/**
+ * Leading subdomain labels (not www) followed by the path segments, lowercased. The public
+ * suffix list says where the site's own domain starts: `example` in example.co.uk and
+ * `acme` in acme.github.io are the site's name, not a subdomain.
+ */
 function urlSegments(url: string): string[] {
   let parsedUrl: URL;
   try {
@@ -85,8 +90,8 @@ function urlSegments(url: string): string[] {
   } catch {
     return [];
   }
-  const hostLabels = parsedUrl.hostname.toLowerCase().split('.');
-  const subdomainLabels = hostLabels.slice(0, -2).filter((label) => label !== 'www');
+  const subdomain = getSubdomain(parsedUrl.hostname, { allowPrivateDomains: true }) ?? '';
+  const subdomainLabels = subdomain.split('.').filter((label) => label !== '' && label !== 'www');
   const pathSegments = parsedUrl.pathname
     .split('/')
     .map((segment) => safeDecode(segment).toLowerCase().replace(/\.(?:html?|php|aspx?)$/, ''))

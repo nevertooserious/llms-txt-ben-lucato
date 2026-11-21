@@ -57,6 +57,7 @@ const fakeCrawl =
         crawlSignals: { crawlDepth: page.path === '/' ? 0 : 1, discoveredVia: 'navigation', hasNoindexDirective: false },
         markdownVariantUrl: null,
         sitemapLastModified: null,
+        outboundLinkUrls: status === 200 ? [] : null,
       };
       await options.onPage(rawPage);
     }
@@ -260,12 +261,11 @@ describe('runPipeline', () => {
     expect(await versions(siteId)).toHaveLength(1);
   });
 
-  it('keeps a page after one 404, removes it after two, and never removes an unreached page', async () => {
+  it('removes a page on a 404 and never removes an unreached page', async () => {
     const { siteId, rootUrl } = await newSite();
     await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old' }, { path: '/quiet' }]));
 
-    // /quiet is not reached by the later crawls; /old answers 404 twice.
-    expect((await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old', status: 404 }]))).status).toBe('unchanged');
+    // /quiet is not reached by the later crawl; /old answers 404.
     expect((await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old', status: 404 }]))).status).toBe('succeeded');
 
     const latest = (await versions(siteId)).at(-1)!;
@@ -282,7 +282,6 @@ describe('runPipeline', () => {
 
     const { siteId } = await newSite();
     await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old' }]));
-    await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old', status: 404 }]));
     const emptied = await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old', status: 404 }]));
     expect(emptied.status).toBe('succeeded');
     const published = await versions(siteId);
@@ -290,7 +289,7 @@ describe('runPipeline', () => {
     expect(published.at(-1)!.llms_txt_content).not.toContain('/old');
   });
 
-  it('stores the order the first crawl saw links in, and keeps it on later checks', async () => {
+  it('stores the link order each crawl computes', async () => {
     const { siteId } = await newSite();
     const positions = async () => {
       const result = await databasePool.query<{ path: string; first_link_position: number | null }>(
@@ -303,25 +302,23 @@ describe('runPipeline', () => {
     await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/zebra' }, { path: '/apple' }]));
     expect(await positions()).toEqual([['', 0], ['/zebra', 1], ['/apple', 2]]);
 
-    // A later check reads fewer pages, so it sees the links in another order. The order
-    // the file was built with stays, and a page found now takes the place it is seen in.
-    await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/apple' }, { path: '/zebra' }, { path: '/new' }]));
-    expect(await positions()).toEqual([['', 0], ['/zebra', 1], ['/apple', 2], ['/new', 3]]);
+    // The site's links moved, and a new page sits between them: the stored order follows.
+    await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/apple' }, { path: '/new' }, { path: '/zebra' }]));
+    expect(await positions()).toEqual([['', 0], ['/apple', 1], ['/new', 2], ['/zebra', 3]]);
   });
 
   it('fails a run with too many failed fetches, records no 404s, and leaves the published file', async () => {
     const { siteId } = await newSite();
     await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old' }]));
-    await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old', status: 404 }]));
 
     const failed = await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/old', status: 404 }], 5));
     expect(failed.status).toBe('failed');
     expect(failed.error_message).toMatch(/fetches failed/);
-    const counter = await databasePool.query<{ consecutive_not_found_count: number; removed_at: Date | null }>(
-      `select consecutive_not_found_count, removed_at from pages where site_id = $1 and normalised_url like '%/old'`,
+    const stored = await databasePool.query<{ removed_at: Date | null }>(
+      `select removed_at from pages where site_id = $1 and normalised_url like '%/old'`,
       [siteId],
     );
-    expect(counter.rows[0]).toEqual({ consecutive_not_found_count: 1, removed_at: null });
+    expect(stored.rows[0]).toEqual({ removed_at: null });
     expect(await versions(siteId)).toHaveLength(1);
   });
 

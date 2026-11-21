@@ -143,6 +143,8 @@ describe('related hosts over several crawls', () => {
       httpEtag: null,
       httpLastModified: null,
       sitemapLastModifiedAt: null,
+      outboundLinkUrls: crawled.outboundLinkUrls,
+      isRemoved: false,
     }));
     const second = await collectCrawl({ ...options, knownPages });
 

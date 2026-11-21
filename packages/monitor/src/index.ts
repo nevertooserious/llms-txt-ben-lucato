@@ -3,7 +3,7 @@
 // through the same pipeline as a submission; the decisions here are pure functions that
 // the worker calls.
 export { runMonitorTick, type MonitorTickDependencies, type MonitorTickOutcome } from './scheduling/monitor-tick';
-export { NOT_FOUND_RESPONSES_BEFORE_REMOVAL, reconcilePage, sitemapDate, type PageReconciliation } from './decisions/reconcile-page';
+export { reconcilePage, sitemapDate, type PageReconciliation } from './decisions/reconcile-page';
 export { evaluateSafetyGate, type SafetyGateVerdict } from './decisions/safety-gate';
 export {
   assessSitemapLastModifiedTrust,
