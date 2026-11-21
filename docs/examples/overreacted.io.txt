@@ -1,0 +1,29 @@
+# overreacted
+
+> overreacted is Dan Abramov's personal blog with essays on React and React Server Components, JavaScript, UI engineering, the AT Protocol, and the Lean programming language. It is for developers who want in-depth explanations of programming concepts and API design.
+
+## Guides
+
+- [A Lean Syntax Primer](https://overreacted.io/a-lean-syntax-primer/): An opinionated syntax primer for the Lean programming language covering definitions, types, running code, proofs, namespaces and functions.
+
+## Blog
+
+- [JSX Over The Wire](https://overreacted.io/jsx-over-the-wire/): An article arguing for returning UI components from APIs, using a Like button example to explain ViewModels, REST limits, and the backend-for-frontend pattern.
+
+## Optional
+
+- [Beyond Booleans](https://overreacted.io/beyond-booleans/): An essay explaining how Lean treats logical propositions as types and proofs as values, contrasted with TypeScript booleans.
+- [Progressive JSON](https://overreacted.io/progressive-json/): An essay explaining progressive JSON streaming as an alternative to streaming in order, and how React Server Components and Suspense apply the idea.
+- [What Does "use client" Do?](https://overreacted.io/what-does-use-client-do/): A long essay explaining React's 'use client' and 'use server' directives as typed script and fetch equivalents, linking client and server modules.
+- [Impossible Components](https://overreacted.io/impossible-components/): An essay by Dan Abramov on building self-contained React Server Components that combine backend data loading with frontend interactivity, with code examples.
+- [React as a UI Runtime](https://overreacted.io/react-as-a-ui-runtime/): A deep dive into React's programming model, covering host trees, renderers, elements, reconciliation, components and related internals, aimed at experienced programmers.
+- [The Elements of UI Engineering](https://overreacted.io/the-elements-of-ui-engineering/): An essay listing recurring UI engineering problems such as consistency, latency, staleness and accessibility, each posed as questions with tradeoffs.
+- [Why Do React Hooks Rely on Call Order?](https://overreacted.io/why-do-hooks-rely-on-call-order/): A technical essay explaining why React Hooks rely on call order, comparing alternative designs such as keyed state and their flaws.
+- [Optimized for Change](https://overreacted.io/optimized-for-change/): An essay arguing that great APIs are designed to accommodate code changes over time, not just readability and correctness.
+- [One Roundtrip Per Navigation](https://overreacted.io/one-roundtrip-per-navigation/): An essay comparing data-fetching approaches for web navigations, from HTML apps through REST, loaders, server functions, GraphQL fragments, and React Server Components.
+- [Preparing for a Tech Talk, Part 3: Content](https://overreacted.io/preparing-for-tech-talk-part-3-content/): Dan Abramov explains his process for preparing tech talk content, covering top-down outlines, bottom-up proofs of concept, and dry runs.
+- [The “Bug-O” Notation](https://overreacted.io/the-bug-o-notation/): An essay introducing the Bug-O notation, a metric for how much an API or code structure slows debugging as a codebase grows.
+- [Things I Don’t Know as of 2018](https://overreacted.io/things-i-dont-know-as-of-2018/): A personal essay listing programming topics the author admits not knowing well, and reflecting on expertise and confidence among developers.
+- [Preparing for a Tech Talk, Part 1: Motivation](https://overreacted.io/preparing-for-tech-talk-part-1-motivation/): A personal essay on the speaker's motivations for giving tech talks and a framework for choosing talk topics, the first part of a series.
+- [How Does setState Know What to Do?](https://overreacted.io/how-does-setstate-know-what-to-do/): A blog post explaining how React.Component setState and useState delegate updates to renderers like React DOM via updater and dispatcher objects.
+- [I'm Doing a Little Consulting](https://overreacted.io/im-doing-a-little-consulting/): Dan Abramov announces he is offering hourly one-on-one consulting calls on React and React Native, and explains his recent career break and blog plans.
