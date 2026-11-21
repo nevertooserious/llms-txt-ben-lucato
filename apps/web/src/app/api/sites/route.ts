@@ -3,7 +3,7 @@ import { clientIpFrom } from '@/server/http/client-ip';
 import { submitSite } from '@/server/sites/submit-site';
 import { webServices } from '@/server/composition/web-services';
 
-// Submit a URL. The work is in server/submit-site.ts; this handler only parses the
+// Submit a URL. The work is in server/sites/submit-site.ts; this handler only parses the
 // request and shapes the response.
 export async function POST(request: Request): Promise<Response> {
   const body: unknown = await request.json().catch(() => null);

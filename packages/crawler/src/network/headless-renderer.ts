@@ -1,4 +1,11 @@
-import { chromium, type Browser, type Page, type Request as BrowserRequest, type Route } from 'playwright';
+import {
+  chromium,
+  type Browser,
+  type Page,
+  type Request as BrowserRequest,
+  type Response as BrowserResponse,
+  type Route,
+} from 'playwright';
 import { Agent, request } from 'undici';
 import { DEFAULT_USER_AGENT } from './http-fetcher';
 import { readCapped, ResponseTooLargeError } from './read-capped';
@@ -96,6 +103,12 @@ interface NavigationState {
 /** How long the page's text must stay the same before it counts as settled. */
 const CONTENT_SETTLED_MS = 750;
 const CONTENT_POLL_MS = 250;
+/**
+ * How far past its time limit a render may run before it is abandoned. Playwright puts no
+ * time limit on reading a page's text or DOM, and a page whose script never yields
+ * answers neither, so without this such a page would hold its render slot for ever.
+ */
+const UNRESPONSIVE_PAGE_GRACE_MS = 2_000;
 
 export class HeadlessRenderer {
   private browser: Promise<Browser> | undefined;
@@ -133,7 +146,8 @@ export class HeadlessRenderer {
   }
 
   private launchBrowser(): Promise<Browser> {
-    this.browser ??= chromium.launch({
+    if (this.browser !== undefined) return this.browser;
+    const launching = chromium.launch({
       headless: true,
       args: [
         // Belt and braces: the browser resolves no hostname itself. Every request is
@@ -144,7 +158,14 @@ export class HeadlessRenderer {
         '--disable-features=NetworkPrediction',
       ],
     });
-    return this.browser;
+    this.browser = launching;
+    // A browser that failed to launch, or has since died, is forgotten, so the next
+    // render launches another instead of every later render failing.
+    const forgetBrowser = () => {
+      if (this.browser === launching) this.browser = undefined;
+    };
+    launching.then((browser) => browser.on('disconnected', forgetBrowser), forgetBrowser);
+    return launching;
   }
 
   private async renderNow(url: string, isUrlAllowed: (url: string) => boolean): Promise<RenderOutcome> {
@@ -158,30 +179,44 @@ export class HeadlessRenderer {
     const blockedRequestUrls: string[] = [];
     const navigation: NavigationState = { redirectTarget: null, wasDisallowedByRobots: false, wasNotHtml: false };
     const deadline = Date.now() + this.timeoutMs;
+    // Aborts the requests Node is still making for the page once the render is over.
+    const renderEnded = new AbortController();
+    let unresponsiveTimer: NodeJS.Timeout | undefined;
+    const unresponsive = new Promise<never>((_resolve, reject) => {
+      unresponsiveTimer = setTimeout(
+        () => reject(new Error(`Timeout: the page did not respond within ${this.timeoutMs + UNRESPONSIVE_PAGE_GRACE_MS}ms`)),
+        this.timeoutMs + UNRESPONSIVE_PAGE_GRACE_MS,
+      );
+    });
 
-    try {
+    const renderPage = async (): Promise<RenderedPage> => {
       const page = await context.newPage();
       // Only this page may live; window.open and target=_blank pages are closed.
       context.on('page', (popup) => {
         if (popup !== page) void popup.close();
       });
-      await page.route('**/*', (route) => this.fulfilFromNode(route, page, navigation, isUrlAllowed, blockedRequestUrls));
+      await page.route('**/*', (route) =>
+        this.fulfilFromNode(route, page, navigation, isUrlAllowed, blockedRequestUrls, renderEnded.signal),
+      );
       await page.routeWebSocket(/.*/, (webSocket) => webSocket.close());
 
       // Chromium follows a redirect it was handed by route.fulfill outside interception,
       // so main-frame redirects come back here and are navigated to afresh, which puts
-      // every hop back through the guard.
+      // every hop back through the guard. That includes a redirect met by a navigation
+      // the page's own script started while its content was settling.
       let navigationUrl = url;
-      let response = null;
+      let response: BrowserResponse | null;
       for (let redirectCount = 0; ; redirectCount += 1) {
         navigation.redirectTarget = null;
         response = await page.goto(navigationUrl, { waitUntil: 'load', timeout: Math.max(1, deadline - Date.now()) });
-        if (navigation.redirectTarget === null) break;
+        if (navigation.redirectTarget === null) {
+          if (response === null) throw new Error('navigation produced no response');
+          await waitForContentToSettle(page, deadline);
+          if (navigation.redirectTarget === null) break;
+        }
         if (redirectCount >= MAX_REDIRECTS) throw new Error(`more than ${MAX_REDIRECTS} redirects`);
         navigationUrl = navigation.redirectTarget;
       }
-      if (response === null) throw new Error('navigation produced no response');
-      await waitForContentToSettle(page, deadline);
 
       return {
         kind: 'rendered',
@@ -192,6 +227,10 @@ export class HeadlessRenderer {
         html: await page.content(),
         blockedRequestUrls,
       };
+    };
+
+    try {
+      return await Promise.race([renderPage(), unresponsive]);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const reason = navigation.wasDisallowedByRobots
@@ -205,6 +244,8 @@ export class HeadlessRenderer {
             : 'render_error';
       return { kind: 'failed', requestedUrl: url, reason, message, blockedRequestUrls };
     } finally {
+      clearTimeout(unresponsiveTimer);
+      renderEnded.abort();
       await context.close().catch(() => undefined);
     }
   }
@@ -221,6 +262,7 @@ export class HeadlessRenderer {
     navigation: NavigationState,
     isUrlAllowed: (url: string) => boolean,
     blockedRequestUrls: string[],
+    renderEnded: AbortSignal,
   ): Promise<void> {
     const browserRequest = route.request();
     if (SKIPPED_RESOURCE_TYPES.has(browserRequest.resourceType())) {
@@ -248,7 +290,13 @@ export class HeadlessRenderer {
           return;
         }
 
-        const response = await request(parsedUrl, { method: method as 'GET', headers, body, dispatcher: this.dispatcher });
+        const response = await request(parsedUrl, {
+          method: method as 'GET',
+          headers,
+          body,
+          dispatcher: this.dispatcher,
+          signal: renderEnded,
+        });
         const location = response.headers['location'];
         if (REDIRECT_STATUS_CODES.has(response.statusCode) && typeof location === 'string') {
           await response.body.dump().catch(() => undefined);

@@ -49,6 +49,7 @@ const BLOCKED_IPV6_SUBNETS: Array<[string, number]> = [
   ['::', 128], // unspecified
   ['::1', 128], // loopback
   ['::', 96], // IPv4-compatible (deprecated)
+  ['64:ff9b:1::', 48], // local-use NAT64: translates to an IPv4 address inside the network
   ['100::', 64], // discard
   ['2001::', 32], // Teredo: tunnels to an arbitrary IPv4 address
   ['2001:db8::', 32], // documentation

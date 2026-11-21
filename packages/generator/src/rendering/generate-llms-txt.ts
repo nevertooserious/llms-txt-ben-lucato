@@ -26,8 +26,6 @@ import {
 } from '../selection';
 import { validateLlmsTxt } from './validate-llms-txt';
 
-export { entryTitle, siteNameFrom } from '../entry-text';
-
 export interface GenerateLlmsTxtInput {
   siteTitle: string;
   /** Cached site summary; written by the LLM only when its inputs change. Null falls back to the homepage's description. */
@@ -129,7 +127,7 @@ function renderEntry(entry: SelectedPage, title: string, context: EntryTextConte
   return `- [${escapeTitle(title)}](${url})${description === '' ? '' : `: ${description}`}`;
 }
 
-export const MACHINE_READABLE_SECTION_NAME = 'Machine-readable resources';
+const MACHINE_READABLE_SECTION_NAME = 'Machine-readable resources';
 
 /** Said of every file of a kind: what it is, not what this site's says, since it is not read. */
 const MACHINE_READABLE_RESOURCE_DESCRIPTIONS: Record<MachineReadableResourceKind, string> = {
@@ -149,9 +147,19 @@ function machineReadableResourceLines(urls: readonly string[]): string[] {
         (a.url < b.url ? -1 : a.url > b.url ? 1 : 0),
     );
   return resources.map(({ url, kind }) => {
-    const title = singleLine(decodeURI(new URL(url).pathname).replace(/^\//, ''));
+    const title = singleLine(decodedPathOf(url).replace(/^\//, ''));
     return `- [${escapeTitle(title)}](${encodeEntryUrl(url)}): ${MACHINE_READABLE_RESOURCE_DESCRIPTIONS[kind]}`;
   });
+}
+
+/** The URL's path as a reader would write it, or as it stands when its escapes are not valid. */
+function decodedPathOf(url: string): string {
+  const path = new URL(url).pathname;
+  try {
+    return decodeURI(path);
+  } catch {
+    return path;
+  }
 }
 
 function escapeTitle(title: string): string {

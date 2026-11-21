@@ -9,10 +9,14 @@ from pathlib import Path
 SCRIPT = Path(__file__).with_name("check_pr_description.py")
 
 
-def run_check(pr_body: str) -> subprocess.CompletedProcess:
+def run_check(pr_body: str | None) -> subprocess.CompletedProcess:
+    """Runs the check with PR_BODY set to `pr_body`, or unset when it is None."""
+    env = {name: value for name, value in os.environ.items() if name != "PR_BODY"}
+    if pr_body is not None:
+        env["PR_BODY"] = pr_body
     return subprocess.run(
         [sys.executable, str(SCRIPT)],
-        env={**os.environ, "PR_BODY": pr_body},
+        env=env,
         capture_output=True,
         text=True,
     )
@@ -32,6 +36,7 @@ class CheckPrDescriptionTest(unittest.TestCase):
 
     def test_accepts_empty_or_missing_body(self):
         self.assertEqual(run_check("").returncode, 0)
+        self.assertEqual(run_check(None).returncode, 0)
 
     def test_excludes_html_comments(self):
         body = "<!-- guidance " + "x" * 1000 + " -->\nShort summary."

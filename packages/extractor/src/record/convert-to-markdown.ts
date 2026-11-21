@@ -24,8 +24,9 @@ turndownService.addRule('listItem', {
     const list = node.parentNode;
     let marker = `${options.bulletListMarker} `;
     if (list && list.nodeName === 'OL') {
-      const start = Number(list.getAttribute('start') ?? 1) || 1;
-      marker = `${start + Array.prototype.indexOf.call(list.children, node)}. `;
+      // A list may start at 0; only a missing or unreadable start means 1.
+      const start = Number.parseInt(list.getAttribute('start') ?? '', 10);
+      marker = `${(Number.isNaN(start) ? 1 : start) + Array.prototype.indexOf.call(list.children, node)}. `;
     }
     const body = content
       .replace(/^\n+/, '')

@@ -2,19 +2,13 @@
 // Pure: the worker loads its inputs, makes the LLM calls through an LlmClient, and stores
 // the outputs. With no LLM configured, the summary falls back to the homepage's
 // description, there are no notes, and candidate pages are listed with what the crawl found for them.
-export {
-  entryTitle,
-  generateLlmsTxt,
-  MACHINE_READABLE_SECTION_NAME,
-  siteNameFrom,
-  type GenerateLlmsTxtInput,
-} from './rendering/generate-llms-txt';
+export { siteNameFrom } from './entry-text';
+export { generateLlmsTxt, type GenerateLlmsTxtInput } from './rendering/generate-llms-txt';
 export {
   buildPageAssessmentPrompt,
   buildSiteSummaryInput,
   buildSiteSummaryPrompt,
   LlmOutputRejectedError,
-  MAXIMUM_SITE_NOTES,
   PAGE_ASSESSMENT_MODEL,
   pageAssessmentInputOf,
   pageAssessmentSourceHash,
@@ -32,16 +26,10 @@ export {
 export {
   DEFAULT_SELECTION_LIMITS,
   excludePagesUnderUrlPrefixes,
-  GENERAL_SECTION_NAME,
-  isPaginationUrl,
   listingCandidates,
-  OPTIONAL_SECTION_NAME,
-  scorePage,
-  SECTION_NAMES,
-  sectionNamesInOrder,
   selectPages,
   type SelectedPage,
   type SelectionLimits,
 } from './selection';
-export { ENTRY_PATTERN, validateLlmsTxt, type LlmsTxtValidationResult } from './rendering/validate-llms-txt';
+export { validateLlmsTxt, type LlmsTxtValidationResult } from './rendering/validate-llms-txt';
 export { decidePublication, listedEntries, NOTHING_TO_LIST_REASON, type PageChanges, type PublicationDecision } from './publication/decide-publication';

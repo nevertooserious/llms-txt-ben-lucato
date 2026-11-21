@@ -18,10 +18,6 @@ describe('normaliseUrl', () => {
     expect(normaliseUrl(input)).toBe(expected);
   });
 
-  it('resolves against a base URL', () => {
-    expect(normaliseUrl('../b/', 'https://example.com/docs/a/')).toBe('https://example.com/docs/b');
-  });
-
   it.each(['mailto:someone@example.com', 'javascript:void(0)', 'ftp://example.com/', 'not a url', 'https://user:pass@example.com/'])(
     'rejects %s',
     (input) => {

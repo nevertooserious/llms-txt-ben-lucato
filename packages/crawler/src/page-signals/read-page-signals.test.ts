@@ -98,4 +98,13 @@ describe('readXRobotsTag', () => {
   it('treats unavailable_after as a directive, not a scope', () => {
     expect(readXRobotsTag('unavailable_after: 25 Jun 2030 15:00:00 PST')).toEqual(['unavailable_after: 25 jun 2030 15:00:00 pst']);
   });
+
+  it('treats the max-* directives as directives too, so those after them still apply', () => {
+    expect(readXRobotsTag('max-snippet:-1, max-image-preview: large, noindex')).toEqual([
+      'max-snippet:-1',
+      'max-image-preview: large',
+      'noindex',
+    ]);
+    expect(readXRobotsTag('googlebot: max-video-preview:0, nofollow')).toEqual([]);
+  });
 });

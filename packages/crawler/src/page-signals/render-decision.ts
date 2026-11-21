@@ -72,7 +72,7 @@ export function looksLikeJavaScriptShell(plain: PageSignals): boolean {
   return isEmpty || (plain.hasJavaScriptShellMarker && plain.visibleTextLength < SHELL_MARKER_MAX_TEXT_CHARACTERS);
 }
 
-/** After a safety-net render: keep the rendered page only if it shows more text. */
+/** After a safety-net render: keep the rendered page only if it shows more text or more links. */
 export function renderedPageIsBetter(plain: PageSignals, rendered: PageSignals): boolean {
   return rendered.visibleTextLength > plain.visibleTextLength || rendered.linkUrls.length > plain.linkUrls.length;
 }

@@ -32,7 +32,9 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
   let siteState: EditableSiteState;
 
   beforeAll(async () => {
-    [stack, browser] = await Promise.all([WebAppStack.start(databaseUrl!), chromium.launch()]);
+    // One after the other, so that if either fails afterAll still stops the one that started.
+    browser = await chromium.launch();
+    stack = await WebAppStack.start(databaseUrl!);
   }, 120_000);
 
   afterAll(async () => {
@@ -68,6 +70,14 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     await submitLogin();
     await page.waitForURL('/');
   }
+
+  /** Skips the "check now" cooldown, which counts from the site's last run. */
+  const moveRunsOutOfCooldown = () =>
+    stack.databasePool.query(
+      `update pipeline_runs set created_at = created_at - interval '1 hour'
+        where site_id = (select id from sites where root_url = $1)`,
+      [site.origin],
+    );
 
   const runStatus = (text: string) => page.locator('.status-line').getByText(text, { exact: true });
 
@@ -158,11 +168,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
 
     // The site changes, and the cooldown passes.
     siteState.pages['/docs/intro']!.description = 'Begin here instead.';
-    await stack.databasePool.query(
-      `update pipeline_runs set created_at = created_at - interval '1 hour'
-        where site_id = (select id from sites where root_url = $1)`,
-      [site.origin],
-    );
+    await moveRunsOutOfCooldown();
 
     await checkNow.click();
     await visible(page.locator('.facts').getByText('Manual check', { exact: true }));
@@ -175,12 +181,6 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     await generateFromHomePage();
     const hostedPath = await rawLink().getAttribute('href');
     const firstVersion = await (await page.request.get(hostedPath!)).text();
-    const moveRunsOutOfCooldown = () =>
-      stack.databasePool.query(
-        `update pipeline_runs set created_at = created_at - interval '1 hour'
-          where site_id = (select id from sites where root_url = $1)`,
-        [site.origin],
-      );
 
     siteState.pages['/docs/intro']!.description = 'The second version.';
     await moveRunsOutOfCooldown();
@@ -213,11 +213,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     await visible(page.getByText('There is one version so far.', { exact: false }));
 
     siteState.pages['/docs/intro']!.description = 'Begin here instead.';
-    await stack.databasePool.query(
-      `update pipeline_runs set created_at = created_at - interval '1 hour'
-        where site_id = (select id from sites where root_url = $1)`,
-      [site.origin],
-    );
+    await moveRunsOutOfCooldown();
     await page.getByRole('button', { name: /check now/i }).click();
     await visible(page.getByText('Version 2', { exact: true }), RUN_TIMEOUT_MS);
 
@@ -284,11 +280,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     // lists only the one outside.
     siteState.pages['/docs/upgrade'] = { title: 'Upgrade', description: 'Move to the new version.', body: '<p>Steps.</p>' };
     siteState.pages['/changelog'] = { title: 'Changelog', description: 'What changed.', body: '<p>Releases.</p>' };
-    await stack.databasePool.query(
-      `update pipeline_runs set created_at = created_at - interval '1 hour'
-        where site_id = (select id from sites where root_url = $1)`,
-      [site.origin],
-    );
+    await moveRunsOutOfCooldown();
     await page.getByRole('button', { name: /check now/i }).click();
     await visible(page.getByText('Version 3', { exact: true }), RUN_TIMEOUT_MS);
     await visible(pageRow('/docs/upgrade').getByText('Path ignored'));

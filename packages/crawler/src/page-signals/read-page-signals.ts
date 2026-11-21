@@ -9,7 +9,7 @@ import { ROBOTS_USER_AGENT_TOKEN } from '../discovery/robots-rules';
 export interface PageSignals {
   /** Absolute URLs of every <a href>, resolved against <base href> and the page URL. */
   linkUrls: string[];
-  /** The subset of `linkUrls` inside <nav> or <header>, with each link's text. */
+  /** The subset of `linkUrls` inside <nav>, <header> or role="navigation", with each link's text. */
   navigationLinks: NavigationLink[];
   /** Characters of visible text in <body>, whitespace collapsed. */
   visibleTextLength: number;
@@ -46,6 +46,8 @@ const APP_ROOT_SELECTORS = ['#root', '#app', '#__next', '#__nuxt', '#svelte', '[
 // No type, a JavaScript MIME type, or a module. Not JSON-LD, templates or import maps.
 const EXECUTABLE_SCRIPT_TYPE_PATTERN = /^\s*$|^\s*(module|(text|application)\/(x-)?(java|ecma)script)\s*$/i;
 const ENABLE_JAVASCRIPT_PATTERN = /\b(enable|requires?|turn on)\b[^.]{0,40}\bjavascript\b/i;
+// X-Robots-Tag directives that take a value after a colon, as a crawler's name does.
+const VALUED_ROBOTS_DIRECTIVES = new Set(['unavailable_after', 'max-snippet', 'max-image-preview', 'max-video-preview']);
 
 /**
  * `headers` are the response headers, lowercased, for X-Robots-Tag. Robots directives
@@ -134,8 +136,8 @@ export function readXRobotsTag(headerValue: string): string[] {
   for (const rawPart of headerValue.split(',')) {
     let part = rawPart.trim().toLowerCase();
     const scoped = /^([a-z0-9_-]+)\s*:\s*(.*)$/.exec(part);
-    // unavailable_after: <date> has a colon too, but is a directive, not a scope.
-    if (scoped !== null && scoped[1] !== 'unavailable_after') {
+    // unavailable_after: <date> and max-snippet: -1 have a colon too, but are directives, not scopes.
+    if (scoped !== null && !VALUED_ROBOTS_DIRECTIVES.has(scoped[1]!)) {
       scope = scoped[1]!;
       part = scoped[2]!.trim();
     }

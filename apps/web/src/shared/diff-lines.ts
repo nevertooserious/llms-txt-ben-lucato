@@ -15,7 +15,8 @@ export type DiffRow = { kind: 'line'; line: DiffLine } | { kind: 'skipped'; line
 /** Above this many table cells, the changed middle is shown as replaced rather than aligned. */
 const MAX_TABLE_CELLS = 16_000_000;
 
-const splitLines = (text: string) => text.replace(/\n$/, '').split('\n');
+/** An empty text has no lines; a final newline ends the last line rather than starting another. */
+const splitLines = (text: string) => (text === '' ? [] : text.replace(/\n$/, '').split('\n'));
 
 export function diffLines(fromText: string, toText: string): DiffLine[] {
   const fromLines = splitLines(fromText);
