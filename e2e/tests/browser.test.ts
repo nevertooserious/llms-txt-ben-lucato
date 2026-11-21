@@ -255,10 +255,10 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     expect(afterCheck).toContain(`${site.origin}/changelog`);
     expect(afterCheck).not.toContain(`${site.origin}/docs/`);
 
-    // The path is listed above the tree, where it can be included again; a reload shows what was saved.
+    // A reload shows what was saved, and ticking the path includes it again.
     await page.reload();
     await page.locator('.pages-panel').getByRole('heading', { name: 'Pages' }).click();
-    await page.getByRole('button', { name: 'Stop ignoring /docs/' }).click();
+    await page.getByRole('checkbox', { name: 'Include the path /docs/' }).check();
     await page.getByRole('button', { name: 'Save and regenerate' }).click();
     await visible(page.getByText('Saved. v4 is live.'));
     const afterIncluding = await rawLlmsTxt();

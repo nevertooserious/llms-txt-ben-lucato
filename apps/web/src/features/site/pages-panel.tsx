@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isUrlUnderPrefix } from '@llms-txt/contracts';
 import {
   groupPagesByPath,
-  pathLabelOf,
   type PathTreeGroup,
   type PathTreeItem,
   type SaveExclusionsResult,
@@ -101,8 +100,8 @@ export function PagesPanel({ view, onChanged }: PagesPanelProps) {
 
   const listedCount = pages.filter((page) => page.listedInSection !== null).length;
   const ignoredCount = pages.filter((page) => isIgnored(page, saved)).length;
-  const ignoredPaths = [...current.urlPrefixes].sort();
-  const treeProps = { saved, current, onSetPageIgnored: setPageIgnored, onSetPathIgnored: setPathIgnored };
+  const groupUrlPrefixes = useMemo(() => new Set(groupUrlPrefixesOf(tree)), [tree]);
+  const treeProps = { saved, current, groupUrlPrefixes, onSetPageIgnored: setPageIgnored, onSetPathIgnored: setPathIgnored };
   return (
     <details className="pages-panel">
       <summary className="pages-panel-summary">
@@ -119,22 +118,6 @@ export function PagesPanel({ view, onChanged }: PagesPanelProps) {
       {errorMessage && (
         <p className="form-error" role="status">
           {errorMessage}
-        </p>
-      )}
-      {ignoredPaths.length > 0 && (
-        <p className="ignored-paths">
-          <span>Ignored paths</span>
-          {ignoredPaths.map((urlPrefix) => {
-            const label = pathLabelOf(urlPrefix, rootUrl);
-            return (
-              <span key={urlPrefix} className="ignored-path">
-                <span className="page-path">{label}</span>
-                <button type="button" aria-label={`Stop ignoring ${label}`} onClick={() => setPathIgnored(urlPrefix, false)}>
-                  ×
-                </button>
-              </span>
-            );
-          })}
         </p>
       )}
       {loaded !== null && pages.length === 0 && <p className="empty-state">No pages yet. They appear once the first crawl has run.</p>}
@@ -196,6 +179,11 @@ function ignoredPathOver(url: string, exclusions: Exclusions): string | null {
   return null;
 }
 
+/** The URL prefix of every group in the tree, at any depth. */
+function groupUrlPrefixesOf(items: readonly PathTreeItem[]): string[] {
+  return items.flatMap((item) => (item.kind === 'group' ? [item.urlPrefix, ...groupUrlPrefixesOf(item.items)] : []));
+}
+
 function isIgnored(page: SitePageView, exclusions: Exclusions): boolean {
   return !page.isHomepage && (exclusions.urls.has(page.normalisedUrl) || ignoredPathOver(page.normalisedUrl, exclusions) !== null);
 }
@@ -204,6 +192,8 @@ interface TreeProps {
   depth: number;
   saved: Exclusions;
   current: Exclusions;
+  /** The paths that have a row of their own in the tree, where an ignored one is included again. */
+  groupUrlPrefixes: ReadonlySet<string>;
   onSetPageIgnored: (page: SitePageView, isIgnored: boolean) => void;
   onSetPathIgnored: (urlPrefix: string, isIgnored: boolean) => void;
 }
@@ -212,7 +202,10 @@ function PathTreeNode({ item, ...props }: TreeProps & { item: PathTreeItem }) {
   if (item.kind === 'group') return <PathGroup group={item} {...props} />;
   const { page, label } = item;
   const { saved, current } = props;
-  const isUnderIgnoredPath = !page.isHomepage && ignoredPathOver(page.normalisedUrl, current) !== null;
+  const ignoredPath = page.isHomepage ? null : ignoredPathOver(page.normalisedUrl, current);
+  const isUnderIgnoredPath = ignoredPath !== null;
+  // An ignored path can lose its row, when all but one of its pages go. Its last page then includes it again.
+  const isOnlyRowOfIgnoredPath = ignoredPath !== null && !props.groupUrlPrefixes.has(ignoredPath);
   const isPageIgnored = isIgnored(page, current);
   const isChanged = isPageIgnored !== isIgnored(page, saved);
   return (
@@ -221,8 +214,10 @@ function PathTreeNode({ item, ...props }: TreeProps & { item: PathTreeItem }) {
         <input
           type="checkbox"
           checked={!isPageIgnored && !page.isHomepage}
-          disabled={page.isHomepage || isUnderIgnoredPath}
-          onChange={(event) => props.onSetPageIgnored(page, !event.target.checked)}
+          disabled={page.isHomepage || (isUnderIgnoredPath && !isOnlyRowOfIgnoredPath)}
+          onChange={(event) =>
+            isOnlyRowOfIgnoredPath ? props.onSetPathIgnored(ignoredPath, false) : props.onSetPageIgnored(page, !event.target.checked)
+          }
         />
         <span className="page-path">{label}</span>
       </label>

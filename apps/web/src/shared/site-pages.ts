@@ -91,14 +91,6 @@ export function groupPagesByPath(pages: readonly SitePageView[], rootUrl: string
   return itemsOf(root);
 }
 
-/** How an ignored path reads in the page tree: `/blog/`, or with the host when it is not the site's own. */
-export function pathLabelOf(urlPrefix: string, rootUrl: string): string {
-  const parsed = parseUrl(urlPrefix);
-  if (parsed === null) return urlPrefix;
-  const path = `${parsed.pathname.replace(/\/+$/, '')}/`;
-  return parsed.host === parseUrl(rootUrl)?.host ? path : `${parsed.host}${path}`;
-}
-
 function itemsOf(node: PathNode): PathTreeItem[] {
   const ownPages = node.pages.map((page): PathTreePage => ({ kind: 'page', label: labelOf(page, node), page }));
   const children = [...node.children.values()].sort((a, b) => (a.label < b.label ? -1 : a.label > b.label ? 1 : 0));
