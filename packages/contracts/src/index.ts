@@ -109,7 +109,9 @@ export type CrawlStopReason =
   | 'page_budget'
   | 'attempt_limit'
   | 'time_limit'
-  | 'robots_txt_unreachable';
+  | 'robots_txt_unreachable'
+  /** robots.txt disallows the homepage, or where it redirects, and no other page was fetched. */
+  | 'homepage_disallowed_by_robots';
 
 /**
  * Why a fetch failed. Every one counts toward the safety gate. Responses that are not

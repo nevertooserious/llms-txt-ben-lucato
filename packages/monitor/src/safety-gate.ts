@@ -18,6 +18,9 @@ export function evaluateSafetyGate(
   if (crawl.stopReason === 'robots_txt_unreachable') {
     return { passed: false, failedFetchShare, reason: 'robots.txt could not be fetched, so the site was not crawled.' };
   }
+  if (crawl.stopReason === 'homepage_disallowed_by_robots') {
+    return { passed: false, failedFetchShare, reason: 'robots.txt does not allow the homepage to be fetched, so the site was not crawled.' };
+  }
   if (crawl.pagesFetchedCount === 0) {
     return { passed: false, failedFetchShare, reason: 'No page of the site could be fetched.' };
   }

@@ -20,6 +20,15 @@ describe('parseRobotsTxt', () => {
     expect(rules.isAllowed('https://example.com/admin')).toBe(false);
   });
 
+  it('applies the rules to the same host under the other scheme, and refuses other hosts', () => {
+    const rules = parseRobotsTxt(robotsTxtUrl, 'User-agent: *\nDisallow: /private/\n');
+    // https://example.com/docs -> http://example.com/docs/ -> https://example.com/docs/
+    expect(rules.isAllowed('http://example.com/docs/')).toBe(true);
+    expect(rules.isAllowed('http://example.com/private/notes')).toBe(false);
+    expect(rules.isAllowed('http://example.com:8080/docs/')).toBe(false);
+    expect(rules.isAllowed('https://other.example/docs')).toBe(false);
+  });
+
   it('supports * and $ wildcards', () => {
     const rules = parseRobotsTxt(robotsTxtUrl, 'User-agent: *\nDisallow: /*.pdf$\nDisallow: /*?session=\n');
     expect(rules.isAllowed('https://example.com/report.pdf')).toBe(false);

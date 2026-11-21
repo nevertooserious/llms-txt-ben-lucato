@@ -32,6 +32,12 @@ describe('evaluateSafetyGate', () => {
     ).toMatchObject({ passed: false, reason: expect.stringContaining('robots.txt') });
   });
 
+  it('says so when robots.txt rules out the homepage', () => {
+    expect(
+      evaluateSafetyGate({ stopReason: 'homepage_disallowed_by_robots', pagesFetchedCount: 0, pagesWithContentCount: 0, failedFetches: [] }, 0.5),
+    ).toMatchObject({ passed: false, reason: expect.stringContaining('robots.txt does not allow the homepage') });
+  });
+
   it('fails a run where every page answered without content, such as a site-wide 404', () => {
     expect(
       evaluateSafetyGate({ stopReason: 'frontier_exhausted', pagesFetchedCount: 3, pagesWithContentCount: 0, failedFetches: [] }, 0.5),

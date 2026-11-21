@@ -62,6 +62,14 @@ describe('robots.txt (RFC 9309)', () => {
     expect(conventionsCrawl.failedFetches).toEqual([]);
   });
 
+  it('says so when robots.txt rules out the homepage, or the path it redirects to', async () => {
+    const origin = sites['conventions-site'].origin;
+    for (const rootUrl of [`${origin}/private/target`, `${origin}/moved`]) {
+      const result = await crawl('conventions-site', { rootUrl });
+      expect(result).toMatchObject({ stopReason: 'homepage_disallowed_by_robots', pages: [], failedFetches: [] });
+    }
+  });
+
   it('treats a missing robots.txt as allowing everything', async () => {
     const result = await crawl('hydrated-site', { requiresHeadlessRendering: false });
     expect(result.robotsTxtStatus).toBe('unavailable');
