@@ -119,6 +119,8 @@ export const CRAWL_FAILURE_REASONS = [
   'rate_limited',
   /** A 401, 403 or 451 response: the site refused us, which says nothing about the page. */
   'blocked',
+  /** A 200 that is a protection vendor's challenge page rather than the site's page. */
+  'bot_challenge',
   'robots_txt_unreachable',
 ] as const;
 export type CrawlFailureReason = (typeof CRAWL_FAILURE_REASONS)[number];
@@ -126,7 +128,7 @@ export type CrawlFailureReason = (typeof CRAWL_FAILURE_REASONS)[number];
 export interface CrawlFailure {
   url: string;
   reason: CrawlFailureReason;
-  /** The response status for `server_error`, `rate_limited`, `blocked` and a 5xx robots.txt; otherwise null. */
+  /** The response status for `server_error`, `rate_limited`, `blocked`, `bot_challenge` and a 5xx robots.txt; otherwise null. */
   httpStatusCode: number | null;
   message: string;
 }
