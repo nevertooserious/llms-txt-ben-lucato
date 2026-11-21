@@ -1,12 +1,3 @@
-// The monitor: schedules re-checks (the tick enqueues due checks and reaps runs that lost
-// their worker), and decides what a re-check means for each stored page. A check runs
-// through the same pipeline as a submission; the decisions here are pure functions that
-// the worker calls.
+// The monitor schedules re-checks: the tick reaps runs that lost their worker and enqueues
+// due checks. A check then runs through the same pipeline as a submission, in the worker.
 export { runMonitorTick, type MonitorTickDependencies, type MonitorTickOutcome } from './scheduling/monitor-tick';
-export { reconcilePage, type PageReconciliation } from './decisions/reconcile-page';
-export { evaluateSafetyGate, type SafetyGateVerdict } from './decisions/safety-gate';
-export {
-  assessSitemapLastModifiedTrust,
-  observeSitemapLastModified,
-  type SitemapLastModifiedObservation,
-} from './decisions/sitemap-trust';
