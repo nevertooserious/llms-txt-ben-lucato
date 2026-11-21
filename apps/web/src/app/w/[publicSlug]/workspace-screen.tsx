@@ -6,6 +6,7 @@ import { isActiveRunStatus, type WorkspaceView } from '../../../shared/workspace
 import { LlmsTxtResult } from './llms-txt-result';
 import { MonitoringPanel } from './monitoring-panel';
 import { RunProgress } from './run-progress';
+import { VersionComparison } from './version-comparison';
 import { fetchWorkspaceView, WorkspaceApiError } from './workspace-api';
 
 const ACTIVE_POLL_INTERVAL_MS = 1500;
@@ -113,6 +114,15 @@ export function WorkspaceScreen({ publicSlug }: { publicSlug: string }) {
         <section className="cell">
           <LlmsTxtResult view={view} siteHost={siteHost} />
         </section>
+        {view.publishedVersion && (
+          <section className="cell">
+            <VersionComparison
+              publicSlug={publicSlug}
+              accessToken={accessToken}
+              publishedVersionNumber={view.publishedVersion.versionNumber}
+            />
+          </section>
+        )}
       </div>
     </main>
   );

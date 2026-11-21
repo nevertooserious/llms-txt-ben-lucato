@@ -1,4 +1,4 @@
-import type { WorkspaceView } from '../../../shared/workspace-view';
+import type { LlmsTxtVersionSummaryView, WorkspaceView } from '../../../shared/workspace-view';
 
 // Browser calls to the workspace routes, authorised with the secret link's token.
 
@@ -26,7 +26,13 @@ async function call<T>(publicSlug: string, accessToken: string, path: string, in
 export const fetchWorkspaceView = (publicSlug: string, accessToken: string) =>
   call<WorkspaceView>(publicSlug, accessToken, '');
 
-export const deleteWorkspace = (publicSlug: string, accessToken: string) =>
+export const fetchVersionSummaries = (publicSlug: string, accessToken: string) =>
+  call<LlmsTxtVersionSummaryView[]>(publicSlug, accessToken, '/versions');
+
+export const fetchVersionContent = (publicSlug: string, accessToken: string, versionNumber: number) =>
+  call<{ versionNumber: number; llmsTxtContent: string }>(publicSlug, accessToken, `/versions/${versionNumber}`);
+
+export const deleteWorkspace =(publicSlug: string, accessToken: string) =>
   call<Record<string, never>>(publicSlug, accessToken, '', { method: 'DELETE' });
 
 export const checkNow = (publicSlug: string, accessToken: string) =>

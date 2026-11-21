@@ -123,6 +123,42 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     expect(await rawLlmsTxt()).toContain(`- [Intro](${site.origin}/docs/intro): Begin here instead.`);
   });
 
+  it('compares two versions of the file', async () => {
+    await generateFromHomePage();
+    await visible(page.getByText('There is one version so far.', { exact: false }));
+
+    siteState.pages['/docs/intro']!.description = 'Begin here instead.';
+    await stack.databasePool.query(
+      `update pipeline_runs set created_at = created_at - interval '1 hour'
+        where site_id = (select id from sites where root_url = $1)`,
+      [site.origin],
+    );
+    await page.getByRole('button', { name: /check now/i }).click();
+    await visible(page.getByText('Version 2', { exact: true }), RUN_TIMEOUT_MS);
+
+    // It opens on the two newest versions.
+    const removedLine = page.locator('tr.diff-removed', { hasText: 'Start here.' });
+    const addedLine = page.locator('tr.diff-added', { hasText: 'Begin here instead.' });
+    await visible(removedLine);
+    await visible(addedLine);
+    expect(await page.getByLabel('From version').inputValue()).toBe('1');
+    expect(await page.getByLabel('To version').inputValue()).toBe('2');
+
+    // Swapping reverses the change.
+    await page.getByRole('button', { name: /swap/i }).click();
+    await visible(page.locator('tr.diff-removed', { hasText: 'Begin here instead.' }));
+    await visible(page.locator('tr.diff-added', { hasText: 'Start here.' }));
+
+    // A version compared with itself has nothing to show.
+    await page.getByLabel('To version').selectOption('2');
+    await visible(page.getByText('Pick two different versions to compare.'));
+
+    // The history needs the secret token; the hosted file does not.
+    const slug = new URL(page.url()).pathname.split('/')[2]!;
+    expect((await page.request.get(`/api/workspaces/${slug}/versions`)).status()).toBe(401);
+    expect((await page.request.get(`/api/workspaces/${slug}/versions/1`)).status()).toBe(401);
+  });
+
   it('shows no page counts and no way to turn monitoring off', async () => {
     await generateFromHomePage();
     await visible(page.getByText('Watching for changes'));

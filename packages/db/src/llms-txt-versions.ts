@@ -21,6 +21,50 @@ export async function loadPublishedVersion(database: Queryable, workspaceId: str
     : { id: row.id, versionNumber: row.version_number, llmsTxtContent: row.llms_txt_content };
 }
 
+export interface LlmsTxtVersionSummary {
+  versionNumber: number;
+  listedPageCount: number;
+  createdBy: 'pipeline' | 'user_edit';
+  createdAt: Date;
+}
+
+/** Every version of a workspace, newest first, without the file contents. */
+export async function listLlmsTxtVersions(database: Queryable, workspaceId: string): Promise<LlmsTxtVersionSummary[]> {
+  const result = await database.query<{
+    version_number: number;
+    listed_page_count: number;
+    created_by: 'pipeline' | 'user_edit';
+    created_at: Date;
+  }>(
+    `select version_number, listed_page_count, created_by, created_at
+       from llms_txt_versions
+      where workspace_id = $1
+      order by version_number desc`,
+    [workspaceId],
+  );
+  return result.rows.map((row) => ({
+    versionNumber: row.version_number,
+    listedPageCount: row.listed_page_count,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+  }));
+}
+
+/** The text of one version of a workspace, or null if it has no such version. */
+export async function loadLlmsTxtVersionContent(
+  database: Queryable,
+  workspaceId: string,
+  versionNumber: number,
+): Promise<string | null> {
+  const result = await database.query<{ llms_txt_content: string }>(
+    `select llms_txt_content
+       from llms_txt_versions
+      where workspace_id = $1 and version_number = $2`,
+    [workspaceId, versionNumber],
+  );
+  return result.rows[0]?.llms_txt_content ?? null;
+}
+
 export interface NewLlmsTxtVersion {
   workspaceId: string;
   /** Null for a version made by a user edit. */
