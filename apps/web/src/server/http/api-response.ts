@@ -12,6 +12,7 @@ export type ApiErrorCode =
   | 'run_not_found'
   | 'run_produced_no_version'
   | 'site_not_found'
+  | 'unauthorized'
   | 'version_not_found';
 
 /** `error` is for people and may be reworded; `code` is for programs and will not be. */

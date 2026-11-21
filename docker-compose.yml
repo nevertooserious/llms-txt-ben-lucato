@@ -48,6 +48,8 @@ services:
       <<: *app-environment
       SUBMISSIONS_PER_IP_PER_HOUR: ${SUBMISSIONS_PER_IP_PER_HOUR:-}
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-}
+      BASIC_AUTH_USERNAME: ${BASIC_AUTH_USERNAME:-}
+      BASIC_AUTH_PASSWORD: ${BASIC_AUTH_PASSWORD:-}
       # Links the home page to the workspace from db/demo-seed.sql.
       DEMO_SITE_ENABLED: "true"
     ports:
