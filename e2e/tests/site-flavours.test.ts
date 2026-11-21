@@ -318,11 +318,14 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
       expect(listedUrls(llmsTxt)).not.toContain(urlOf(submitted.site, '/pricing'));
     });
 
-    it('a second workspace on the same site gets its own file from the shared crawl', async () => {
+    it('a second submission of the same URL gets its own site and file', async () => {
       const { submitted } = await submitEditableSite();
       await harness.setOverride(submitted, '/pricing', { isExcluded: true });
       const second = await harness.submit(submitted.site);
+      expect(second.siteId).not.toBe(submitted.siteId);
       expect(second.firstRun.status).toBe('succeeded');
+      expect(listedUrls((await harness.publishedLlmsTxt(second))!)).toContain(urlOf(submitted.site, '/pricing'));
+      expect(await harness.checkNow(submitted)).toMatchObject({ status: 'succeeded' });
       expect(listedUrls((await harness.publishedLlmsTxt(second))!)).toContain(urlOf(submitted.site, '/pricing'));
       expect(listedUrls((await harness.publishedLlmsTxt(submitted))!)).not.toContain(urlOf(submitted.site, '/pricing'));
     });

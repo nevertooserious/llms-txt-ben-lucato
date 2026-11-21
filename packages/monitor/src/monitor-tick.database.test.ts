@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { createDatabasePool, createWorkspace, findOrCreateSite, type PipelineRunQueue } from '@llms-txt/db';
+import { createDatabasePool, createSite, type PipelineRunQueue } from '@llms-txt/db';
 import { runMonitorTick } from './monitor-tick';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -20,17 +20,17 @@ const fakeQueue = () => {
 };
 
 async function dueMonitoredSite(): Promise<string> {
-  const siteId = await findOrCreateSite(databasePool, `https://${randomUUID()}.example`);
-  await databasePool.query(`update sites set next_monitor_check_at = now() - interval '1 minute' where id = $1`, [siteId]);
-  const workspaceId = await createWorkspace(databasePool, {
-    siteId,
-    accessTokenHash: randomUUID(),
+  const siteId = await createSite(databasePool, {
+    rootUrl: `https://${randomUUID()}.example`,
     publicSlug: randomUUID(),
     creatorIpHash: null,
   });
   await databasePool.query(
-    `update site_workspaces set monitoring_enabled_until = now() + interval '30 days' where id = $1`,
-    [workspaceId],
+    `update sites
+        set next_monitor_check_at = now() - interval '1 minute',
+            monitoring_enabled_until = now() + interval '30 days'
+      where id = $1`,
+    [siteId],
   );
   return siteId;
 }

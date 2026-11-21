@@ -1,14 +1,14 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import { loadSavedWorkspaces, type SavedWorkspace } from '../browser/saved-workspaces';
+import { loadSavedSites, type SavedSite } from '../browser/saved-sites';
 import { SitesTable } from './sites-table';
 import { SubmitSiteForm } from './submit-site-form';
 
 // Read once per mount; the list only changes when this browser submits a site, which
 // navigates away. Cached so useSyncExternalStore sees a stable snapshot.
-let cachedSnapshot: SavedWorkspace[] | null = null;
-const readSnapshot = () => (cachedSnapshot ??= loadSavedWorkspaces());
+let cachedSnapshot: SavedSite[] | null = null;
+const readSnapshot = () => (cachedSnapshot ??= loadSavedSites());
 const subscribe = () => () => {
   cachedSnapshot = null;
 };

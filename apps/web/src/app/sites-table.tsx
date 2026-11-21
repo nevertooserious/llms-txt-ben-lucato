@@ -1,20 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { secretLinkPath, type SavedWorkspace } from '../browser/saved-workspaces';
-import { isActiveRunStatus, runStatusLabel, type WorkspaceView } from '../shared/workspace-view';
-import { fetchWorkspaceView, WorkspaceApiError } from './w/[publicSlug]/workspace-api';
+import { sitePath, type SavedSite } from '../browser/saved-sites';
+import { isActiveRunStatus, runStatusLabel, type SiteView } from '../shared/site-view';
+import { fetchSiteView, SiteApiError } from './w/[publicSlug]/site-api';
 
 const ACTIVE_POLL_INTERVAL_MS = 3000;
 
-type SiteRowState = { kind: 'loaded'; view: WorkspaceView } | { kind: 'unavailable' };
+type SiteRowState = { kind: 'loaded'; view: SiteView } | { kind: 'unavailable' };
 
 function isRunActive(row: SiteRowState | undefined): boolean {
   return row?.kind === 'loaded' && row.view.latestRun !== null && isActiveRunStatus(row.view.latestRun.status);
 }
 
 /** Loads every site once, then keeps polling only those with a run in progress. */
-function useSiteRows(sites: SavedWorkspace[]): Map<string, SiteRowState> {
+function useSiteRows(sites: SavedSite[]): Map<string, SiteRowState> {
   const [rows, setRows] = useState<Map<string, SiteRowState>>(new Map());
 
   useEffect(() => {
@@ -22,12 +22,12 @@ function useSiteRows(sites: SavedWorkspace[]): Map<string, SiteRowState> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let isCancelled = false;
 
-    const loadRow = async (site: SavedWorkspace) => {
+    const loadRow = async (site: SavedSite) => {
       try {
-        const view = await fetchWorkspaceView(site.publicSlug, site.accessToken);
+        const view = await fetchSiteView(site.publicSlug);
         latestRows.set(site.publicSlug, { kind: 'loaded', view });
       } catch (error) {
-        const isGone = error instanceof WorkspaceApiError && (error.status === 401 || error.status === 404);
+        const isGone = error instanceof SiteApiError && error.status === 404;
         // A brief failure keeps what the row already shows.
         const previous = latestRows.get(site.publicSlug);
         latestRows.set(site.publicSlug, isGone || !previous ? { kind: 'unavailable' } : previous);
@@ -71,7 +71,7 @@ function SiteStatus({ row }: { row: SiteRowState | undefined }) {
   );
 }
 
-export function SitesTable({ sites }: { sites: SavedWorkspace[] }) {
+export function SitesTable({ sites }: { sites: SavedSite[] }) {
   const rows = useSiteRows(sites);
   return (
     <section className="sites">
@@ -98,7 +98,7 @@ export function SitesTable({ sites }: { sites: SavedWorkspace[] }) {
             return (
               <tr key={site.publicSlug}>
                 <th scope="row">
-                  <a href={secretLinkPath(site.publicSlug, site.accessToken)}>{site.rootUrl}</a>
+                  <a href={sitePath(site.publicSlug)}>{site.rootUrl}</a>
                 </th>
                 <td>
                   <SiteStatus row={row} />

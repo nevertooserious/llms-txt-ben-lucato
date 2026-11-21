@@ -88,6 +88,6 @@
   <text class="l" x="468" y="592">failures under threshold</text>
 
   <rect class="key" x="300" y="610" width="320" height="56" rx="6"/>
-  <text class="t" x="460" y="634">regenerate, render per workspace</text>
+  <text class="t" x="460" y="634">regenerate and render</text>
   <text class="s" x="460" y="652">publish only where the text differs</text>
 </svg>

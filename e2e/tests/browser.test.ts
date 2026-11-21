@@ -61,12 +61,12 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     await page.getByLabel('Website URL').fill(site.origin);
     await page.getByRole('button', { name: 'Generate' }).click();
 
-    await page.waitForURL(/\/w\/[^/]+#token=/);
+    await page.waitForURL(/\/w\/[^/]+$/);
     await visible(runStatus('Generated'), RUN_TIMEOUT_MS);
     await visible(page.getByText('Version 1', { exact: true }));
   }
 
-  /** The workspace's heading is the site's URL; the preview below it has an H1 of its own. */
+  /** The site screen's heading is the site's URL; the preview below it has an H1 of its own. */
   const siteHeading = () =>
     page.locator('.site-heading').getByRole('heading', { level: 1, name: new RegExp(site.origin.replace(/[.]/g, '\\.')) });
 
@@ -81,7 +81,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
   it('generates an llms.txt for a new site', async () => {
     await generateFromHomePage();
 
-    // The workspace shows the site, the finished run and the file.
+    // The screen shows the site, the finished run and the file.
     await visible(siteHeading());
     await visible(page.locator('.facts').getByText('First generation', { exact: true }));
     await visible(page.getByText('✓ Valid per spec'));
@@ -100,7 +100,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     expect(hosted.headers()['content-type']).toContain('text/plain');
     expect(await page.locator('.hosted-url').innerText()).toContain(hostedPath!);
 
-    // The home page now lists the site in its table, linking back to its workspace.
+    // The home page now lists the site in its table, linking back to its screen.
     await page.goto('/');
     await visible(page.getByRole('row', { name: new RegExp(site.origin.replace(/[.]/g, '\\.')) }).getByText('Generated'));
     await page.getByRole('link', { name: new RegExp(site.origin.replace(/[.]/g, '\\.')) }).click();
@@ -192,10 +192,10 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     await page.getByLabel('To version').selectOption('1');
     await visible(page.getByText('Pick two different versions to compare.'));
 
-    // The history needs the secret token; the hosted file does not.
+    // The history is available from the API with no credentials.
     const slug = new URL(page.url()).pathname.split('/')[2]!;
-    expect((await page.request.get(`/api/workspaces/${slug}/versions`)).status()).toBe(401);
-    expect((await page.request.get(`/api/workspaces/${slug}/versions/1`)).status()).toBe(401);
+    expect((await page.request.get(`/api/sites/${slug}/versions`)).status()).toBe(200);
+    expect((await page.request.get(`/api/sites/${slug}/versions/1`)).status()).toBe(200);
   });
 
   it('shows no page counts and no way to turn monitoring off', async () => {
@@ -207,7 +207,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
 
   it('deletes the site after asking for confirmation', async () => {
     await generateFromHomePage();
-    const workspaceUrl = page.url();
+    const siteUrl = page.url();
     const hostedPath = await rawLink().getAttribute('href');
 
     // Cancelling keeps it.
@@ -221,7 +221,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
 
     expect((await page.request.get(hostedPath!)).status()).toBe(404);
     expect(await page.getByRole('link', { name: new RegExp(site.origin.replace(/[.]/g, '\\.')) }).count()).toBe(0);
-    await page.goto(workspaceUrl);
-    await visible(page.getByRole('heading', { name: 'No workspace here.' }));
+    await page.goto(siteUrl);
+    await visible(page.getByRole('heading', { name: 'No site here.' }));
   });
 });

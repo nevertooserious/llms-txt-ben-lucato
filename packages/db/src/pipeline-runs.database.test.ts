@@ -10,7 +10,7 @@ import {
   reapStalePipelineRuns,
   recordPipelineRunHeartbeat,
 } from './pipeline-runs';
-import { findOrCreateSite } from './sites';
+import { createSite } from './sites';
 import { withTransaction } from './transaction';
 
 // Runs against a database with db/schema.sql applied (the CI `schema` job), with a real
@@ -30,10 +30,11 @@ afterAll(async () => {
   await pool.end();
 });
 
-const newSite = () => findOrCreateSite(pool, `https://${randomUUID()}.example`);
+const newSite = () =>
+  createSite(pool, { rootUrl: `https://${randomUUID()}.example`, publicSlug: randomUUID(), creatorIpHash: null });
 const startSubmission = (siteId: string) =>
   withTransaction(pool, (transaction) =>
-    startPipelineRun(transaction, queue, { siteId, triggeredBy: 'submission', requestedByWorkspaceId: null }),
+    startPipelineRun(transaction, queue, { siteId, triggeredBy: 'submission' }),
   );
 
 async function runStatus(pipelineRunId: string): Promise<string | undefined> {
@@ -61,7 +62,6 @@ describe('startPipelineRun', () => {
         const outcome = await startPipelineRun(transaction, queue, {
           siteId,
           triggeredBy: 'submission',
-          requestedByWorkspaceId: null,
         });
         pipelineRunId = outcome.pipelineRunId;
         throw new Error('crash after enqueueing');

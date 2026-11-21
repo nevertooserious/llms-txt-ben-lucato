@@ -4,7 +4,7 @@ import { logLevel, positiveInteger, requiredString, type Environment, type LogLe
 export interface WebConfig {
   databaseUrl: string;
   logLevel: LogLevel;
-  /** New workspaces one IP may create per hour (docs/design/README.md, section 7). */
+  /** New sites one IP may create per hour (docs/design/README.md, section 7). */
   submissionsPerIpPerHour: number;
   /** Proxies in front of the app that append to X-Forwarded-For. */
   trustedProxyHops: number;

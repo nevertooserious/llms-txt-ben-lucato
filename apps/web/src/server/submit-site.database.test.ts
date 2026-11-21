@@ -19,33 +19,32 @@ const queue = {
 const uniqueHost = () => `${crypto.randomUUID()}.example`;
 
 describe('submitSite', () => {
-  it('creates a site, a workspace and a queued run, and stores only the token hash', async () => {
+  it('creates a site with monitoring on and a queued run', async () => {
     const outcome = await submitSite(
       { submittedUrl: `${uniqueHost()}/docs/`, clientIp: crypto.randomUUID() },
       { databasePool, queue, submissionsPerIpPerHour: 10 },
     );
     if (outcome.kind !== 'submitted') throw new Error(`expected a submission, got ${outcome.kind}`);
-    const stored = await databasePool.query<{ root_url: string; access_token_hash: string; status: string }>(
-      `select sites.root_url, workspaces.access_token_hash, runs.status
-         from site_workspaces workspaces
-         join sites on sites.id = workspaces.site_id
-         join pipeline_runs runs on runs.id = $2
-        where workspaces.id = $1`,
-      [outcome.workspaceId, outcome.pipelineRunId],
+    const stored = await databasePool.query<{ root_url: string; is_monitored: boolean; status: string }>(
+      `select sites.root_url, sites.monitoring_enabled_until > now() as is_monitored, runs.status
+         from sites
+         join pipeline_runs runs on runs.site_id = sites.id and runs.id = $2
+        where sites.public_slug = $1`,
+      [outcome.publicSlug, outcome.pipelineRunId],
     );
     expect(stored.rows[0]?.root_url).toMatch(/^https:\/\/.*\.example\/docs$/);
-    expect(stored.rows[0]?.access_token_hash).not.toBe(outcome.accessToken);
+    expect(stored.rows[0]?.is_monitored).toBe(true);
     expect(stored.rows[0]?.status).toBe('queued');
   });
 
-  it('gives a second submitter of the same site their own workspace and the same run', async () => {
+  it('gives a second submission of the same URL its own site and its own run', async () => {
     const host = uniqueHost();
     const dependencies = { databasePool, queue, submissionsPerIpPerHour: 10 };
     const first = await submitSite({ submittedUrl: host, clientIp: null }, dependencies);
     const second = await submitSite({ submittedUrl: `https://${host}/`, clientIp: null }, dependencies);
     if (first.kind !== 'submitted' || second.kind !== 'submitted') throw new Error('expected two submissions');
-    expect(second.workspaceId).not.toBe(first.workspaceId);
-    expect(second.pipelineRunId).toBe(first.pipelineRunId);
+    expect(second.publicSlug).not.toBe(first.publicSlug);
+    expect(second.pipelineRunId).not.toBe(first.pipelineRunId);
   });
 
   it('refuses an IP over its hourly limit', async () => {

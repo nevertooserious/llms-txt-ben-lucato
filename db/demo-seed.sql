@@ -1,6 +1,6 @@
 -- One demo site with four published versions, for local demos. docker-compose.yml applies
 -- it after db/schema.sql, only when the data volume is empty. Never apply it to a shared
--- database: its secret link is public, at /w/demo#token=demo-workspace-token.
+-- database. It is served at /w/demo.
 --
 -- The site is on the reserved .example domain and has no monitor check scheduled, so the
 -- worker never crawls it by itself. "Check now" on it ends in a failed run, which leaves
@@ -9,7 +9,6 @@
 do $seed$
 declare
   demo_site_id uuid;
-  demo_workspace_id uuid;
   demo_run_id uuid;
   demo_version_id uuid;
   version_ages interval[] := array[
@@ -98,32 +97,26 @@ $version$# Fernhill Cloud
 - [Changelog](https://docs.fernhill.example/changelog): Every product change, newest first.
 $version$];
 begin
-  insert into sites (root_url, site_title, generated_summary, last_monitor_check_at, created_at)
+  insert into sites (
+    root_url, public_slug, site_title, generated_summary, monitoring_enabled_until,
+    last_monitor_check_at, created_at)
   values (
     'https://docs.fernhill.example',
+    'demo',
     'Fernhill Cloud',
     'Fernhill Cloud hosts web applications and runs their builds.',
+    now() + interval '30 days',
     now() - version_ages[4],
     now() - version_ages[1])
   returning id into demo_site_id;
 
-  insert into site_workspaces (site_id, access_token_hash, public_slug, monitoring_enabled_until, created_at)
-  values (
-    demo_site_id,
-    encode(sha256(convert_to('demo-workspace-token', 'UTF8')), 'hex'),
-    'demo',
-    now() + interval '30 days',
-    now() - version_ages[1])
-  returning id into demo_workspace_id;
-
   for version_index in 1 .. array_length(version_contents, 1) loop
     insert into pipeline_runs (
-      site_id, requested_by_workspace_id, triggered_by, status,
+      site_id, triggered_by, status,
       pages_discovered_count, pages_fetched_count, pages_changed_count,
       created_at, started_at, finished_at)
     values (
       demo_site_id,
-      case when version_index = 1 then demo_workspace_id end,
       case when version_index = 1 then 'submission' else 'monitor' end,
       'succeeded',
       version_page_counts[version_index],
@@ -136,10 +129,10 @@ begin
     returning id into demo_run_id;
 
     insert into llms_txt_versions (
-      workspace_id, pipeline_run_id, version_number, llms_txt_content, llms_txt_content_hash,
+      site_id, pipeline_run_id, version_number, llms_txt_content, llms_txt_content_hash,
       listed_page_count, page_changes, created_by, created_at)
     values (
-      demo_workspace_id,
+      demo_site_id,
       demo_run_id,
       version_index,
       version_contents[version_index],
@@ -151,6 +144,6 @@ begin
     returning id into demo_version_id;
   end loop;
 
-  update site_workspaces set published_version_id = demo_version_id where id = demo_workspace_id;
+  update sites set published_version_id = demo_version_id where id = demo_site_id;
 end
 $seed$;

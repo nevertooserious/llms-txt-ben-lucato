@@ -275,8 +275,8 @@ export interface GeneratorPage {
   markdownVariantUrl: string | null;
 }
 
-/** A workspace's edit to one page. Applied as an input on every render. */
-export interface WorkspacePageOverride {
+/** The user's edit to one page. Applied as an input on every render. */
+export interface PageOverride {
   normalisedUrl: string;
   descriptionOverride: string | null;
   isExcluded: boolean;

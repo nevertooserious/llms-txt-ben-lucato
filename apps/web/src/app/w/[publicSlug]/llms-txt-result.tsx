@@ -1,7 +1,7 @@
-import type { WorkspaceView } from '../../../shared/workspace-view';
+import type { SiteView } from '../../../shared/site-view';
 import { LlmsTxtPreview } from './llms-txt-preview';
 
-export function LlmsTxtResult({ view, siteHost }: { view: WorkspaceView; siteHost: string }) {
+export function LlmsTxtResult({ view, siteHost }: { view: SiteView; siteHost: string }) {
   const version = view.publishedVersion;
   const hostedUrl = typeof window === 'undefined' ? view.hostedLlmsTxtPath : `${window.location.origin}${view.hostedLlmsTxtPath}`;
 

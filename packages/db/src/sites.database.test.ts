@@ -1,9 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createDatabasePool } from './database-pool';
-import { claimDueMonitorChecks, findOrCreateSite } from './sites';
+import { claimDueMonitorChecks, createSite } from './sites';
 import { withTransaction } from './transaction';
-import { createWorkspace } from './workspaces';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL must point at a database with db/schema.sql applied');
@@ -12,23 +11,18 @@ const pool = createDatabasePool(databaseUrl);
 afterAll(() => pool.end());
 
 async function siteWithMonitoring(options: { nextCheck: string; monitoringUntil: string | null }): Promise<string> {
-  const siteId = await findOrCreateSite(pool, `https://${randomUUID()}.example`);
-  await pool.query(`update sites set next_monitor_check_at = now() + $2::interval where id = $1`, [
-    siteId,
-    options.nextCheck,
-  ]);
-  const workspaceId = await createWorkspace(pool, {
-    siteId,
-    accessTokenHash: randomUUID(),
+  const siteId = await createSite(pool, {
+    rootUrl: `https://${randomUUID()}.example`,
     publicSlug: randomUUID(),
     creatorIpHash: null,
   });
-  if (options.monitoringUntil !== null) {
-    await pool.query(`update site_workspaces set monitoring_enabled_until = now() + $2::interval where id = $1`, [
-      workspaceId,
-      options.monitoringUntil,
-    ]);
-  }
+  await pool.query(
+    `update sites
+        set next_monitor_check_at = now() + $2::interval,
+            monitoring_enabled_until = now() + $3::interval
+      where id = $1`,
+    [siteId, options.nextCheck, options.monitoringUntil],
+  );
   return siteId;
 }
 
@@ -40,10 +34,12 @@ async function nextCheckIsInFuture(siteId: string): Promise<boolean | null> {
   return result.rows[0]!.in_future;
 }
 
-describe('findOrCreateSite', () => {
-  it('returns the same id for the same root URL', async () => {
+describe('createSite', () => {
+  it('makes an independent site for each submission of the same root URL', async () => {
     const rootUrl = `https://${randomUUID()}.example`;
-    expect(await findOrCreateSite(pool, rootUrl)).toBe(await findOrCreateSite(pool, rootUrl));
+    const first = await createSite(pool, { rootUrl, publicSlug: randomUUID(), creatorIpHash: null });
+    const second = await createSite(pool, { rootUrl, publicSlug: randomUUID(), creatorIpHash: null });
+    expect(second).not.toBe(first);
   });
 });
 
@@ -55,8 +51,15 @@ describe('claimDueMonitorChecks', () => {
     expect(await nextCheckIsInFuture(siteId)).toBe(true);
   });
 
-  it('unschedules a due site whose workspaces have all let monitoring expire', async () => {
+  it('unschedules a due site whose monitoring has expired', async () => {
     const siteId = await siteWithMonitoring({ nextCheck: '-1 minute', monitoringUntil: '-1 day' });
+    const claimed = await withTransaction(pool, (transaction) => claimDueMonitorChecks(transaction, 1000));
+    expect(claimed).not.toContain(siteId);
+    expect(await nextCheckIsInFuture(siteId)).toBeNull();
+  });
+
+  it('unschedules a due site that never had monitoring', async () => {
+    const siteId = await siteWithMonitoring({ nextCheck: '-1 minute', monitoringUntil: null });
     const claimed = await withTransaction(pool, (transaction) => claimDueMonitorChecks(transaction, 1000));
     expect(claimed).not.toContain(siteId);
     expect(await nextCheckIsInFuture(siteId)).toBeNull();

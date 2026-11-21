@@ -2,22 +2,20 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { collapseUnchangedLines, diffLines } from '../../../shared/diff-lines';
-import type { LlmsTxtVersionSummaryView } from '../../../shared/workspace-view';
-import { fetchVersionContent, fetchVersionSummaries, WorkspaceApiError } from './workspace-api';
+import type { LlmsTxtVersionSummaryView } from '../../../shared/site-view';
+import { fetchVersionContent, fetchVersionSummaries, SiteApiError } from './site-api';
 
 const LINE_MARKERS = { unchanged: ' ', added: '+', removed: '−' } as const;
 
 const errorMessage = (error: unknown) =>
-  error instanceof WorkspaceApiError ? error.message : 'Could not reach the server.';
+  error instanceof SiteApiError ? error.message : 'Could not reach the server.';
 
 export function VersionComparison({
   publicSlug,
-  accessToken,
   publishedVersionNumber,
   newestVersionNumber,
 }: {
   publicSlug: string;
-  accessToken: string;
   publishedVersionNumber: number;
   /** Differs from the published version while an older one is pinned. */
   newestVersionNumber: number;
@@ -33,7 +31,7 @@ export function VersionComparison({
   useEffect(() => {
     if (newestVersionNumber < 2) return;
     let isCancelled = false;
-    fetchVersionSummaries(publicSlug, accessToken)
+    fetchVersionSummaries(publicSlug)
       .then((loaded) => {
         if (!isCancelled) setVersions(loaded);
       })
@@ -43,7 +41,7 @@ export function VersionComparison({
     return () => {
       isCancelled = true;
     };
-  }, [publicSlug, accessToken, newestVersionNumber]);
+  }, [publicSlug, newestVersionNumber]);
 
   const fromVersion = chosenFromVersion ?? versions?.[1]?.versionNumber ?? null;
   const toVersion = chosenToVersion ?? versions?.[0]?.versionNumber ?? null;
@@ -56,7 +54,7 @@ export function VersionComparison({
     if (missing.length === 0) return;
     let isCancelled = false;
     setLoadError(null);
-    Promise.all(missing.map((number) => fetchVersionContent(publicSlug, accessToken, number)))
+    Promise.all(missing.map((number) => fetchVersionContent(publicSlug, number)))
       .then((loaded) => {
         if (isCancelled) return;
         setContents((current) => ({
@@ -70,7 +68,7 @@ export function VersionComparison({
     return () => {
       isCancelled = true;
     };
-  }, [publicSlug, accessToken, fromVersion, toVersion, contents]);
+  }, [publicSlug, fromVersion, toVersion, contents]);
 
   const diff = useMemo(() => {
     if (fromContent === undefined || toContent === undefined) return null;
