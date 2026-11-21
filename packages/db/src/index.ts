@@ -23,5 +23,35 @@ export {
   type PipelineRunStage,
   type StalePipelineRunThresholds,
 } from './pipeline-runs';
-export { claimDueMonitorChecks, findOrCreateSite } from './sites';
-export { countRecentWorkspacesFromIp, createWorkspace, loadPublishedLlmsTxt, type NewWorkspace } from './workspaces';
+export {
+  claimDueMonitorChecks,
+  findOrCreateSite,
+  loadSiteForRun,
+  saveSiteCrawlOutcome,
+  saveSiteTitle,
+  type SiteCrawlOutcome,
+  type SiteForRun,
+} from './sites';
+export {
+  countRecentWorkspacesFromIp,
+  createWorkspace,
+  loadPublishedLlmsTxt,
+  loadWorkspaceIdsForSite,
+  loadWorkspaceOverrides,
+  type NewWorkspace,
+} from './workspaces';
+export {
+  loadGeneratorPages,
+  loadStoredPages,
+  saveCrawledPage,
+  saveExtractedPage,
+  saveLinkSignals,
+  type CrawledPageWrite,
+  type StoredPage,
+} from './pages';
+export {
+  loadPublishedVersion,
+  publishLlmsTxtVersion,
+  type NewLlmsTxtVersion,
+  type PublishedVersion,
+} from './llms-txt-versions';
