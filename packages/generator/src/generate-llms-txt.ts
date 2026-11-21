@@ -69,8 +69,8 @@ function renderEntry(entry: SelectedPage, siteTitle: string): string {
 }
 
 /**
- * The page's title without the site name most sites append (`Docs | Acme`), else a
- * title made from the URL's last path segment.
+ * The page's title without the site name most sites append (`Docs | Acme`). A page with
+ * no title, or titled only with the site name, gets one from the URL's last path segment.
  */
 export function entryTitle(page: GeneratorPage, siteTitle: string): string {
   const title = singleLine(page.record.title ?? '');
@@ -80,7 +80,7 @@ export function entryTitle(page: GeneratorPage, siteTitle: string): string {
       if (title.length > suffix.length && title.endsWith(suffix)) return title.slice(0, -suffix.length).trim();
     }
   }
-  if (title !== '') return title;
+  if (title !== '' && title !== siteTitle) return title;
   const lastSegment = new URL(page.record.normalisedUrl).pathname.split('/').filter(Boolean).pop() ?? '';
   const words = decodeSafely(lastSegment).replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').trim();
   return words === '' ? new URL(page.record.normalisedUrl).host : words.charAt(0).toUpperCase() + words.slice(1);

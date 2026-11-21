@@ -19,6 +19,7 @@ interface PageOptions {
   languageCode?: string | null;
   markdownVariantUrl?: string | null;
   fetchUrl?: string;
+  contentDigest?: string;
   assessment?: StoredPageAssessment;
 }
 
@@ -33,7 +34,7 @@ function page(path: string, options: PageOptions = {}): GeneratorPage {
       pageType: options.pageType ?? (path === '/' ? 'home' : 'other'),
       languageCode: options.languageCode ?? null,
       contentMarkdown: '',
-      contentDigest: 'digest',
+      contentDigest: options.contentDigest ?? 'digest',
       listingFieldsHash: 'hash',
     },
     assessment: options.assessment ?? null,
@@ -223,6 +224,37 @@ describe('generateLlmsTxt', () => {
       ],
     });
     expect(Object.values(sections(llmsTxt)).flat()).toEqual([`${ORIGIN}/product`]);
+  });
+
+  it('lists URL variants with the same content once, preferring the one with a markdown version', () => {
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/guide.html', { contentDigest: 'guide' }),
+        page('/guide', { contentDigest: 'guide', markdownVariantUrl: `${ORIGIN}/guide.md` }),
+        page('/guide/index.html', { contentDigest: 'guide' }),
+      ],
+    });
+    expect(Object.values(sections(llmsTxt)).flat()).toEqual([`${ORIGIN}/guide.md`]);
+  });
+
+  it('keeps pages at similar URLs when their content differs', () => {
+    const llmsTxt = generate({
+      pages: [homepage, page('/guide', { contentDigest: 'one' }), page('/guide.html', { contentDigest: 'two' })],
+    });
+    expect(Object.values(sections(llmsTxt)).flat()).toHaveLength(2);
+  });
+
+  it('leaves out the homepage under its other URLs', () => {
+    const llmsTxt = generate({
+      pages: [homepage, page('/index'), page('/index.html'), page('/about', { contentDigest: 'about' })],
+    });
+    expect(Object.values(sections(llmsTxt)).flat()).toEqual([`${ORIGIN}/about`]);
+  });
+
+  it('titles a page from its URL when its title is only the site name', () => {
+    const llmsTxt = generate({ pages: [homepage, page('/getting-started.html', { title: 'Example', contentDigest: 'start' })] });
+    expect(llmsTxt).toContain(`- [Getting started](${ORIGIN}/getting-started.html)`);
   });
 
   it('leaves out pagination and pages in another language than the site’s', () => {

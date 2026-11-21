@@ -59,19 +59,64 @@ export function scorePage(page: GeneratorPage): number {
 
 /**
  * The pages that could be listed, by rules that need no LLM: not the homepage (it is the
- * H1), noindex pages, pagination, or pages in another language than the site's. These
- * are the pages worth paying to assess.
+ * H1) under any of its URLs, noindex pages, pagination, or pages in another language than
+ * the site's; and one page per set of URL variants. These are the pages worth paying to
+ * assess.
  */
 export function listingCandidates(pages: readonly GeneratorPage[]): GeneratorPage[] {
   const siteLanguage = primaryLanguageOf(pages);
-  return pages.filter(
-    (page) =>
-      page.record.pageType !== 'home' &&
-      page.crawlSignals.crawlDepth > 0 &&
-      !page.crawlSignals.hasNoindexDirective &&
-      !isPaginationUrl(page.record.normalisedUrl) &&
-      !isOtherLanguage(page, siteLanguage),
+  const homepage = homepageOf(pages);
+  const homepageVariantKey = homepage === undefined ? null : urlVariantKey(homepage);
+  return keepOnePerUrlVariant(
+    pages.filter(
+      (page) =>
+        page.record.pageType !== 'home' &&
+        page.crawlSignals.crawlDepth > 0 &&
+        urlVariantKey(page) !== homepageVariantKey &&
+        !page.crawlSignals.hasNoindexDirective &&
+        !isPaginationUrl(page.record.normalisedUrl) &&
+        !isOtherLanguage(page, siteLanguage),
+    ),
   );
+}
+
+/**
+ * `/guide`, `/guide/`, `/guide.html`, `/guide.md` and `/guide/index.html` are one page when
+ * their content is the same. Different content at such URLs stays separate.
+ */
+function urlVariantKey(page: GeneratorPage): string {
+  const url = new URL(page.record.normalisedUrl);
+  const path = url.pathname
+    .replace(/\/+$/, '')
+    .replace(/\.md$/i, '')
+    .replace(/\.html?$/i, '')
+    .replace(/\/index$/i, '');
+  return JSON.stringify([url.origin, path, url.search, page.record.contentDigest]);
+}
+
+/** The URL the page declares as canonical wins, then one with a markdown version. */
+function keepOnePerUrlVariant(pages: readonly GeneratorPage[]): GeneratorPage[] {
+  const byVariantKey = new Map<string, GeneratorPage>();
+  for (const page of pages) {
+    const key = urlVariantKey(page);
+    const current = byVariantKey.get(key);
+    if (current === undefined || isBetterUrlVariant(page, current)) byVariantKey.set(key, page);
+  }
+  return [...byVariantKey.values()];
+}
+
+/** Ignores crawl scores, so the listed URL does not flip as inbound link counts change. */
+function isBetterUrlVariant(candidate: GeneratorPage, current: GeneratorPage): boolean {
+  const candidateIsCanonical = declaresItselfCanonical(candidate);
+  if (candidateIsCanonical !== declaresItselfCanonical(current)) return candidateIsCanonical;
+  const candidateHasMarkdown = candidate.markdownVariantUrl !== null;
+  if (candidateHasMarkdown !== (current.markdownVariantUrl !== null)) return candidateHasMarkdown;
+  return compareText(candidate.record.normalisedUrl, current.record.normalisedUrl) < 0;
+}
+
+function declaresItselfCanonical(page: GeneratorPage): boolean {
+  const { canonicalUrl, normalisedUrl } = page.record;
+  return canonicalUrl !== null && canonicalKey(canonicalUrl) === canonicalKey(normalisedUrl);
 }
 
 export function homepageOf(pages: readonly GeneratorPage[]): GeneratorPage | undefined {
