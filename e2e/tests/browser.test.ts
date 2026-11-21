@@ -244,7 +244,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     // A page without the login goes to the login page.
     const pageWithoutLogin = await fetch(`${stack.webAppOrigin}/w/${slug}`, { redirect: 'manual' });
     expect(pageWithoutLogin.status).toBe(307);
-    expect(pageWithoutLogin.headers.get('location')).toBe(`${stack.webAppOrigin}/login?next=%2Fw%2F${slug}`);
+    expect(pageWithoutLogin.headers.get('location')).toBe(`/login?next=%2Fw%2F${slug}`);
     const wrongLogin = { authorization: `Basic ${Buffer.from('user1:wrong').toString('base64')}` };
     expect((await fetch(`${stack.webAppOrigin}/api/sites/${slug}/versions`, { headers: wrongLogin })).status).toBe(401);
 
