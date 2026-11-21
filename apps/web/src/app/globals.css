@@ -821,6 +821,9 @@ a.button:hover {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+  /* The height of its buttons, so the header does not move when they appear. */
+  min-height: 32px;
   cursor: pointer;
   list-style: none;
 }
@@ -844,8 +847,21 @@ details[open] > .page-group-summary::before {
   font-size: 13px;
   color: var(--color-text-muted);
 }
-.pages-panel-counts {
+/* Discard and save, at the top right of the section. */
+.pages-panel-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   margin-left: auto;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.pages-panel-actions .button {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 .pages-panel > .hint {
   margin: 12px 0;
@@ -927,22 +943,6 @@ details[open] > .page-group-summary::before {
   border-color: var(--color-rule-strong);
   background: var(--color-surface-muted);
   color: var(--color-text-secondary);
-}
-.save-bar {
-  position: sticky;
-  bottom: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 16px;
-  padding: 10px 12px 10px 16px;
-  border: 1px solid var(--color-rule-strong);
-  border-radius: var(--radius-large);
-  background: var(--color-surface);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  font-size: 13px;
 }
 @media (max-width: 640px) {
   .page-title {
