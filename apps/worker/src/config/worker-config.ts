@@ -1,4 +1,4 @@
-import { logLevel, optionalString, positiveInteger, requiredString, type Environment, type LogLevel } from '@llms-txt/runtime';
+import { ConfigurationError, logLevel, optionalString, positiveInteger, requiredString, type Environment, type LogLevel } from '@llms-txt/runtime';
 
 /** Everything the worker reads from its environment, checked once at startup. */
 export interface WorkerConfig {
@@ -18,9 +18,11 @@ export interface WorkerConfig {
   crawlPageBudget: number;
   /** Above this share of failed fetches a run fails and publishes nothing. A starting value. */
   maxFailedFetchShare: number;
-  /** Null runs the generator on its heuristics, for local development and tests. */
-  anthropicApiKey: string | null;
+  llmClient: LlmClientConfig;
 }
+
+/** The real model, or a stub for local development and tests, which must be asked for. */
+export type LlmClientConfig = { kind: 'anthropic'; apiKey: string } | { kind: 'stub' };
 
 export function readWorkerConfig(environment: Environment = process.env): WorkerConfig {
   return {
@@ -33,6 +35,15 @@ export function readWorkerConfig(environment: Environment = process.env): Worker
     maxMonitorChecksPerTick: 100,
     crawlPageBudget: positiveInteger(environment, 'CRAWL_PAGE_BUDGET', 200),
     maxFailedFetchShare: 0.5,
-    anthropicApiKey: optionalString(environment, 'ANTHROPIC_API_KEY'),
+    llmClient: llmClientConfig(environment),
   };
+}
+
+function llmClientConfig(environment: Environment): LlmClientConfig {
+  const kind = optionalString(environment, 'LLM_CLIENT') ?? 'anthropic';
+  if (kind === 'stub') return { kind };
+  if (kind !== 'anthropic') throw new ConfigurationError(`LLM_CLIENT must be one of anthropic, stub, got "${kind}"`);
+  const apiKey = optionalString(environment, 'ANTHROPIC_API_KEY');
+  if (apiKey === null) throw new ConfigurationError('ANTHROPIC_API_KEY must be set, or LLM_CLIENT=stub for local development');
+  return { kind, apiKey };
 }

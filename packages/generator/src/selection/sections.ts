@@ -1,5 +1,4 @@
 import type { GeneratorPage, PageType } from '@llms-txt/contracts';
-import { JOB_BOARD_SEGMENT } from './page-kinds';
 import type { SelectionLimits } from './selection-limits';
 import { pathSegmentsOf, titleCaseOf } from './url-paths';
 
@@ -39,7 +38,7 @@ export function orderSectionNames(names: readonly string[]): string[] {
 }
 
 /**
- * Legal pages, job listings and what an assessment calls optional go under Optional. A
+ * Legal pages and what an assessment calls optional go under Optional. A
  * page of a type goes in that type's section. A page of no particular type goes in its
  * area's section when it has one, and otherwise in Pages.
  */
@@ -50,10 +49,6 @@ export function sectionNameOf(
 ): string {
   const pageType = page.assessment?.pageType ?? page.record.pageType;
   if (pageType === 'legal' || pageType === 'home' || page.assessment?.listingValue === 'optional') {
-    return OPTIONAL_SECTION_NAME;
-  }
-  // Without an assessment to say otherwise, a job board is not what the site is about.
-  if (page.assessment === null && pathSegmentsOf(page.record.normalisedUrl).some((segment) => JOB_BOARD_SEGMENT.test(segment))) {
     return OPTIONAL_SECTION_NAME;
   }
   if (pageType !== 'other') return SECTION_NAMES[pageType];

@@ -19,8 +19,8 @@ export interface SelectedPage {
 }
 
 /**
- * Takes the listing candidates, minus pages the user excluded or an assessment judged
- * not to belong, and minus the rest of a folder most of whose pages are reference entries; keeps one page per canonical URL; drops pages that score too low; then
+ * Takes the listing candidates, minus pages not assessed yet, pages the user excluded and
+ * pages an assessment judged not to belong, and minus the rest of a folder most of whose pages are reference entries; keeps one page per canonical URL; drops pages that score too low; then
  * fills the sections in score order within the limits. Pages that score the same keep
  * the order of the site's navigation, then the order the crawl first saw links to them,
  * then of their URLs. A page beyond a limit is left
@@ -37,7 +37,9 @@ export function selectPages(
   const candidates = withoutReferenceFamilies(
     listingCandidates(pages).filter(
       (page) =>
-        overridesByUrl.get(page.record.normalisedUrl)?.isExcluded !== true && page.assessment?.listingValue !== 'exclude',
+        page.assessment !== null &&
+        page.assessment.listingValue !== 'exclude' &&
+        overridesByUrl.get(page.record.normalisedUrl)?.isExcluded !== true,
     ),
     pages,
   );

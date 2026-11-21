@@ -21,8 +21,8 @@ export interface PipelineStageDependencies {
   resolveRootUrl: (rootUrl: string) => Promise<string>;
   /** generateLlmsTxt. */
   renderLlmsTxt: (input: GenerateLlmsTxtInput) => string;
-  /** Assesses pages and writes the summary. Without one, the generator's heuristics are used. */
-  llmClient?: LlmClient | null;
+  /** Assesses pages and writes the summary. */
+  llmClient: LlmClient;
   now?: () => Date;
 }
 

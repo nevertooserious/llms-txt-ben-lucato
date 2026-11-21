@@ -8,7 +8,6 @@ import {
 import {
   alternativeTitlesOf,
   buildEntryTextContext,
-  crawledDescriptionOf,
   entryTitleIn,
   normaliseForComparison,
   singleLine,
@@ -78,7 +77,7 @@ export function generateLlmsTxt(input: GenerateLlmsTxtInput): string {
     sectionName,
     lines: selected
       .filter((entry) => entry.sectionName === sectionName)
-      .map((entry) => renderEntry(entry, titles.get(entry.page.record.normalisedUrl)!, context)),
+      .map((entry) => renderEntry(entry, titles.get(entry.page.record.normalisedUrl)!)),
   }));
   const resourceLines = machineReadableResourceLines(input.machineReadableResourceUrls ?? []);
   if (resourceLines.length > 0) {
@@ -116,11 +115,11 @@ function entryTitlesOf(selected: readonly SelectedPage[], context: EntryTextCont
   return titles;
 }
 
-function renderEntry(entry: SelectedPage, title: string, context: EntryTextContext): string {
+function renderEntry(entry: SelectedPage, title: string): string {
   const { page } = entry;
   const url = encodeEntryUrl(page.markdownVariantUrl ?? page.fetchUrl);
   let description = truncate(
-    singleLine(entry.descriptionOverride ?? page.assessment?.description ?? crawledDescriptionOf(page, context)),
+    singleLine(entry.descriptionOverride ?? page.assessment?.description ?? ''),
   );
   // A description that only repeats the title adds nothing to the line.
   if (normaliseForComparison(description) === normaliseForComparison(title)) description = '';

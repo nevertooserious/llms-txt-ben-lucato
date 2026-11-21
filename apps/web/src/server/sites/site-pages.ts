@@ -1,4 +1,3 @@
-import type { GeneratorPage } from '@llms-txt/contracts';
 import {
   loadExcludedUrlPrefixes,
   loadGeneratorPages,
@@ -16,7 +15,6 @@ import {
   decidePublication,
   excludePagesUnderUrlPrefixes,
   generateLlmsTxt,
-  listingCandidates,
   selectPages,
   siteNameFrom,
 } from '@llms-txt/generator';
@@ -76,10 +74,7 @@ export async function loadSitePagesView(
   ]);
   const excludedUrls = new Set(overrides.filter((override) => override.isExcluded).map((override) => override.normalisedUrl));
   const sectionNameByUrl = new Map(
-    selectPages(
-      pagesTheWorkerRenders(loadedPages),
-      excludePagesUnderUrlPrefixes(overrides, excludedUrlPrefixes, loadedPages),
-    ).map((selected) => [selected.page.record.normalisedUrl, selected.sectionName]),
+    selectPages(loadedPages, excludePagesUnderUrlPrefixes(overrides, excludedUrlPrefixes, loadedPages)).map((selected) => [selected.page.record.normalisedUrl, selected.sectionName]),
   );
   return {
     pages: loadedPages.map((page) => ({
@@ -123,12 +118,14 @@ export async function savePageExclusions(
     loadPageOverrides(databasePool, siteId),
     loadExcludedUrlPrefixes(databasePool, siteId),
   ]);
+  // A site crawled before pages were always assessed would render with nothing listed.
+  if (!loadedPages.some((page) => page.assessment !== null)) return { kind: 'applied_by_next_run' };
   const rendered = generateLlmsTxt({
     siteTitle: siteNameFrom(site.siteTitle ?? new URL(site.rootUrl).host, loadedPages),
     siteSummary: site.generatedSummary,
     siteNotes: site.generatedNotes,
     machineReadableResourceUrls: site.machineReadableResourceUrls,
-    pages: pagesTheWorkerRenders(loadedPages),
+    pages: loadedPages,
     overrides: excludePagesUnderUrlPrefixes(overrides, excludedUrlPrefixes, loadedPages),
   });
   const decision = decidePublication(newestVersion.llmsTxtContent, rendered);
@@ -147,17 +144,4 @@ export async function savePageExclusions(
   );
   if (version === null) return { kind: 'unchanged' };
   return { kind: 'published', versionNumber: version.versionNumber, isLive: version.isLive };
-}
-
-/**
- * The worker leaves out candidate pages the LLM has not assessed yet
- * (pipeline/stages/llm-enrichment.ts). Whether it has an LLM is not known here, so a site with any
- * assessment is taken to be assessed.
- */
-function pagesTheWorkerRenders(pages: GeneratorPage[]): GeneratorPage[] {
-  if (!pages.some((page) => page.assessment !== null)) return pages;
-  const unassessedCandidateUrls = new Set(
-    listingCandidates(pages).filter((page) => page.assessment === null).map((page) => page.record.normalisedUrl),
-  );
-  return pages.filter((page) => !unassessedCandidateUrls.has(page.record.normalisedUrl));
 }

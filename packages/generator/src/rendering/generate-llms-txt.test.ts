@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GeneratorPage, PageType, StoredPageAssessment } from '@llms-txt/contracts';
 import { listedEntries } from '../publication/decide-publication';
-import { firstParagraphOf } from '../entry-text';
 import { generateLlmsTxt, type GenerateLlmsTxtInput } from './generate-llms-txt';
 import { compareText, DEFAULT_SELECTION_LIMITS, excludePagesUnderUrlPrefixes, isPaginationUrl } from '../selection';
 import { validateLlmsTxt } from './validate-llms-txt';
@@ -26,25 +25,32 @@ interface PageOptions {
   navigationPosition?: number | null;
   firstLinkPosition?: number | null;
   declaredSiteName?: string | null;
-  assessment?: StoredPageAssessment;
+  /** By default the page is assessed as primary, keeping its description and type. */
+  assessment?: StoredPageAssessment | null;
 }
 
 function page(path: string, options: PageOptions = {}): GeneratorPage {
   const normalisedUrl = path === '/' ? ORIGIN : `${ORIGIN}${path}`;
+  const description = options.description === undefined ? `What the page at ${path} is about.` : options.description;
+  const pageType = options.pageType ?? (path === '/' ? 'home' : 'other');
+  const defaultAssessment: StoredPageAssessment | null =
+    pageType === 'home'
+      ? null
+      : { description: description ?? '', listingValue: 'primary', exclusionReason: null, pageType, sourceHash: 'source' };
   return {
     record: {
       normalisedUrl,
       canonicalUrl: options.canonicalUrl ?? null,
       title: options.title === undefined ? `Title of ${path}` : options.title,
-      description: options.description === undefined ? `What the page at ${path} is about.` : options.description,
+      description,
       declaredSiteName: options.declaredSiteName ?? null,
-      pageType: options.pageType ?? (path === '/' ? 'home' : 'other'),
+      pageType,
       languageCode: options.languageCode ?? null,
       contentMarkdown: options.contentMarkdown ?? '',
       contentDigest: options.contentDigest ?? `digest of ${path}`,
       listingFieldsHash: 'hash',
     },
-    assessment: options.assessment ?? null,
+    assessment: options.assessment === undefined ? defaultAssessment : options.assessment,
     fetchUrl: options.fetchUrl ?? normalisedUrl,
     crawlSignals: {
       crawlDepth: options.crawlDepth ?? (path === '/' ? 0 : 1),
@@ -542,11 +548,6 @@ describe('sections', () => {
     const llmsTxt = generate({ pages: [homepage, page('/-/one'), page('/-/two'), page('/-/three')] });
     expect(Object.keys(sections(llmsTxt))).toEqual(['Pages']);
   });
-
-  it('puts a job board under Optional', () => {
-    const llmsTxt = generate({ pages: [homepage, page('/jobs', { pageType: 'about' }), page('/about', { pageType: 'about' })] });
-    expect(sections(llmsTxt)).toEqual({ About: [`${ORIGIN}/about`], Optional: [`${ORIGIN}/jobs`] });
-  });
 });
 
 describe('entry titles', () => {
@@ -599,71 +600,14 @@ describe('entry titles', () => {
 });
 
 describe('entry descriptions', () => {
-  const boilerplate = 'The official home of the Example project.';
-  const lineOf = (llmsTxt: string, path: string) => llmsTxt.split('\n').find((line) => line.includes(`(${ORIGIN}${path})`));
-
-  it('leaves out a description the site repeats, and uses the page’s opening paragraph instead', () => {
-    const llmsTxt = generate({
-      pages: [
-        page('/', { title: 'Example', description: boilerplate }),
-        page('/about', {
-          description: boilerplate,
-          contentMarkdown: '## About\n\n- [A link](https://example.com/x)\n\nExample is a tool for making examples of every kind. It is free.',
-        }),
-        page('/downloads', { description: boilerplate, contentMarkdown: '## Releases\n\n| Version | Date |\n| --- | --- |' }),
-        page('/own', { description: 'This page has a description of its own.' }),
-      ],
-    });
-    expect(lineOf(llmsTxt, '/about')).toBe(
-      `- [Title of /about](${ORIGIN}/about): Example is a tool for making examples of every kind. It is free.`,
-    );
-    expect(lineOf(llmsTxt, '/downloads')).toBe(`- [Title of /downloads](${ORIGIN}/downloads)`);
-    expect(lineOf(llmsTxt, '/own')).toContain(': This page has a description of its own.');
+  it('leaves out a description that repeats the title', () => {
+    const llmsTxt = generate({ pages: [homepage, page('/faq', { title: 'Questions we are asked', description: 'Questions we are asked.' })] });
+    expect(llmsTxt).toContain(`- [Questions we are asked](${ORIGIN}/faq)\n`);
   });
 
-  it('counts a description as the site’s own when three pages with different content share it', () => {
-    const shared = 'Everything you need to know about us.';
-    const llmsTxt = generate({
-      pages: [homepage, page('/a', { description: shared }), page('/b', { description: shared }), page('/c', { description: shared })],
-    });
-    expect(llmsTxt).not.toContain(shared);
-  });
-
-  it('leaves out a description that is a fragment of a few words, or that repeats the title', () => {
-    const llmsTxt = generate({
-      pages: [homepage, page('/logos', { description: 'Inline image sizing' }), page('/faq', { title: 'Questions we are asked', description: 'Questions we are asked.' })],
-    });
-    expect(lineOf(llmsTxt, '/logos')).toBe(`- [Title of /logos](${ORIGIN}/logos)`);
-    const short = generate({ pages: [homepage, page('/docs/intro', { description: 'Start here.' })] });
-    expect(lineOf(short, '/docs/intro')).toContain(': Start here.');
-    expect(lineOf(llmsTxt, '/faq')).toBe(`- [Questions we are asked](${ORIGIN}/faq)`);
-  });
-});
-
-describe('firstParagraphOf', () => {
-  it('skips headings, lists, tables, code, link-only lines, fragments and quotations', () => {
-    const markdown = [
-      '# Title',
-      '- [Home](https://example.com/)\n- Logo',
-      '[For more information visit the developer guide, which is elsewhere.](https://example.com/guide)',
-      'Version Maintenance status First released End of support Release schedule',
-      '```\nconst notProse = "A sentence inside a code block that is long enough to count.";\n```',
-      'New to the community? Here are some great places to get started:',
-      '"Example is fast enough for our site and lets us ship features in record time," said a user.',
-      '-- A user, lead designer of something well known. Quoted in an interview.',
-      'Example builds static sites from **markdown** and [templates](https://example.com/t), and keeps rebuilds fast.',
-    ].join('\n\n');
-    expect(firstParagraphOf(markdown)).toBe('Example builds static sites from markdown and templates, and keeps rebuilds fast.');
-  });
-
-  it('stops at the end of a sentence once the description is long enough', () => {
-    const sentence = 'This sentence is exactly as long as it needs to be to fill some of the line.';
-    const paragraph = Array.from({ length: 6 }, () => sentence).join(' ');
-    expect(firstParagraphOf(paragraph)).toBe([sentence, sentence, sentence].join(' '));
-  });
-
-  it('returns null when the content has no prose', () => {
-    expect(firstParagraphOf('## Only a heading\n\n- and a list')).toBeNull();
+  it('does not list a page that has not been assessed', () => {
+    const llmsTxt = generate({ pages: [homepage, page('/kept'), page('/waiting', { assessment: null })] });
+    expect(sections(llmsTxt)).toEqual({ Pages: [`${ORIGIN}/kept`] });
   });
 });
 

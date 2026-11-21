@@ -7,6 +7,7 @@ import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
 import { readWorkerConfig } from '../../apps/worker/src/config/worker-config';
 import { MONITOR_TICK_CRON, scheduleMonitorTick, startWorkerJobs } from '../../apps/worker/src/jobs/worker-jobs';
+import { createStubLlmClient } from '../../apps/worker/src/llm/stub-llm-client';
 import { changingSite } from '../fixture-sites/changing-site/routes';
 import { startFixtureSite, type FixtureSite } from '../support/fixture-site-server';
 import { allowLoopbackPorts } from '../support/local-network-policy';
@@ -47,10 +48,11 @@ describe.skipIf(!databaseUrl)('the monitor schedule, on the real clock', () => {
       queue: workerQueue,
       databasePool,
       logger: createLogger({ level: 'error' }),
-      config: readWorkerConfig({ DATABASE_URL: database.databaseUrl }),
+      config: readWorkerConfig({ DATABASE_URL: database.databaseUrl , LLM_CLIENT: 'stub' }),
       crawl: (options) => crawlSite({ ...options, networkPolicy, minRequestIntervalMs: 20 }),
       resolveRootUrl: (rootUrl) => resolveSiteRootUrl({ rootUrl, networkPolicy, minRequestIntervalMs: 20 }),
       renderLlmsTxt: generateLlmsTxt,
+      llmClient: createStubLlmClient(),
       pollingIntervalSeconds: 0.5,
     });
   }, 30_000);

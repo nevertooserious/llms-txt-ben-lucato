@@ -10,6 +10,7 @@ import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
 import { readWorkerConfig } from '../../apps/worker/src/config/worker-config';
 import { startWorkerJobs } from '../../apps/worker/src/jobs/worker-jobs';
+import { createStubLlmClient } from '../../apps/worker/src/llm/stub-llm-client';
 import { startFixtureSite, type FixtureSite } from './fixture-site-server';
 import { allowLoopbackPorts } from './local-network-policy';
 
@@ -56,10 +57,11 @@ export class WebAppStack {
       queue: workerQueue,
       databasePool,
       logger: createLogger({ level: 'error', fields: { process: 'e2e-worker' } }),
-      config: { ...readWorkerConfig({ DATABASE_URL: databaseUrl }), crawlPageBudget: 30 },
+      config: { ...readWorkerConfig({ DATABASE_URL: databaseUrl , LLM_CLIENT: 'stub' }), crawlPageBudget: 30 },
       crawl: (options) => crawlSite({ ...options, networkPolicy, headlessRenderer, minRequestIntervalMs: 0 }),
       resolveRootUrl: (rootUrl) => resolveSiteRootUrl({ rootUrl, networkPolicy, minRequestIntervalMs: 0 }),
       renderLlmsTxt: generateLlmsTxt,
+      llmClient: createStubLlmClient(),
       pollingIntervalSeconds: 0.5,
     });
 

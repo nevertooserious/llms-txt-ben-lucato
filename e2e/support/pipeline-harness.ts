@@ -14,6 +14,7 @@ import {
 import { createLogger } from '@llms-txt/runtime';
 import { readWorkerConfig } from '../../apps/worker/src/config/worker-config';
 import { startWorkerJobs } from '../../apps/worker/src/jobs/worker-jobs';
+import { createStubLlmClient } from '../../apps/worker/src/llm/stub-llm-client';
 import { startFixtureSite, type FixtureSite } from './fixture-site-server';
 import { allowLoopbackPorts } from './local-network-policy';
 
@@ -83,7 +84,7 @@ export class PipelineHarness {
     const networkPolicy = allowLoopbackPorts(allowedPorts);
     const headlessRenderer = new HeadlessRenderer({ networkPolicy, timeoutMs: 15_000 });
     const config = {
-      ...readWorkerConfig({ DATABASE_URL: databaseUrl! }),
+      ...readWorkerConfig({ DATABASE_URL: databaseUrl! , LLM_CLIENT: 'stub' }),
       crawlPageBudget: options.crawlPageBudget ?? 30,
       pipelineRunConcurrency: 4,
     };
@@ -99,6 +100,7 @@ export class PipelineHarness {
       crawl: (options) => crawlSite({ ...options, networkPolicy, headlessRenderer, minRequestIntervalMs: 0 }),
       resolveRootUrl: (rootUrl) => resolveSiteRootUrl({ rootUrl, networkPolicy, minRequestIntervalMs: 0 }),
       renderLlmsTxt: generateLlmsTxt,
+      llmClient: createStubLlmClient(),
       pollingIntervalSeconds: 0.5,
     });
     return new PipelineHarness(databasePool, queue, headlessRenderer, allowedPorts);

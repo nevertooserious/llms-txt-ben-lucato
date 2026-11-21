@@ -118,7 +118,7 @@ async function run(
       crawl,
       renderLlmsTxt: llmClient === null ? renderLlmsTxt : generateLlmsTxt,
       resolveRootUrl,
-      llmClient,
+      llmClient: llmClient ?? fakeLlmClient().client,
     },
   );
   const result = await databasePool.query<{ status: string; error_message: string | null }>(

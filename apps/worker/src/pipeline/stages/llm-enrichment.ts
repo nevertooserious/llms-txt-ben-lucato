@@ -2,7 +2,6 @@ import type { GeneratorPage, PageAssessment, StoredPageAssessment } from '@llms-
 import { saveGeneratedSummary, savePageAssessment, type DatabasePool, type SiteForRun } from '@llms-txt/db';
 import {
   buildSiteSummaryInput,
-  listingCandidates,
   LlmOutputRejectedError,
   pageAssessmentInputOf,
   pageAssessmentSourceHash,
@@ -75,29 +74,25 @@ export async function enrichPagesWithLlm(request: LlmEnrichmentRequest): Promise
     const assessment = newAssessments.get(page.record.normalisedUrl);
     return assessment === undefined ? page : { ...page, assessment };
   });
-  const unassessedCandidates = new Set(
-    listingCandidates(merged).filter((page) => page.assessment === null).map((page) => page.record.normalisedUrl),
-  );
-  const assessedPages = merged.filter((page) => !unassessedCandidates.has(page.record.normalisedUrl));
 
-  const sourceHash = siteSummarySourceHash(siteTitle, assessedPages);
+  const sourceHash = siteSummarySourceHash(siteTitle, merged);
   const previous = { siteSummary: site.generatedSummary, siteNotes: site.generatedNotes };
   if (site.generatedSummary !== null && site.generatedSummarySourceHash === sourceHash) {
-    return { pages: assessedPages, ...previous };
+    return { pages: merged, ...previous };
   }
   let written: GeneratedSiteSummary;
   try {
     written = await llmClient.writeSiteSummary(
-      buildSiteSummaryInput(siteTitle, assessedPages, { summary: site.generatedSummary, notes: site.generatedNotes }),
+      buildSiteSummaryInput(siteTitle, merged, { summary: site.generatedSummary, notes: site.generatedNotes }),
     );
   } catch (error) {
     if (error instanceof LlmOutputRejectedError || site.generatedSummary !== null) {
       logger.warn('site summary not updated', { error });
-      return { pages: assessedPages, ...previous };
+      return { pages: merged, ...previous };
     }
     logger.warn('site summary failed', { error });
     throw new PipelineRunFailure('The LLM could not be reached to write the site summary; the published file was left alone.');
   }
   await saveGeneratedSummary(databasePool, site.id, { text: written.summary, notes: written.notes, sourceHash });
-  return { pages: assessedPages, siteSummary: written.summary, siteNotes: written.notes };
+  return { pages: merged, siteSummary: written.summary, siteNotes: written.notes };
 }
