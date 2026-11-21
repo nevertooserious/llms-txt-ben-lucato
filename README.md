@@ -31,7 +31,9 @@ docker compose up --build                # http://localhost:3000
 
 This starts Postgres (with `db/schema.sql` applied on first boot), the web app and the worker. No configuration is needed. To use Claude rather than heuristics, put `ANTHROPIC_API_KEY` in a `.env` file at the repository root and run the command again. `WEB_PORT` (default 3000) and `POSTGRES_PORT` (default 5433) change the host ports.
 
-The schema is applied only to an empty database, so after changing it run `docker compose down --volumes`, which deletes all local data. The crawler's SSRF guard refuses private addresses, so this stack cannot crawl a site running on your machine.
+A new database also gets a demo site with four versions, linked from the home page and at <http://localhost:3000/w/demo#token=demo-workspace-token>. Its token is public, so `db/demo-seed.sql` is applied only by this local stack. The site is not real, so "Check now" on it ends in a failed run and keeps the published file.
+
+The schema and demo are applied only to an empty database, so to change the schema or restore the demo run `docker compose down --volumes`, which deletes all local data. The crawler's SSRF guard refuses private addresses, so this stack cannot crawl a site running on your machine.
 
 ## Setup without Docker
 

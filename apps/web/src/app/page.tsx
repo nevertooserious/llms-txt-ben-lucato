@@ -1,7 +1,26 @@
+import { loadDemoWorkspacePath } from '../server/demo-workspace';
+import { webServices } from '../server/web-services';
 import { RecentWorkspaces } from './recent-workspaces';
 import { SubmitSiteForm } from './submit-site-form';
 
-export default function HomePage() {
+// Whether the demo link shows is decided per request, not when the image is built.
+export const dynamic = 'force-dynamic';
+
+/** The home page must still render if the demo cannot be looked up. */
+async function demoWorkspacePath(): Promise<string | null> {
+  // Set only by docker-compose.yml. Checked first, so no other deployment touches the database here.
+  if (process.env.DEMO_WORKSPACE_ENABLED !== 'true') return null;
+  const services = webServices();
+  try {
+    return await loadDemoWorkspacePath(services.databasePool);
+  } catch (error) {
+    services.logger.error('looking up the demo workspace failed', { error });
+    return null;
+  }
+}
+
+export default async function HomePage() {
+  const demoPath = await demoWorkspacePath();
   return (
     <main>
       <section className="hero">
@@ -16,6 +35,11 @@ export default function HomePage() {
           and it is rewritten when the site changes.
         </p>
         <SubmitSiteForm />
+        {demoPath && (
+          <a className="button demo-link" href={demoPath}>
+            Open the demo site →
+          </a>
+        )}
         <div className="steps">
           <div className="step">
             <span className="label">01 · Crawl</span>
