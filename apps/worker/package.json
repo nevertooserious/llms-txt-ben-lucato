@@ -15,6 +15,7 @@
     "@llms-txt/extractor": "*",
     "@llms-txt/generator": "*",
     "@llms-txt/monitor": "*",
+    "@llms-txt/runtime": "*",
     "pg-boss": "^12.38.2",
     "tsx": "^4.23.15"
   }

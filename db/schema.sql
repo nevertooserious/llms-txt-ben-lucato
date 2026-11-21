@@ -145,6 +145,9 @@ create table pipeline_runs (
 create index pipeline_runs_site_recent_idx on pipeline_runs (site_id, created_at desc);
 create index pipeline_runs_stale_heartbeat_idx
   on pipeline_runs (last_heartbeat_at) where status = 'running';
+-- The reaper's other scan: runs queued so long that their job will never claim them.
+create index pipeline_runs_stale_queued_idx
+  on pipeline_runs (created_at) where status = 'queued';
 
 -- At most one queued or running run per site, so two crawls never race on the same pages.
 create unique index pipeline_runs_one_active_per_site_idx

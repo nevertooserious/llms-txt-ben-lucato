@@ -1,21 +1,47 @@
-import { NotImplementedError, type PipelineRunJob } from '@llms-txt/contracts';
-import type { DatabasePool } from '@llms-txt/db';
+import {
+  claimDueMonitorChecks,
+  reapStalePipelineRuns,
+  startPipelineRun,
+  withTransaction,
+  type DatabasePool,
+  type PipelineRunQueue,
+  type StalePipelineRunThresholds,
+} from '@llms-txt/db';
 
-/**
- * Creates a pipeline_runs row for each site whose next_monitor_check_at has passed and
- * enqueues it at a lower priority than user submissions. Returns the number enqueued.
- */
-export async function enqueueDueMonitorChecks(
-  databasePool: DatabasePool,
-  enqueuePipelineRun: (job: PipelineRunJob) => Promise<void>,
-): Promise<number> {
-  void databasePool;
-  void enqueuePipelineRun;
-  throw new NotImplementedError('enqueueDueMonitorChecks');
+export interface MonitorTickDependencies {
+  databasePool: DatabasePool;
+  queue: PipelineRunQueue;
+  thresholds: StalePipelineRunThresholds;
+  /** Most sites to enqueue in one tick; the rest wait for the next. */
+  maxChecksPerTick: number;
 }
 
-/** Marks running pipeline_runs with a stale heartbeat as failed. Returns the count. */
-export async function reapStalePipelineRuns(databasePool: DatabasePool): Promise<number> {
-  void databasePool;
-  throw new NotImplementedError('reapStalePipelineRuns');
+export interface MonitorTickOutcome {
+  reapedRunCount: number;
+  enqueuedCheckCount: number;
+}
+
+/**
+ * Every few minutes: fail runs that lost their worker or were never picked up, then
+ * enqueue a check for each site that is due. Claiming the sites, inserting their runs
+ * and sending their jobs is one transaction, so a crash leaves either all of it or none.
+ */
+export async function runMonitorTick(dependencies: MonitorTickDependencies): Promise<MonitorTickOutcome> {
+  const { databasePool, queue } = dependencies;
+  const reapedRunCount = await reapStalePipelineRuns(databasePool, dependencies.thresholds);
+  const enqueuedCheckCount = await withTransaction(databasePool, async (transaction) => {
+    const siteIds = await claimDueMonitorChecks(transaction, dependencies.maxChecksPerTick);
+    let started = 0;
+    for (const siteId of siteIds) {
+      // A site whose last run is still going keeps it; its next check is already moved on.
+      const outcome = await startPipelineRun(transaction, queue, {
+        siteId,
+        triggeredBy: 'monitor',
+        requestedByWorkspaceId: null,
+      });
+      if (outcome.kind === 'started') started += 1;
+    }
+    return started;
+  });
+  return { reapedRunCount, enqueuedCheckCount };
 }
