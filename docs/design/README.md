@@ -37,7 +37,7 @@ Stack: TypeScript throughout, Next.js for the web app, a Node worker with Playwr
 
 Each stage has one typed input and one typed output, so each can be tested alone with fixtures.
 
-A run is driven by the worker (`apps/worker/src/pipeline-stages.ts`) as load, decide, write. It loads the site and its stored pages, runs the stages, passes their output through pure decision functions, and saves what those return. The rules that are easiest to get wrong are those functions, tested without a database: `reconcilePage` (what a fetch does to a stored page, section 5), `evaluateSafetyGate`, `assessSitemapLastModifiedTrust` (in `packages/monitor`) and `decidePublication` (in `packages/generator`). Extraction happens inside the crawl: each page is extracted and saved as the crawler hands it over. So the run's progress shows two stages, crawl and generate.
+A run is driven by the worker (`apps/worker/src/pipeline-stages.ts`) as load, decide, write. It loads the site and its stored pages, runs the stages, passes their output through pure decision functions, and saves what those return. The rules that are easiest to get wrong are those functions, tested without a database: `reconcilePage` (what a fetch does to a stored page, section 5), `evaluateSafetyGate`, `assessSitemapLastModifiedTrust` (in `packages/monitor`) and `decidePublication` (in `packages/generator`). Extraction happens inside the crawl: each page is extracted and saved as the crawler hands it over. So the UI states one of: queued, crawling, extracted (the crawl is done and the file is being generated), generated, or failed.
 
 ### Crawler
 
@@ -128,7 +128,7 @@ All SQL is hand-written in `packages/db`, one module per table, and the rest of 
 - **Reaper:** every monitor tick, fails running rows whose heartbeat is over 2 minutes old and queued rows over 6 hours old (a job that failed or expired before it was claimed). Either frees the site for a new run.
 - **No queue-level retries:** pipeline-run jobs have `retryLimit: 0`. A retried job would find its run already failed by the reaper, so retries would only add a second recovery path that disagrees with the first. A failed run is retried by the next monitor check or by the user. pg-boss expiry (45 minutes, well past the longest run) only cleans up after a worker that died.
 
-`pipeline_runs` is the record of a run: its status, and the progress the frontend polls. pg-boss only decides when and where a job runs.
+`pipeline_runs` is the record of a run: its status and stage, which the frontend polls, and counters for the audit log. pg-boss only decides when and where a job runs.
 
 ## 5. Monitor
 
@@ -140,8 +140,8 @@ A check runs on a fixed interval per site (default 7 days) or when a user presse
 
 The monitor only acts on a schedule. A request to check now arrives over HTTP, so the web app takes it and queues the run itself, through the same `startPipelineRun`. The two never call each other.
 
-- **Turning monitoring on:** monitoring is opt-in per workspace and lasts 30 days. Turning it on again renews it for 30 days from then. If the site has no check scheduled, it gets one a full interval out: the site was just crawled, so checking sooner would find nothing.
-- **Turning it off:** the site stays scheduled while another of its workspaces is monitoring, and is unscheduled otherwise. Both changes lock the site row first, so two workspaces changing monitoring at once cannot leave the schedule wrong (`packages/db/src/monitor-schedule.ts`).
+- **Starting and renewing:** every submission turns monitoring on for 30 days and users cannot turn it off. "Check now" renews it for 30 days, including after it has lapsed. If the site has no check scheduled, it gets one a full interval out: the site was just crawled, so checking sooner would find nothing.
+- **Deleting a workspace:** removes its overrides, versions and hosted file. The site stays scheduled while another of its workspaces is monitoring. Its row and crawl data are deleted with its last workspace, unless a run is active, in which case the unscheduled row stays. A run skips a workspace deleted while it was generating. The delete locks the site row first (`deleteWorkspace` in `packages/db/src/workspaces.ts`).
 - **The tick:** every 5 minutes, a pg-boss cron job in the worker reaps stale runs (section 4). Then it claims up to 100 due sites, skipping rows another tick has locked, moves each one's next check on by its interval, and queues a monitor run behind user requests. A due site whose workspaces have all let monitoring lapse is unscheduled at that point, so expiry needs no job of its own.
 - **Check now:** the same pipeline as a scheduled check, queued ahead of scheduled checks. A run already in progress is joined. Otherwise the site is checked at most once per 5 minutes, counted from its last run of any kind.
 
@@ -186,13 +186,13 @@ Entries are regenerated only for changed pages. The file is rendered per workspa
 
 ## 6. Frontend
 
-- **Generate:** URL input, then progress polled from `pipeline_runs` (pages discovered, fetched, changed).
+- **Generate:** URL input, then the run's status polled from `pipeline_runs`: crawling, extracted, generated.
 - **Result:** rendered preview next to raw text, spec validation status, copy and download.
 - **Editing:** override a page's description or exclude a page.
 - **Secret link:** `/w/{public_slug}#token=…`. The token is in the fragment, which browsers never send, and the browser keeps the links it created so the home page can list them.
-- **API:** `POST /api/sites` submits a URL. `GET /api/workspaces/{public_slug}` is what the workspace screen polls: the latest run, the published file with its validation result, and monitoring. `PUT /api/workspaces/{public_slug}/monitoring` with `{"enabled": true | false}` turns monitoring on, renews it or turns it off. `POST /api/workspaces/{public_slug}/checks` is "check now". The workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
+- **API:** `POST /api/sites` submits a URL. `GET /api/workspaces/{public_slug}` is what the workspace screen polls: the latest run, the published file with its validation result, and monitoring. `DELETE /api/workspaces/{public_slug}` deletes the workspace. `POST /api/workspaces/{public_slug}/checks` is "check now" and renews monitoring. The workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
 - **Hosted URL:** a stable `/w/{public_slug}/llms.txt`. The spec puts llms.txt at the site's own root, so the site owner redirects or proxies to this URL. The [root README](../../README.md#serving-llmstxt-from-your-own-domain) explains how.
-- **Monitoring:** opt-in per workspace with an expiry, a "check now" button, and version history with diffs.
+- **Monitoring:** on for every workspace with an expiry, a "check now" button that renews it, and version history with diffs.
 
 ## 7. Security and abuse limits
 
@@ -226,7 +226,7 @@ Checked against llmstxt.org.
 | Webhook and email notifications | Both are open relays on an app without accounts |
 | Adaptive check interval | A fixed interval plus "check now" is simpler and easier to demonstrate |
 | `llms-full.txt` | Not found in the spec; it would duplicate large content per version |
-| Server-sent events | Polling `pipeline_runs` is enough for progress |
+| Server-sent events | Polling `pipeline_runs` is enough for run status |
 | LLM-invented sections, and title, summary and section overrides | Sections are a fixed list that the assessed page type maps to; overrides are limited to description and exclude |
 | Raw HTML storage | Saved fixtures cover extractor testing |
 | A separate queue broker | pg-boss in Postgres handles this load without another service |

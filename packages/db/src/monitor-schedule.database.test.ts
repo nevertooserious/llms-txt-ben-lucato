@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createDatabasePool } from './database-pool';
-import { disableWorkspaceMonitoring, enableWorkspaceMonitoring } from './monitor-schedule';
+import { publishLlmsTxtVersion } from './llms-txt-versions';
+import { enableWorkspaceMonitoring } from './monitor-schedule';
 import { findOrCreateSite } from './sites';
 import { withTransaction } from './transaction';
-import { createWorkspace } from './workspaces';
+import { createWorkspace, deleteWorkspace } from './workspaces';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL must point at a database with db/schema.sql applied');
@@ -24,8 +25,10 @@ async function newWorkspace(siteId: string): Promise<string> {
 
 const enable = (siteId: string, workspaceId: string, durationSeconds = 30 * 86400) =>
   withTransaction(pool, (transaction) => enableWorkspaceMonitoring(transaction, { siteId, workspaceId, durationSeconds }));
-const disable = (siteId: string, workspaceId: string) =>
-  withTransaction(pool, (transaction) => disableWorkspaceMonitoring(transaction, { siteId, workspaceId }));
+const remove = (workspaceId: string) => withTransaction(pool, (transaction) => deleteWorkspace(transaction, workspaceId));
+const siteRow = async (siteId: string) =>
+  (await pool.query<{ next_monitor_check_at: Date | null }>('select next_monitor_check_at from sites where id = $1', [siteId]))
+    .rows[0];
 
 describe('enableWorkspaceMonitoring', () => {
   it('turns monitoring on and schedules the site a full interval out', async () => {
@@ -55,20 +58,81 @@ describe('enableWorkspaceMonitoring', () => {
   });
 });
 
-describe('disableWorkspaceMonitoring', () => {
-  it('unschedules the site when no other workspace is monitoring it', async () => {
+describe('deleteWorkspace', () => {
+  it('deletes the site with its last workspace', async () => {
     const siteId = await newSite();
     const workspaceId = await newWorkspace(siteId);
     await enable(siteId, workspaceId);
-    expect(await disable(siteId, workspaceId)).toEqual({ monitoringEnabledUntil: null, nextMonitorCheckAt: null });
+    expect(await remove(workspaceId)).toBe(true);
+    expect(await siteRow(siteId)).toBeUndefined();
+    expect(await remove(workspaceId)).toBe(false);
   });
 
-  it('keeps the schedule while another workspace of the site is monitoring', async () => {
+  it('keeps the site and its schedule while another workspace is monitoring', async () => {
     const siteId = await newSite();
     const mine = await newWorkspace(siteId);
     const theirs = await newWorkspace(siteId);
     await enable(siteId, mine);
     const { nextMonitorCheckAt } = await enable(siteId, theirs);
-    expect((await disable(siteId, mine)).nextMonitorCheckAt).toEqual(nextMonitorCheckAt);
+    await remove(mine);
+    expect((await siteRow(siteId))?.next_monitor_check_at).toEqual(nextMonitorCheckAt);
+    const remaining = await pool.query('select id from site_workspaces where site_id = $1', [siteId]);
+    expect(remaining.rows).toEqual([{ id: theirs }]);
+  });
+
+  it('unschedules the site when the remaining workspaces have lapsed', async () => {
+    const siteId = await newSite();
+    const mine = await newWorkspace(siteId);
+    await newWorkspace(siteId);
+    await enable(siteId, mine);
+    await remove(mine);
+    expect((await siteRow(siteId))?.next_monitor_check_at).toBeNull();
+  });
+
+  it('keeps an emptied site row while a run is active, unscheduled', async () => {
+    const siteId = await newSite();
+    const workspaceId = await newWorkspace(siteId);
+    await enable(siteId, workspaceId);
+    await pool.query(`insert into pipeline_runs (site_id, triggered_by, status) values ($1, 'monitor', 'running')`, [siteId]);
+    await remove(workspaceId);
+    expect(await siteRow(siteId)).toEqual({ next_monitor_check_at: null });
+  });
+
+  it('deletes a workspace that has a published version', async () => {
+    const siteId = await newSite();
+    const workspaceId = await newWorkspace(siteId);
+    const version = await withTransaction(pool, (transaction) =>
+      publishLlmsTxtVersion(transaction, {
+        workspaceId,
+        pipelineRunId: null,
+        createdBy: 'pipeline',
+        llmsTxtContent: '# Site',
+        llmsTxtContentHash: 'hash',
+        listedPageCount: 0,
+        pageChanges: { added: [], removed: [], changed: [] },
+      }),
+    );
+    expect(version).not.toBeNull();
+    expect(await remove(workspaceId)).toBe(true);
+    const versions = await pool.query('select 1 from llms_txt_versions where workspace_id = $1', [workspaceId]);
+    expect(versions.rowCount).toBe(0);
+  });
+
+  it('publishing to a deleted workspace does nothing', async () => {
+    const siteId = await newSite();
+    const workspaceId = await newWorkspace(siteId);
+    await remove(workspaceId);
+    const version = await withTransaction(pool, (transaction) =>
+      publishLlmsTxtVersion(transaction, {
+        workspaceId,
+        pipelineRunId: null,
+        createdBy: 'pipeline',
+        llmsTxtContent: '# Site',
+        llmsTxtContentHash: 'hash',
+        listedPageCount: 0,
+        pageChanges: { added: [], removed: [], changed: [] },
+      }),
+    );
+    expect(version).toBeNull();
   });
 });

@@ -156,16 +156,12 @@ export async function reapStalePipelineRuns(
 
 export type PipelineRunStatus = 'queued' | 'running' | FinishedPipelineRunStatus;
 
-/** A run as the frontend shows it: status, stage and the progress counters. */
+/** A run as the frontend shows it: where it is in the process. */
 export interface PipelineRunSummary {
   id: string;
   status: PipelineRunStatus;
   currentStage: PipelineRunStage | null;
   triggeredBy: PipelineTrigger;
-  pagesDiscoveredCount: number;
-  pagesFetchedCount: number;
-  pagesChangedCount: number;
-  pagesFailedCount: number;
   errorMessage: string | null;
   createdAt: Date;
   startedAt: Date | null;
@@ -182,17 +178,12 @@ export async function loadLatestPipelineRunSummary(
     status: PipelineRunStatus;
     current_stage: PipelineRunStage | null;
     triggered_by: PipelineTrigger;
-    pages_discovered_count: number;
-    pages_fetched_count: number;
-    pages_changed_count: number;
-    pages_failed_count: number;
     error_message: string | null;
     created_at: Date;
     started_at: Date | null;
     finished_at: Date | null;
   }>(
-    `select id, status, current_stage, triggered_by, pages_discovered_count, pages_fetched_count,
-            pages_changed_count, pages_failed_count, error_message, created_at, started_at, finished_at
+    `select id, status, current_stage, triggered_by, error_message, created_at, started_at, finished_at
        from pipeline_runs
       where site_id = $1
       order by created_at desc
@@ -206,10 +197,6 @@ export async function loadLatestPipelineRunSummary(
     status: row.status,
     currentStage: row.current_stage,
     triggeredBy: row.triggered_by,
-    pagesDiscoveredCount: row.pages_discovered_count,
-    pagesFetchedCount: row.pages_fetched_count,
-    pagesChangedCount: row.pages_changed_count,
-    pagesFailedCount: row.pages_failed_count,
     errorMessage: row.error_message,
     createdAt: row.created_at,
     startedAt: row.started_at,

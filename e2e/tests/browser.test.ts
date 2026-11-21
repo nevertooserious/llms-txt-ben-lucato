@@ -53,6 +53,8 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     editableSiteStates.delete(site.port);
   });
 
+  const runStatus = (text: string) => page.locator('.status-line').getByText(text, { exact: true });
+
   /** From the home page: type the site's URL, press Generate, wait for the first version. */
   async function generateFromHomePage(): Promise<void> {
     await page.goto('/');
@@ -60,7 +62,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     await page.getByRole('button', { name: 'Generate' }).click();
 
     await page.waitForURL(/\/w\/[^/]+#token=/);
-    await visible(page.getByText('Published a new version'), RUN_TIMEOUT_MS);
+    await visible(runStatus('Generated'), RUN_TIMEOUT_MS);
     await visible(page.getByText('Version 1', { exact: true }));
   }
 
@@ -117,7 +119,34 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     await checkNow.click();
     await visible(page.getByText(/Check now ·/));
     await visible(page.getByText('Version 2', { exact: true }), RUN_TIMEOUT_MS);
-    await visible(page.getByText('Published a new version'));
+    await visible(runStatus('Generated'));
     expect(await rawLlmsTxt()).toContain(`- [Intro](${site.origin}/docs/intro): Begin here instead.`);
+  });
+
+  it('shows no page counts and no way to turn monitoring off', async () => {
+    await generateFromHomePage();
+    await visible(page.getByText('Watching for changes'));
+    expect(await page.getByRole('switch').count()).toBe(0);
+    expect(await page.locator('.counters, .stages').count()).toBe(0);
+  });
+
+  it('deletes the site after asking for confirmation', async () => {
+    await generateFromHomePage();
+    const workspaceUrl = page.url();
+    const hostedPath = await page.getByRole('link', { name: 'Open', exact: true }).getAttribute('href');
+
+    // Cancelling keeps it.
+    await page.getByRole('button', { name: 'Delete site' }).click();
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    expect((await page.request.get(hostedPath!)).status()).toBe(200);
+
+    await page.getByRole('button', { name: 'Delete site' }).click();
+    await page.getByRole('button', { name: 'Yes, delete' }).click();
+    await page.waitForURL((url) => url.pathname === '/');
+
+    expect((await page.request.get(hostedPath!)).status()).toBe(404);
+    expect(await page.getByRole('link', { name: new RegExp(site.origin.replace(/[.]/g, '\\.')) }).count()).toBe(0);
+    await page.goto(workspaceUrl);
+    await visible(page.getByRole('heading', { name: 'No workspace here.' }));
   });
 });

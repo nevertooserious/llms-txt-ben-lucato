@@ -1,3 +1,4 @@
+import { deleteWorkspace, withTransaction } from '@llms-txt/db';
 import { loadWorkspaceView } from '../../../../server/load-workspace-view';
 import { webServices } from '../../../../server/web-services';
 import { authoriseWorkspaceRequest } from '../../../../server/workspace-access';
@@ -19,5 +20,27 @@ export async function GET(
   } catch (error) {
     services.logger.error('loading workspace failed', { error });
     return Response.json({ error: 'The workspace could not be loaded.' }, { status: 500 });
+  }
+}
+
+// Deletes the workspace: its file, hosted URL, overrides and version history. Other
+// workspaces of the same site are untouched. DELETE with the secret token as a bearer token.
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ publicSlug: string }> },
+): Promise<Response> {
+  const services = webServices();
+  try {
+    const { workspace, response } = await authoriseWorkspaceRequest(
+      services.databasePool,
+      request,
+      (await params).publicSlug,
+    );
+    if (response) return response;
+    await withTransaction(services.databasePool, (transaction) => deleteWorkspace(transaction, workspace.id));
+    return new Response(null, { status: 204 });
+  } catch (error) {
+    services.logger.error('deleting workspace failed', { error });
+    return Response.json({ error: 'The site could not be deleted.' }, { status: 500 });
   }
 }

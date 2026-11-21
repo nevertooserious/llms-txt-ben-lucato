@@ -26,11 +26,8 @@ async function call<T>(publicSlug: string, accessToken: string, path: string, in
 export const fetchWorkspaceView = (publicSlug: string, accessToken: string) =>
   call<WorkspaceView>(publicSlug, accessToken, '');
 
-export const setMonitoring = (publicSlug: string, accessToken: string, enabled: boolean) =>
-  call<{ monitoringEnabledUntil: string | null }>(publicSlug, accessToken, '/monitoring', {
-    method: 'PUT',
-    body: JSON.stringify({ enabled }),
-  });
+export const deleteWorkspace = (publicSlug: string, accessToken: string) =>
+  call<Record<string, never>>(publicSlug, accessToken, '', { method: 'DELETE' });
 
 export const checkNow = (publicSlug: string, accessToken: string) =>
   call<{ pipelineRunId: string; joinedActiveRun: boolean }>(publicSlug, accessToken, '/checks', { method: 'POST' });

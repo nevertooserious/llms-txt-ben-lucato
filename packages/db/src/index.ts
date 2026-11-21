@@ -44,6 +44,7 @@ export {
 export {
   countRecentWorkspacesFromIp,
   createWorkspace,
+  deleteWorkspace,
   loadPublishedLlmsTxt,
   loadWorkspaceAccess,
   loadWorkspaceIdsForSite,
@@ -54,7 +55,6 @@ export {
   type WorkspaceOverview,
 } from './workspaces';
 export {
-  disableWorkspaceMonitoring,
   enableWorkspaceMonitoring,
   type MonitorSchedule,
   type WorkspaceMonitoringChange,

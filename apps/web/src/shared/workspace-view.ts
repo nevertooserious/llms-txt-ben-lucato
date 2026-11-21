@@ -8,10 +8,6 @@ export interface PipelineRunView {
   status: PipelineRunStatus;
   currentStage: 'crawl' | 'extract' | 'generate' | null;
   triggeredBy: 'submission' | 'monitor' | 'user_check_now';
-  pagesDiscoveredCount: number;
-  pagesFetchedCount: number;
-  pagesChangedCount: number;
-  pagesFailedCount: number;
   errorMessage: string | null;
   createdAt: string;
   startedAt: string | null;

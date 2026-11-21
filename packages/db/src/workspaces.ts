@@ -1,5 +1,6 @@
 import type { WorkspacePageOverride } from '@llms-txt/contracts';
-import type { Queryable } from './transaction';
+import { lockSiteRow } from './sites';
+import type { Queryable, Transaction } from './transaction';
 
 export interface NewWorkspace {
   siteId: string;
@@ -35,6 +36,52 @@ export async function loadWorkspaceAccess(database: Queryable, publicSlug: strin
   );
   const row = result.rows[0];
   return row === undefined ? null : { id: row.id, siteId: row.site_id, accessTokenHash: row.access_token_hash };
+}
+
+/**
+ * Deletes a workspace with its overrides and versions. Other workspaces of the site are
+ * untouched. The site stops being scheduled once none of its workspaces is monitoring,
+ * and its row and crawl data go with its last workspace, unless a run is active: that
+ * run still writes to the site, so the row stays. Returns false if there was no such
+ * workspace.
+ */
+export async function deleteWorkspace(transaction: Transaction, workspaceId: string): Promise<boolean> {
+  for (;;) {
+    const current = await transaction.query<{ site_id: string }>(
+      'select site_id from site_workspaces where id = $1',
+      [workspaceId],
+    );
+    const siteId = current.rows[0]?.site_id;
+    if (siteId === undefined) return false;
+
+    await lockSiteRow(transaction, siteId);
+    const deleted = await transaction.query('delete from site_workspaces where id = $1 and site_id = $2', [
+      workspaceId,
+      siteId,
+    ]);
+    // A site merge moved the workspace while this waited for the lock: follow it.
+    if (deleted.rowCount !== 1) continue;
+
+    await transaction.query(
+      `update sites
+          set next_monitor_check_at = case
+                when exists (select 1 from site_workspaces
+                              where site_id = sites.id and monitoring_enabled_until > now())
+                then next_monitor_check_at
+              end
+        where id = $1`,
+      [siteId],
+    );
+    await transaction.query(
+      `delete from sites
+        where id = $1
+          and not exists (select 1 from site_workspaces where site_id = sites.id)
+          and not exists (select 1 from pipeline_runs
+                           where site_id = sites.id and status in ('queued', 'running'))`,
+      [siteId],
+    );
+    return true;
+  }
 }
 
 /** Workspaces created from one IP in the last `withinSeconds`, for the submission rate limit. */
@@ -92,7 +139,7 @@ export async function loadWorkspaceOverrides(database: Queryable, workspaceId: s
 export interface WorkspaceOverview {
   rootUrl: string;
   siteTitle: string | null;
-  /** Null when monitoring was never turned on; in the past once it has lapsed. */
+  /** In the past once monitoring has lapsed; null for a workspace that never had it. */
   monitoringEnabledUntil: Date | null;
   nextMonitorCheckAt: Date | null;
   publishedVersion: {

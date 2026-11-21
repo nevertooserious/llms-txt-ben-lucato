@@ -233,12 +233,12 @@ export async function runPipelineStages(
       const decision = decidePublication(published?.llmsTxtContent ?? null, rendered);
       if (decision.kind === 'unchanged') continue;
 
-      await withTransaction(databasePool, async (transaction) => {
+      const version = await withTransaction(databasePool, async (transaction) => {
         // A run the reaper has failed must not publish, even if it got this far.
         if (!(await lockRunningPipelineRun(transaction, pipelineRunId))) {
           throw new PipelineRunFailure('The run was failed for missing heartbeats before it could publish.');
         }
-        const version = await publishLlmsTxtVersion(transaction, {
+        return publishLlmsTxtVersion(transaction, {
           workspaceId,
           pipelineRunId,
           createdBy: 'pipeline',
@@ -247,8 +247,10 @@ export async function runPipelineStages(
           listedPageCount: decision.listedPageCount,
           pageChanges: decision.pageChanges,
         });
-        logger.info('published', { workspaceId, versionNumber: version.versionNumber, ...decision.pageChanges });
       });
+      // The user deleted this workspace during the run.
+      if (version === null) continue;
+      logger.info('published', { workspaceId, versionNumber: version.versionNumber, ...decision.pageChanges });
       publishedCount += 1;
     }
 
