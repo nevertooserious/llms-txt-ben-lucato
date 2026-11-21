@@ -4,7 +4,7 @@
 // builds every long-lived dependency once.
 import { PgBoss } from 'pg-boss';
 import { QUEUE_NAMES } from '@llms-txt/contracts';
-import { crawlSite, HeadlessRenderer } from '@llms-txt/crawler';
+import { crawlSite, HeadlessRenderer, resolveSiteRootUrl } from '@llms-txt/crawler';
 import { createDatabasePool } from '@llms-txt/db';
 import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
@@ -27,6 +27,7 @@ await startWorkerJobs({
   logger,
   config,
   crawl: (options) => crawlSite({ ...options, headlessRenderer }),
+  resolveRootUrl: (rootUrl) => resolveSiteRootUrl({ rootUrl }),
   renderLlmsTxt: generateLlmsTxt,
 });
 // The monitor tick: every five minutes, reap stale runs and enqueue due checks.

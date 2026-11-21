@@ -43,6 +43,52 @@ export async function claimDueMonitorChecks(transaction: Transaction, limit: num
   return result.rows.filter((row) => row.is_monitored).map((row) => row.id);
 }
 
+export type SiteRootAdoption =
+  /** No site had the resolved root: this site now does. */
+  | { kind: 'renamed'; siteId: string }
+  /** Another site already had it: the workspaces and this run moved there. */
+  | { kind: 'merged'; siteId: string }
+  /** As `merged`, but that site has a run in progress, so this run has nothing left to do. */
+  | { kind: 'merged_into_active_run'; siteId: string };
+
+/**
+ * Records where a site really lives, once its first crawl has followed the homepage
+ * redirect. When another row already holds that root, this site's workspaces and its
+ * schedule move there, so the two addresses share one crawl. The emptied row stays: a
+ * later submission of the old address finds it and is merged the same way.
+ */
+export async function adoptResolvedSiteRoot(
+  transaction: Transaction,
+  change: { siteId: string; pipelineRunId: string; resolvedRootUrl: string },
+): Promise<SiteRootAdoption> {
+  // Locked in id order, so two merges of the same pair cannot deadlock.
+  const locked = await transaction.query<{ id: string; next_monitor_check_at: Date | null }>(
+    `select id, next_monitor_check_at from sites where id = $1 or root_url = $2 order by id for update`,
+    [change.siteId, change.resolvedRootUrl],
+  );
+  const target = locked.rows.find((row) => row.id !== change.siteId);
+  if (target === undefined) {
+    await transaction.query('update sites set root_url = $2 where id = $1', [change.siteId, change.resolvedRootUrl]);
+    return { kind: 'renamed', siteId: change.siteId };
+  }
+
+  await transaction.query('update site_workspaces set site_id = $2 where site_id = $1', [change.siteId, target.id]);
+  const source = locked.rows.find((row) => row.id === change.siteId);
+  await transaction.query(
+    'update sites set next_monitor_check_at = coalesce(next_monitor_check_at, $2) where id = $1',
+    [target.id, source?.next_monitor_check_at ?? null],
+  );
+  await transaction.query('update sites set next_monitor_check_at = null where id = $1', [change.siteId]);
+
+  const active = await transaction.query(
+    `select 1 from pipeline_runs where site_id = $1 and status in ('queued', 'running')`,
+    [target.id],
+  );
+  if ((active.rowCount ?? 0) > 0) return { kind: 'merged_into_active_run', siteId: target.id };
+  await transaction.query('update pipeline_runs set site_id = $2 where id = $1', [change.pipelineRunId, target.id]);
+  return { kind: 'merged', siteId: target.id };
+}
+
 /** How long a headless-rendering decision stands before a crawl makes it again. */
 const HEADLESS_DECISION_MAX_AGE = "interval '30 days'";
 

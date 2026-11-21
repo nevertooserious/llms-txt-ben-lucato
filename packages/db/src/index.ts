@@ -29,6 +29,7 @@ export {
   type StalePipelineRunThresholds,
 } from './pipeline-runs';
 export {
+  adoptResolvedSiteRoot,
   claimDueMonitorChecks,
   findOrCreateSite,
   loadSiteForRun,
@@ -36,6 +37,7 @@ export {
   saveSiteTitle,
   type SiteCrawlOutcome,
   type SiteForRun,
+  type SiteRootAdoption,
 } from './sites';
 export {
   countRecentWorkspacesFromIp,

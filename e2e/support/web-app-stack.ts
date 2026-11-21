@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { resolve } from 'node:path';
 import { PgBoss } from 'pg-boss';
-import { crawlSite, HeadlessRenderer } from '@llms-txt/crawler';
+import { crawlSite, HeadlessRenderer, resolveSiteRootUrl } from '@llms-txt/crawler';
 import { createDatabasePool, type DatabasePool } from '@llms-txt/db';
 import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
@@ -58,6 +58,7 @@ export class WebAppStack {
       logger: createLogger({ level: 'error', fields: { process: 'e2e-worker' } }),
       config: { ...readWorkerConfig({ DATABASE_URL: databaseUrl }), crawlPageBudget: 30 },
       crawl: (options) => crawlSite({ ...options, networkPolicy, headlessRenderer, minRequestIntervalMs: 0 }),
+      resolveRootUrl: (rootUrl) => resolveSiteRootUrl({ rootUrl, networkPolicy, minRequestIntervalMs: 0 }),
       renderLlmsTxt: generateLlmsTxt,
       pollingIntervalSeconds: 0.5,
     });

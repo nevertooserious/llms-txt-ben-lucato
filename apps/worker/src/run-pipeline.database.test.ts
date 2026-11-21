@@ -96,7 +96,11 @@ async function newSiteWithWorkspace(): Promise<{ siteId: string; workspaceId: st
   return { siteId, workspaceId, rootUrl };
 }
 
-async function run(siteId: string, crawl: ReturnType<typeof fakeCrawl>) {
+async function run(
+  siteId: string,
+  crawl: ReturnType<typeof fakeCrawl>,
+  resolveRootUrl: (rootUrl: string) => Promise<string> = async (rootUrl) => rootUrl,
+) {
   const outcome = await withTransaction(databasePool, (transaction) =>
     startPipelineRun(transaction, queue, { siteId, triggeredBy: 'monitor', requestedByWorkspaceId: null }),
   );
@@ -110,6 +114,7 @@ async function run(siteId: string, crawl: ReturnType<typeof fakeCrawl>) {
       settings: { crawlPageBudget: 50, maxFailedFetchShare: 0.5 },
       crawl,
       renderLlmsTxt,
+      resolveRootUrl,
     },
   );
   const result = await databasePool.query<{ status: string; error_message: string | null }>(
@@ -182,6 +187,35 @@ describe('runPipeline', () => {
     );
     expect(counter.rows[0]).toEqual({ consecutive_not_found_count: 1, removed_at: null });
     expect(await versions(workspaceId)).toHaveLength(1);
+  });
+
+  it('moves a first crawl to the root its homepage redirects to', async () => {
+    const { siteId, workspaceId } = await newSiteWithWorkspace();
+    const resolvedRootUrl = `https://www.${crypto.randomUUID()}.example`;
+    const outcome = await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/docs', title: 'Docs' }]), async () => resolvedRootUrl);
+    expect(outcome.status).toBe('succeeded');
+    const site = await databasePool.query<{ root_url: string }>('select root_url from sites where id = $1', [siteId]);
+    expect(site.rows[0]?.root_url).toBe(resolvedRootUrl);
+    expect((await versions(workspaceId))[0]?.llms_txt_content).toContain(`${resolvedRootUrl}/docs`);
+  });
+
+  it('merges a first crawl into the site that already has the resolved root', async () => {
+    const existing = await newSiteWithWorkspace();
+    await run(existing.siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/docs', title: 'Docs' }]));
+    const redirecting = await newSiteWithWorkspace();
+
+    const outcome = await run(
+      redirecting.siteId,
+      fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/docs', title: 'Docs' }]),
+      async () => existing.rootUrl,
+    );
+    expect(outcome.status).toBe('succeeded');
+    const workspace = await databasePool.query<{ site_id: string }>('select site_id from site_workspaces where id = $1', [
+      redirecting.workspaceId,
+    ]);
+    expect(workspace.rows[0]?.site_id).toBe(existing.siteId);
+    expect((await versions(redirecting.workspaceId))[0]?.llms_txt_content).toContain(`${existing.rootUrl}/docs`);
+    expect(await versions(existing.workspaceId)).toHaveLength(1);
   });
 
   it('fails the run with the error when a stage throws', async () => {

@@ -1,7 +1,7 @@
 import { PgBoss } from 'pg-boss';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { QUEUE_NAMES } from '@llms-txt/contracts';
-import { crawlSite } from '@llms-txt/crawler';
+import { crawlSite, resolveSiteRootUrl } from '@llms-txt/crawler';
 import { createDatabasePool, type DatabasePool } from '@llms-txt/db';
 import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
@@ -53,6 +53,7 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
       logger: createLogger({ level: 'error' }),
       config: readWorkerConfig({ DATABASE_URL: databaseUrl }),
       crawl: (options) => crawlSite({ ...options, networkPolicy, minRequestIntervalMs: 20 }),
+      resolveRootUrl: (rootUrl) => resolveSiteRootUrl({ rootUrl, networkPolicy, minRequestIntervalMs: 20 }),
       renderLlmsTxt: generateLlmsTxt,
       pollingIntervalSeconds: 0.5,
     });
