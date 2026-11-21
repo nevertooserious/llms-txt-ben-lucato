@@ -36,15 +36,17 @@ export interface WorkspaceView {
   /** True when the user chose the published version, so new versions do not go live. */
   isPublishedVersionPinned: boolean;
   /** Newest first. */
-  versions: VersionSummaryView[];
+  versions: LlmsTxtVersionSummaryView[];
 }
 
-export interface VersionSummaryView {
+/** One entry of GET /api/workspaces/{publicSlug}/versions, newest first. */
+export interface LlmsTxtVersionSummaryView {
   versionNumber: number;
   listedPageCount: number;
   addedPageCount: number;
   removedPageCount: number;
   changedPageCount: number;
+  createdBy: 'pipeline' | 'user_edit';
   createdAt: string;
 }
 

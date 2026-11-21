@@ -6,6 +6,7 @@ import { isActiveRunStatus, type WorkspaceView } from '../../../shared/workspace
 import { LlmsTxtResult } from './llms-txt-result';
 import { MonitoringPanel } from './monitoring-panel';
 import { RunProgress } from './run-progress';
+import { VersionComparison } from './version-comparison';
 import { VersionHistory } from './version-history';
 import { fetchWorkspaceView, WorkspaceApiError } from './workspace-api';
 
@@ -114,6 +115,16 @@ export function WorkspaceScreen({ publicSlug }: { publicSlug: string }) {
         <section className="cell">
           <LlmsTxtResult view={view} siteHost={siteHost} />
         </section>
+        {view.publishedVersion && (
+          <section className="cell">
+            <VersionComparison
+              publicSlug={publicSlug}
+              accessToken={accessToken}
+              publishedVersionNumber={view.publishedVersion.versionNumber}
+              newestVersionNumber={view.versions[0]?.versionNumber ?? view.publishedVersion.versionNumber}
+            />
+          </section>
+        )}
         <section className="cell">
           <VersionHistory view={view} accessToken={accessToken} onChanged={refresh} />
         </section>

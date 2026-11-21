@@ -26,6 +26,62 @@ export async function loadNewestVersion(database: Queryable, workspaceId: string
     : { id: row.id, versionNumber: row.version_number, llmsTxtContent: row.llms_txt_content };
 }
 
+export interface LlmsTxtVersionSummary {
+  versionNumber: number;
+  listedPageCount: number;
+  addedPageCount: number;
+  removedPageCount: number;
+  changedPageCount: number;
+  createdBy: 'pipeline' | 'user_edit';
+  createdAt: Date;
+}
+
+/** Every version of a workspace, newest first, without the file contents. */
+export async function listLlmsTxtVersions(database: Queryable, workspaceId: string): Promise<LlmsTxtVersionSummary[]> {
+  const result = await database.query<{
+    version_number: number;
+    listed_page_count: number;
+    added_page_count: number;
+    removed_page_count: number;
+    changed_page_count: number;
+    created_by: 'pipeline' | 'user_edit';
+    created_at: Date;
+  }>(
+    `select version_number, listed_page_count, created_by, created_at,
+            jsonb_array_length(coalesce(page_changes -> 'added', '[]'::jsonb)) as added_page_count,
+            jsonb_array_length(coalesce(page_changes -> 'removed', '[]'::jsonb)) as removed_page_count,
+            jsonb_array_length(coalesce(page_changes -> 'changed', '[]'::jsonb)) as changed_page_count
+       from llms_txt_versions
+      where workspace_id = $1
+      order by version_number desc`,
+    [workspaceId],
+  );
+  return result.rows.map((row) => ({
+    versionNumber: row.version_number,
+    listedPageCount: row.listed_page_count,
+    addedPageCount: row.added_page_count,
+    removedPageCount: row.removed_page_count,
+    changedPageCount: row.changed_page_count,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+  }));
+}
+
+/** The text of one version of a workspace, or null if it has no such version. */
+export async function loadLlmsTxtVersionContent(
+  database: Queryable,
+  workspaceId: string,
+  versionNumber: number,
+): Promise<string | null> {
+  const result = await database.query<{ llms_txt_content: string }>(
+    `select llms_txt_content
+       from llms_txt_versions
+      where workspace_id = $1 and version_number = $2`,
+    [workspaceId, versionNumber],
+  );
+  return result.rows[0]?.llms_txt_content ?? null;
+}
+
 export interface NewLlmsTxtVersion {
   workspaceId: string;
   /** Null for a version made by a user edit. */
@@ -110,51 +166,4 @@ export async function unpinPublishedVersion(transaction: Transaction, workspaceI
     [workspaceId],
   );
   return unpinned.rowCount === 1;
-}
-
-export interface VersionSummary {
-  versionNumber: number;
-  listedPageCount: number;
-  addedPageCount: number;
-  removedPageCount: number;
-  changedPageCount: number;
-  createdAt: Date;
-}
-
-/** The newest versions, newest first, always including the published one. */
-export async function loadVersionHistory(
-  database: Queryable,
-  workspaceId: string,
-  maxVersions: number,
-): Promise<VersionSummary[]> {
-  const result = await database.query<{
-    version_number: number;
-    listed_page_count: number;
-    added_page_count: number;
-    removed_page_count: number;
-    changed_page_count: number;
-    created_at: Date;
-  }>(
-    `select * from (
-       select versions.version_number, versions.listed_page_count, versions.created_at,
-              jsonb_array_length(coalesce(versions.page_changes -> 'added', '[]'::jsonb)) as added_page_count,
-              jsonb_array_length(coalesce(versions.page_changes -> 'removed', '[]'::jsonb)) as removed_page_count,
-              jsonb_array_length(coalesce(versions.page_changes -> 'changed', '[]'::jsonb)) as changed_page_count
-         from llms_txt_versions versions
-         join site_workspaces workspaces on workspaces.id = versions.workspace_id
-        where versions.workspace_id = $1
-        order by versions.id = workspaces.published_version_id desc nulls last, versions.version_number desc
-        limit $2
-     ) history
-     order by version_number desc`,
-    [workspaceId, maxVersions],
-  );
-  return result.rows.map((row) => ({
-    versionNumber: row.version_number,
-    listedPageCount: row.listed_page_count,
-    addedPageCount: row.added_page_count,
-    removedPageCount: row.removed_page_count,
-    changedPageCount: row.changed_page_count,
-    createdAt: row.created_at,
-  }));
 }

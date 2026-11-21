@@ -277,6 +277,7 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
     expect((await pin({ versionNumber: 2 }, 'not-the-token')).status).toBe(401);
     expect((await pin({ versionNumber: 2 }, null)).status).toBe(401);
     expect((await pin({ versionNumber: 'two' })).status).toBe(400);
+    expect((await pin({ versionNumber: 2 ** 31 })).status).toBe(400);
     expect((await pin({ versionNumber: 999 })).status).toBe(404);
     expect(await hostedLlmsTxt()).toBe(newestBefore);
 

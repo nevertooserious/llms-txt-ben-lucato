@@ -198,10 +198,10 @@ Entries are regenerated only for changed pages. The file is rendered per workspa
 - **Result:** rendered preview next to raw text, spec validation status, copy and download.
 - **Editing:** override a page's description or exclude a page.
 - **Secret link:** `/w/{public_slug}#token=…`. The token is in the fragment, which browsers never send, and the browser keeps the links it created so the home page can list them.
-- **API:** `POST /api/sites` submits a URL. `GET /api/workspaces/{public_slug}` is what the workspace screen polls: the latest run, the published file with its validation result, and monitoring. `DELETE /api/workspaces/{public_slug}` deletes the workspace. `POST /api/workspaces/{public_slug}/checks` is "check now" and renews monitoring. `PUT /api/workspaces/{public_slug}/published-version` makes a version live and pins it, and `DELETE` on the same path unpins it. The workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
+- **API:** `POST /api/sites` submits a URL. `GET /api/workspaces/{public_slug}` is what the workspace screen polls: the latest run, the published file with its validation result, and monitoring. `DELETE /api/workspaces/{public_slug}` deletes the workspace. `POST /api/workspaces/{public_slug}/checks` is "check now" and renews monitoring. `GET /api/workspaces/{public_slug}/versions` lists the version history and `GET .../versions/{version_number}` returns one version's text. `PUT /api/workspaces/{public_slug}/published-version` makes a version live and pins it, and `DELETE` on the same path unpins it. The workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
 - **Hosted URL:** a stable `/w/{public_slug}/llms.txt`. The spec puts llms.txt at the site's own root, so the site owner redirects or proxies to this URL. The [root README](../../README.md#serving-llmstxt-from-your-own-domain) explains how.
-- **Monitoring:** on for every workspace with an expiry, and a "check now" button that renews it.
-- **Versions:** a list of versions with counts of pages added, removed and changed, from which the user makes one live and pins it, or returns to following the latest. Line-by-line diffs are not built.
+- **Monitoring:** on for every workspace with an expiry, a "check now" button that renews it, and version history with diffs: the user picks any two versions and sees a line diff, computed in the browser.
+- **Versions:** a list of versions with counts of pages added, removed and changed, from which the user makes one live and pins it, or returns to following the latest.
 
 ## 7. Security and abuse limits
 

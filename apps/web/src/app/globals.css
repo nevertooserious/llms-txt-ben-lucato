@@ -458,6 +458,92 @@ a:hover {
   text-align: center;
 }
 
+/* --- version comparison ---------------------------------------------------------------- */
+
+.version-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.version-select {
+  display: flex;
+  flex: 1 1 240px;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.version-select select {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 0;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+}
+.diff-count-added {
+  color: var(--color-accent-bright);
+}
+.diff-count-removed {
+  color: var(--color-danger);
+}
+.diff-view {
+  max-height: 560px;
+  overflow: auto;
+  border: 1px solid var(--color-rule);
+  background: var(--color-background);
+}
+.diff-view table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.diff-view td {
+  padding: 0 8px;
+  vertical-align: top;
+}
+.diff-number {
+  width: 1%;
+  color: var(--color-text-quaternary);
+  text-align: right;
+  white-space: nowrap;
+  user-select: none;
+}
+.diff-marker {
+  width: 1%;
+  white-space: pre;
+  user-select: none;
+}
+.diff-text {
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.diff-added {
+  background: var(--color-accent-wash);
+}
+.diff-added .diff-marker,
+.diff-added .diff-text {
+  color: var(--color-accent-bright);
+}
+.diff-removed {
+  background: var(--color-danger-wash);
+}
+.diff-removed .diff-marker,
+.diff-removed .diff-text {
+  color: var(--color-danger);
+}
+.diff-skipped td {
+  padding: 4px 12px;
+  background: var(--color-surface-raised);
+  color: var(--color-text-quaternary);
+  font-size: 12px;
+}
+
 /* --- side panels ---------------------------------------------------------------------- */
 
 .field {

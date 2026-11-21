@@ -2,6 +2,9 @@ import { pinPublishedVersion, unpinPublishedVersion, withTransaction } from '@ll
 import { webServices } from '../../../../../server/web-services';
 import { authoriseWorkspaceRequest } from '../../../../../server/workspace-access';
 
+/** The largest value of the Postgres `integer` column `version_number`. */
+const MAX_VERSION_NUMBER = 2_147_483_647;
+
 // Chooses the version served at the hosted URL. PUT { "versionNumber": n } makes that
 // version live and pins it, so later checks record new versions without publishing them.
 // DELETE unpins and goes back to serving the newest version. Both take the workspace's
@@ -20,7 +23,7 @@ export async function PUT(
     if (response) return response;
     const body = (await request.json().catch(() => null)) as { versionNumber?: unknown } | null;
     const versionNumber = body?.versionNumber;
-    if (typeof versionNumber !== 'number' || !Number.isSafeInteger(versionNumber) || versionNumber < 1) {
+    if (typeof versionNumber !== 'number' || !Number.isInteger(versionNumber) || versionNumber < 1 || versionNumber > MAX_VERSION_NUMBER) {
       return Response.json({ error: 'Send a "versionNumber" that is a positive whole number.' }, { status: 400 });
     }
     const isPinned = await withTransaction(services.databasePool, (transaction) =>
