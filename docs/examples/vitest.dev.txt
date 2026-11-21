@@ -1,0 +1,78 @@
+# Vitest
+
+> Vitest is a Vite-native, Jest-compatible testing framework for JavaScript and TypeScript. Its documentation helps developers install, configure and run unit tests, with guides and API references for mocking, coverage, browser mode, benchmarking and test projects.
+
+- Vitest does not require Vite; the site says it can be used in non-Vite projects and for backend code.
+
+## Docs
+
+- [Configuring Vitest](https://vitest.dev/config): Explains how to configure Vitest via vitest.config or vite.config files, including config file lookup, merging, and default options.
+- [deps](https://vitest.dev/config/deps): Configuration reference for Vitest's deps options, covering optimizer, client transforms, interopDefault and moduleDirectories settings with defaults and examples.
+- [runner](https://vitest.dev/config/runner): Documents the runner configuration option, which sets the path to a custom test runner constructor for advanced use.
+- [environmentOptions](https://vitest.dev/config/environmentoptions): Documents the environmentOptions config key, which passes options to the test environment setup, with a jsdom and happyDOM example.
+- [watch](https://vitest.dev/config/watch): Documents the watch config option, which enables watch mode, its defaults in interactive and CI environments, and its CLI flags.
+- [root](https://vitest.dev/config/root): Describes the root configuration option: its type, CLI flags, and how relative paths are resolved, including in projects.
+- [outputFile](https://vitest.dev/config/outputfile): Documents the outputFile config option, which writes test results to a file when the json or junit reporter is used.
+- [execArgv](https://vitest.dev/config/execargv): Documents the execArgv config option, a string array of extra Node arguments passed to the runner worker, with a warning about crashing options.
+- [testTimeout](https://vitest.dev/config/testtimeout): Documents the testTimeout config option: its type, defaults for Node.js and browser mode, CLI flags, and that 0 disables it.
+- [hookTimeout](https://vitest.dev/config/hooktimeout): Reference entry for the hookTimeout config option, giving its type, default values in Node.js and browser mode, CLI flags, and behaviour.
+- [teardownTimeout](https://vitest.dev/config/teardowntimeout): Documents the teardownTimeout Vitest config option: its number type, default of 10000 milliseconds, and CLI flags.
+- [silent](https://vitest.dev/config/silent): Documents the silent config option, which suppresses console output from tests, with type, default, CLI flag and a 'passed-only' mode.
+- [setupFiles](https://vitest.dev/config/setupfiles): Explains the setupFiles config option: paths to setup files that run before each test file, their order, and related warnings about process and isolation.
+- [testNamePattern](https://vitest.dev/config/testnamepattern): Documents the testNamePattern option: its type, CLI flags, how it filters tests by full name, and an example.
+
+## API
+
+- [Test](https://vitest.dev/api/test): Reference for the test function in Vitest, covering its signatures, options such as timeout, retry, and concurrent, and modifiers like skip, only, each, and fails.
+- [includeSource](https://vitest.dev/config/include-source): Documents the includeSource option: glob patterns matching in-source test files, with examples and bundler configuration to strip in-source tests from production builds.
+- [name](https://vitest.dev/config/name): Config reference for the test name option, covering string and object forms, allowed colors, a multi-project example, and default name resolution.
+- [benchmark experimental](https://vitest.dev/config/benchmark): Lists the benchmark configuration options for vitest bench, including enabled, include, exclude, provider and retainSamples, with their types and defaults.
+- [alias](https://vitest.dev/config/alias): Documents the alias config option for Vitest, including its type, how it merges with resolve.alias, and pitfalls with imports, require calls and external dependencies.
+- [globals](https://vitest.dev/config/globals): Documents the globals config option, its default of false, CLI flags, example config, and TypeScript setup for global test APIs.
+- [injectCjsGlobals](https://vitest.dev/config/injectcjsglobals): Explains the injectCjsGlobals config option, which injects CommonJS variables into modules, its default, CLI flags, and detection rules.
+- [environment](https://vitest.dev/config/environment): Documents the environment config option: default Node environment, jsdom and happy-dom options, docblock usage, and creating custom environments.
+- [watchTriggerPatterns 3.2.0+](https://vitest.dev/config/watchtriggerpatterns): Explains the watchTriggerPatterns config option, which maps file-change regex patterns to test files Vitest should rerun, with a code example and restrictions.
+- [dir](https://vitest.dev/config/dir): Documents the dir config option: its string type, CLI flag, default value of root, and purpose as the base directory for scanning test files.
+- [reporters](https://vitest.dev/config/reporters): Documents the reporters configuration option, including accepted types, default value, CLI usage, built-in reporter list, and a configuration example.
+- [pool](https://vitest.dev/config/pool): Documents the test pool options threads, forks, vmThreads and vmForks, with their default, CLI flag, trade-offs and sandbox warnings.
+
+## Guides
+
+- [Getting Started](https://vitest.dev/guide): Getting started guide for Vitest, covering installation, writing a first test, running tests, configuration, IDE integrations, and examples.
+- [Why Vitest](https://vitest.dev/guide/why): Explains why Vitest exists, its Vite foundation, Jest compatibility, performance goals, and how it differs from other tools.
+- [Features](https://vitest.dev/guide/features): Overview of Vitest's features, including watch mode, mocking, snapshots, coverage, in-source testing, benchmarking and sharding, with links to detailed guides.
+- [Test Projects](https://vitest.dev/guide/projects): Explains how to define and run multiple Vitest project configurations within one process, including glob patterns, inline configs, filtering and nested projects.
+- [In-Source Testing](https://vitest.dev/guide/in-source): Explains how to write Vitest tests inside source files using import.meta.vitest, with config, production build exclusion for various bundlers, and TypeScript setup.
+- [Test Context](https://vitest.dev/guide/test-context): Documents Vitest's test context, covering built-in fixtures like task, expect, skip, and signal, plus how to extend it with custom fixtures.
+- [Benchmarking](https://vitest.dev/guide/benchmarking): Explains how to write, run, compare, assert and store Vitest benchmarks, with stability and engine-specific performance guidance.
+- [Common Errors](https://vitest.dev/guide/common-errors): Troubleshooting guide listing common Vitest errors such as module resolution, worker termination, working directory, package conditions and unhandled rejections, with fixes.
+- [Browser Mode](https://vitest.dev/guide/browser): Explains running Vitest tests in a real browser: installation, provider and framework configuration, headless mode, examples, and limitations.
+- [Test Environment](https://vitest.dev/guide/environment): Explains Vitest's test environment option, the built-in environments such as node, jsdom and happy-dom, per-file control comments, and creating custom environments.
+- [Reporters](https://vitest.dev/guide/reporters): Documentation of Vitest's built-in test reporters, their configuration options, and output file locations.
+- [Coverage](https://vitest.dev/guide/coverage): Explains Vitest's V8 and Istanbul code coverage providers, how to configure coverage, include or exclude files, write custom reporters, and ignore code.
+
+## Blog
+
+- [Latest From the Vitest Blog](https://vitest.dev/blog): A top-level index of the Vitest blog listing release announcements from Vitest 3.0 through 5.1, with dates.
+
+## Pages
+
+- [v4.x](https://v4.vitest.dev/): Landing page for Vitest, a Vite-native testing framework, with links to the guide, GitHub repository, feature list and sponsors.
+
+## Machine-readable resources
+
+- [llms-full.txt](https://vitest.dev/llms-full.txt): The full text of the site's pages in one file.
+
+## Optional
+
+- [Meet the Team](https://vitest.dev/team): Profiles of Vitest's core and emeritus team members, with their roles, employers and sponsor links.
+- [v3.x](https://v3.vitest.dev/): A sponsors page for Vitest listing special, platinum and gold sponsors with links to their sites and a sponsorship button.
+- [v2.x](https://v2.vitest.dev/): A sponsors page for Vitest listing special and platinum sponsors, with a link to sponsor the project on GitHub.
+- [Vitest v1.6](https://v1.vitest.dev/): Sponsor acknowledgement page for the Vitest v1.6 project, listing special and platinum sponsors with links and a sponsorship call to action.
+- [include](https://vitest.dev/config/include): Documents the test config option that sets glob patterns for test files, with its default, CLI usage, and examples.
+- [exclude](https://vitest.dev/config/exclude): Documents the test exclude config option: its type, default glob patterns, CLI usage, and how it interacts with coverage and configDefaults.
+- [server deprecated](https://vitest.dev/config/server): Documents the deprecated server option for Vitest 4 and earlier, covering server.deps external, inline, fallbackCJS and debug settings.
+- [clearMocks](https://vitest.dev/config/clearmocks): Documents the clearMocks config option, which clears mock history before each test while keeping implementations, with type, default and a concurrency warning.
+- [includeTaskLocation](https://vitest.dev/config/includetasklocation): Documents the includeTaskLocation config option, a boolean default false that adds test location properties for reporters.
+- [browser.dependencySourcemaps](https://vitest.dev/config/browser/dependencysourcemaps): Explains the browser.dependencySourcemaps option, which serves node_modules sourcemaps to the browser during headless test runs, its default and tradeoffs.
+- [browser.importMapMocks 5.1.0+ experimental](https://vitest.dev/config/browser/importmapmocks): Explains the browser.importMapMocks option, which serves Vitest module mocks through import maps instead of network interception, with browser support and limits.

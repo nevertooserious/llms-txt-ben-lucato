@@ -1,0 +1,72 @@
+# Python.org
+
+> Python.org is the official website of the Python programming language and the Python Software Foundation. Programmers, from beginners to experienced developers, can use it to download Python, read the documentation and tutorials, follow news and events, and learn about PSF membership, donations…
+
+## Docs
+
+- [Python 3.15 documentation](https://docs.python.org/): The official Python 3.15 documentation index, linking to the tutorial, library and language references, setup guides, HOWTOs, FAQs and indices.
+- [Download Python](https://www.python.org/downloads/): Lists active Python releases with support status and release dates, plus a long list of specific Python version downloads and release notes.
+- [Our Documentation](https://www.python.org/doc/): An index of Python documentation resources, covering beginner guides, the official docs for version 3, porting from Python 2, and contribution links.
+- [PEP 0 – Index of Python Enhancement Proposals (PEPs)](https://peps.python.org/): The index of all Python Enhancement Proposals, grouped by category and status, with links to each PEP and topic indexes.
+- [Python Releases for macOS](https://www.python.org/downloads/macos/): Lists macOS installer downloads for stable Python releases, from the latest 3.15 release back through versions from 2.7 to 3.6.
+- [History and License](https://docs.python.org/3/license.html): Covers Python's development history, release lineage, and the license agreements and notices for Python, its documentation, and incorporated third-party software.
+- [Python Frequently Asked Questions](https://docs.python.org/3/faq/): An index page linking to Python's FAQ sections covering general, programming, design, library, extending, Windows, GUI and installation questions.
+- [Python Developer's Guide](https://www.python.org/dev/): A landing page pointing to the Python Developer's Guide, PEPs, buildbots, and python.org maintenance documentation.
+- [Grants - Frequently Asked Questions](https://www.python.org/psf/grants/faq/): Frequently asked questions about PSF grant requests, covering eligible costs, payments, timing, trademarks, reporting, and sanctions compliance.
+
+## Guides
+
+- [Python For Beginners](https://www.python.org/about/gettingstarted/): A getting-started guide for beginners covering installing Python, learning resources, tutorials, documentation links, package index, and ways to help.
+- [Beginners Guide](https://wiki.python.org/python/getting-started/BeginnersGuide.html): A legacy beginner's guide to learning Python, listing download, tutorial, help and practice resources, flagged as possibly outdated after migration from an old wiki.
+- [The Python Tutorial](https://docs.python.org/3/tutorial/): The table of contents and introduction to the official Python tutorial, covering language basics, data structures, classes, and standard library tours.
+- [4. More Control Flow Tools](https://docs.python.org/3/tutorial/controlflow.html): Tutorial chapter covering Python's if, for, range, break, continue, else on loops, pass, match statements and function definitions with examples.
+- [3. An Informal Introduction to Python](https://docs.python.org/3/tutorial/introduction.html): A tutorial introducing Python basics: using the interpreter as a calculator, working with text strings, lists, and first steps in programming with loops.
+- [Python Security](https://www.python.org/dev/security/): Explains how to report Python security issues to the PSRT, which projects are covered, the disclosure process, bug bounty status, and advisory channels.
+- [PSF Grants Program](https://www.python.org/psf/grants/): Explains the PSF Grants Program: the 2026 funding round, eligibility, grant categories, caps, schedule, and the application and reporting process.
+- [PSF Meetup Pro Network](https://www.python.org/psf/meetup-pro): Explains the PSF Meetup Pro Network: eligibility criteria, application process, review and decision steps, and office hours for Python meetup groups.
+
+## Product
+
+- [PSF Fundraiser campaign for 2026](https://donate.python.org/): A fundraising page for the Python Software Foundation offering donations and memberships, with impact stories, program descriptions and FAQs.
+
+## Pricing
+
+- [Become a Member of the PSF](https://www.python.org/psf/membership/): Explains the Python Software Foundation's membership classes, including Supporting, Contributing, Fellows and Basic membership, with sign-up links and eligibility details.
+
+## About
+
+- [PSF](https://www.python.org/psf/): The Python Software Foundation's home page covering its grants, infrastructure, PyCon US, membership, donations, volunteering, sponsors, and recent news.
+- [About Python™](https://www.python.org/about/): The About page introduces Python, with links to beginner guides, documentation, community resources, applications, the open-source license, news, events and the Python Software Foundation.
+- [Help](https://www.python.org/about/help/): A help index directing readers to beginner guides, tutorials, download pages, community forums, bug trackers and contact addresses for Python.
+- [About the Python Software Foundation](https://www.python.org/psf/about/): Explains the Python Software Foundation's role, covering Python distribution, licensing, community grants, PyCon US, fiscal sponsorship, and PyPI support.
+- [Mission](https://www.python.org/psf/mission/): States the Python Software Foundation's mission statement, its non-profit status, and the activities it undertakes to support the Python language.
+- [Python Software Foundation FAQ](https://www.python.org/psf/faq/): An FAQ about the Python Software Foundation covering its mission, board, contact details, membership, sponsorship, and how to follow its activities.
+
+## Blog
+
+- [Our Blogs](https://www.python.org/blogs/): A listing of recent Python news posts from the Python Insider, PSF, PyCon and PyPI blogs, with feed and source links.
+- [Python Insider](https://blog.python.org/): The official Python core team blog's main index, listing recent posts such as Python 3.16 alpha releases, security updates and the Language Summit.
+
+## Pages
+
+- [Python Docs Translation Dashboard](https://translations.python.org/): A dashboard showing translation completion percentages for core and overall Python documentation across many languages, with links to each translation.
+- [>_ Launch Interactive Shell](https://www.python.org/shell/): Python.org homepage with sections for getting started, downloads, documentation, jobs, news, events, success stories, and Python use cases.
+- [PSF Strategy](https://www.python.org/psf/strategy/): Describes the PSF Strategic Plan 2026, its four program and six organizational goals, board decision-making, annual reviews, and ways to give feedback.
+
+## Optional
+
+- [Python Job Board](https://www.python.org/jobs/): A paginated list of current Python programming job postings, showing job titles, employers, locations, tags and posting dates.
+- [Our Community](https://www.python.org/community/): Community hub for Python with links to FAQs, conferences, a community survey, newsletters, chat servers, and IRC channels.
+- [Our Success Stories](https://www.python.org/success-stories/): A listing page of Python success stories, showing newest stories and stories grouped by category such as business, data science and government.
+- [Our Events](https://www.python.org/events/): Lists upcoming and recently past Python community events worldwide, with dates and locations for each entry.
+- [Internet Relay Chat](https://www.python.org/community/irc/): Lists Python-related IRC channels on the Libera.Chat network, their purposes, registration requirements, and historical Freenode context.
+- [Applications for Python](https://www.python.org/about/apps/): Lists categories of applications built with Python, such as web development, science, education, GUIs, software development and business, with example libraries and tools.
+- [Quotes about Python](https://www.python.org/about/quotes/): A collection of testimonial quotes from companies and developers praising Python for productivity, scalability and use in production systems.
+- [Python Source Releases](https://www.python.org/downloads/source/): Index of Python source code releases, listing versions with links to release notes and gzipped or XZ source tarballs.
+- [Python Releases for Windows](https://www.python.org/downloads/windows/): Lists downloadable Python releases and install manager versions for Windows, with installer and embeddable package links for each version.
+- [Python Releases for Android](https://www.python.org/downloads/android/): Lists Python Android embeddable package downloads for stable and pre-release versions, with a note to prefer documented Android tools.
+- [Python Releases for iOS](https://www.python.org/downloads/ios/): Lists Python iOS XCframework download links for stable and pre-release versions, with links to each release's page.
+- [Download Python for other platforms](https://www.python.org/download/other/): Lists Python ports and distributions for specialized or older platforms such as AIX, IBM i, iOS, RISC OS, Solaris, UEFI and z/OS, with links to third-party sources.
+- [Alternative Python implementations](https://www.python.org/download/alternatives): Lists alternative Python implementations such as PyPy, IronPython and MicroPython, plus third-party repackaged distributions and cloud hosting options, each with a short description.
+- [Audio/Video Instructional Materials for Python](https://www.python.org/doc/av): A curated index of Python podcasts, both active and inactive, plus conference talk and video repositories with brief descriptions of each.
+- [Python Documentation Index](https://www.python.org/doc/essays/): An index of Guido van Rossum's short essays on Python topics, with one-paragraph summaries of each linked essay and related presentations.

@@ -1,0 +1,63 @@
+# Tailscale
+
+> Tailscale is a connectivity platform built on WireGuard that creates private encrypted networks (tailnets) with identity-based, zero trust access to devices and infrastructure. It is for developers, IT and security teams, and homelab users, and the site offers documentation, downloads,…
+
+## Docs
+
+- [Docs · Tailscale Docs](https://tailscale.com/docs.md): The Tailscale documentation hub, linking to getting-started material, tailnet management, features, integrations, and technical reference.
+
+## Guides
+
+- [Bring Tailscale to Work](https://tailscale.com/bring-tailscale-to-work): A form for teams to request help rolling out Tailscale at work, with rollout guidance on grants, ACLs, SSO and SSH.
+- [DevOps Learning Library](https://tailscale.com/learn): An index of Tailscale networking learning articles, covering VPNs, zero trust, AI infrastructure and data security topics, with short summaries of each.
+- [Tailscale: How it works](https://tailscale.com/how-it-works): A long 2020 blog article by Tailscale's Avery Pennarun explaining the architecture of the Tailscale system, covering WireGuard, coordination, NAT traversal, DERP relays, and ACLs.
+- [Using Tailscale in FedRAMP Moderate Environments](https://tailscale.com/resources/fedramp): Explains how Tailscale can fit within FedRAMP Moderate environments, covering security posture, boundary definition, system categorization, and FIPS compliance context, with an offer of help.
+
+## Product
+
+- [Download](https://tailscale.com/download): Download page offering the Tailscale macOS app, with system requirements, a Mac App Store link, and a link to install instructions.
+- [WireGuard® for Enterprise](https://tailscale.com/wireguard-vpn): Marketing page describing Tailscale's managed WireGuard VPN for enterprises, covering key management, identity-aware access, access policies, and log streaming.
+- [Features](https://tailscale.com/features): A catalogue of Tailscale's 40 features grouped by area, including access control, monitoring, SSH, networking, posture management and user management, each linking to documentation.
+- [Integrations for Almost Anything](https://tailscale.com/integrations): A categorized directory of Tailscale integrations with identity providers, operating systems, cloud providers, IaC tools, and other third-party products, each linking to setup docs.
+- [Homelab Networking Setup | Securely Connect Devices & Services with Tailscale](https://tailscale.com/use-cases/homelab): Marketing page describing how Tailscale creates a private encrypted mesh network to connect homelab devices from anywhere without exposed ports.
+- [Secure Infrastructure Access with Zero Trust](https://tailscale.com/use-cases/infrastructure-access): Marketing page describing Tailscale's zero trust infrastructure access for databases, Kubernetes clusters, VMs and containers with least-privilege controls.
+- [Manage SSH Keys Securely with Tailscale](https://tailscale.com/tailscale-ssh): Product page describing Tailscale SSH features such as automated key management, identity provider integration, browser-based SSH console, and pricing tiers.
+
+## Pricing
+
+- [Tailscale pricing](https://tailscale.com/pricing): Compares Tailscale's Personal, Standard, Premium and Enterprise plans with prices, a feature comparison table, add-ons, marketplaces and billing FAQs.
+
+## About
+
+- [We're Building the New Internet | About Tailscale](https://tailscale.com/company): Describes Tailscale's mission, guiding principles, commitments on privacy, open source and remote work, and lists its board, investors and advisors.
+
+## Blog
+
+- [Blog](https://tailscale.com/blog): Lists recent Tailscale blog posts on product updates and industry insights, with dates and authors, plus a subscribe section.
+- [Changelog](https://tailscale.com/changelog): A running feed of Tailscale client, service, container, operator and Terraform provider release notes, with subscribe link and per-release changes.
+
+## Pages
+
+- [Compare](https://tailscale.com/compare): A comparison hub explaining how Tailscale differs from other VPN and network access alternatives, with links to individual comparison pages.
+
+## Machine-readable resources
+
+- [docs/llms.txt](https://tailscale.com/docs/llms.txt): An llms.txt index for this part of the site.
+
+## Optional
+
+- [Why Devs Love Tailscale | Customer Success Stories](https://tailscale.com/customers): Index page of Tailscale customer success stories, featuring short summaries of how customers such as Cribl and Instacart use Tailscale.
+- [Tailscale Insiders Program](https://tailscale.com/insiders-program): Describes the Tailscale Insiders Program benefits, such as swag, meetups, product research and private community, with a sign-up form.
+- [Webinars and virtual events](https://tailscale.com/webinars): Lists on-demand and upcoming Tailscale webinars about secure connectivity, each with a short summary and a watch link.
+- [We're Newsworthy](https://tailscale.com/press): A press page with the company's media kit download, press contact email, and a list of third-party news articles about Tailscale.
+- [Tailscale Partnership](https://tailscale.com/partnerships): Describes Tailscale's partner program, including partner benefits, featured cloud marketplace partnerships, partnership models, and steps to get started.
+- [Deploy our Zero-Config, No-Fuss VPN Today](https://tailscale.com/contact/sales): A contact sales page inviting visitors to reach the sales team, with links to documentation, support, and the partnerships team.
+- [Tailscale Community Projects](https://tailscale.com/community/community-projects): Lists open-source community projects built with Tailscale, with category filters and a form to submit a project, though the results currently show as loading.
+- [Partnerships Directory](https://tailscale.com/partnerships/directory): Lists Tailscale's network of technology partners, value-added resellers and managed service providers, with a link to get connected to a partner.
+- [Partner with Tailscale to Build the Best VPN Service for Secure Networks](https://tailscale.com/contact/partnerships): A contact page for Tailscale's partnerships team, with links to technical sales and the Tailscale docs.
+- [Careers at Tailscale](https://tailscale.com/careers): Careers page describing Tailscale's perks, office locations, interview process, and links to open positions and a job scam guide.
+- [Legal Hub](https://tailscale.com/legal): An index of Tailscale's legal documents, including terms of service, privacy policy, DPA, SLA, security policies, and other agreements.
+- [Documentation and Support](https://tailscale.com/contact/support): A support hub offering links to documentation search, service status, community social channels, and a support request form.
+- [Join the Tailscale PAM Beta](https://tailscale.com/pam-selfserve-waitlist): A waitlist sign-up form for the Tailscale PAM Beta, describing privileged access control through the admin console and its Border0 integration origins.
+- [Workload identity federation: better infra and CI/CD auth with Tailscale](https://tailscale.com/blog/workload-identity-beta): Announces workload identity federation beta, letting CI/CD and infrastructure systems authenticate to Tailscale with short-lived OIDC tokens instead of static API keys or OAuth clients.
+- [Mullvad on Tailscale: Secure & Anonymous Internet Access](https://tailscale.com/blog/mullvad-integration): Announces Tailscale's Mullvad partnership, explains Mullvad exit nodes for private browsing, and gives setup steps and pricing.

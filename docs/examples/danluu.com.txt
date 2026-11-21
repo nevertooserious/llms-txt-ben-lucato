@@ -1,0 +1,34 @@
+# danluu.com
+
+> danluu.com is Dan Luu's personal blog of long-form, data-driven essays on software engineering, performance and latency, hardware, testing, benchmarking, AI coding agents and the tech industry. It is for programmers and technically minded readers.
+
+- The homepage lists public posts hosted on danluu.com separately from Patreon posts, which are hosted on patreon.com rather than on the blog itself.
+
+## Guides
+
+- [Some programming blogs to consider reading](https://danluu.com/programming-blogs/): A curated, opinionated list of programming blogs and writers, each with a short note on what their writing covers.
+- [Sampling v. tracing](https://danluu.com/perf-tracing/): A long technical essay arguing that sampling profilers miss rare tail-latency problems and explaining Google's tracing framework through several case studies.
+
+## Blog
+
+- [Futurist prediction methods and accuracy](https://danluu.com/futurist-predictions/): A long essay evaluating accuracy of futurist predictions, comparing prediction methods and grading figures like Kurzweil, Fresco and Fuller.
+- [The container throttling problem](https://danluu.com/cgroup-throttling/): A long internal-derived essay on CPU quota throttling in Twitter's containers, covering causes, a case study, and possible scheduler and threadpool solutions.
+- [Computer latency: 1977-2017](https://danluu.com/input-lag/): A long-form article measuring keypress-to-display latency across vintage and modern computers, phones and e-readers, explaining causes of input lag.
+
+## Optional
+
+- [The benchmarkpocalypse](https://danluu.com/benchpocalypse/): A blog essay arguing that LLM agents make benchmark gaming easy, illustrated by the author's FRE regex engine experiment and its overfitting on rebar and holdout benchmarks.
+- [How does programming language affect token efficiency and correctness?](https://danluu.com/pl-tokens/): Dan Luu's blog post critiquing a token-efficiency benchmark of programming languages, presenting his own LLM evals on zstd and Pandoc tasks and their conclusions.
+- [How web bloat impacts users with slow devices](https://danluu.com/slow-device/): A long blog post measuring how bloated websites perform on slow devices, with a table of page sizes and CPU and rendering times across platforms.
+- [Diseconomies of scale in fraud, spam, support, and moderation](https://danluu.com/diseconomies-scale/): An essay arguing that large platforms have worse spam, fraud, moderation and support than smaller ones, citing examples from Facebook, Google, YouTube and others.
+- [Seo Spam](https://danluu.com/seo-spam/): A long essay comparing search results from Google, Bing, Marginalia, Kagi, Mwmbl and ChatGPT on sample queries, arguing that SEO spam and ads degrade search quality.
+- [Why is it so hard to buy things that work well?](https://danluu.com/nothing-works/): An essay arguing that markets often fail to reward good products and services, using examples of hiring, shipping, software vendors and in-house building.
+- [Misidentifying talent](https://danluu.com/talent/): An essay on how talent scouts, hiring managers and gatekeepers are biased by appearance such as height, using baseball scouting reports as examples.
+- [Cocktail party ideas](https://danluu.com/cocktail-ideas/): An essay arguing that people with superficial knowledge of a field, including programmers discussing civil engineering, wrongly assume its problems are simple.
+- [Some thoughts on writing](https://danluu.com/writing-non-advice/): An essay arguing that writing advice mostly reflects the author's own style, and that readers should choose style based on their own goals and process.
+- [Culture matters](https://danluu.com/culture/): An essay arguing that company culture drives behavior and productivity alongside incentives and process, using examples from manufacturing, debugging and hiring.
+- [Some reasons to work on productivity and velocity](https://danluu.com/productivity-velocity/): Dan Luu argues that working on productivity and execution velocity matters, citing examples from his own work and rebutting common objections online.
+- [The value of in-house expertise](https://danluu.com/in-house/): A personal essay arguing that in-house expertise, such as Twitter's kernel and JVM teams, pays for itself at large scale, versus buying outsourced expertise.
+- [Measurement, benchmarking, and data analysis are underrated](https://danluu.com/why-benchmark/): An essay arguing that measurement and benchmarking of products and systems are valuable, with examples like Jepsen, keyboard latency, and car safety testing.
+- [How do cars do in out-of-sample crash testing?](https://danluu.com/car-safety/): A long analysis of IIHS crash test results, arguing car makers optimized for benchmarks like small overlap tests rather than real-world safety.
+- [A simple way to get more value from tracing](https://danluu.com/tracing-analytics/): A long essay describing how Twitter improved distributed tracing through a redesigned schema, sampling fixes, and SQL-queryable tables with a dependency explorer.

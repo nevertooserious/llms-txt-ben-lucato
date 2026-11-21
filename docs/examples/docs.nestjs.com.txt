@@ -1,0 +1,57 @@
+# Documentation | NestJS - A progressive Node.js framework
+
+> Official documentation for NestJS, a TypeScript-first Node.js framework for building server-side applications. It is for backend developers and covers core concepts, the Nest CLI, first-party packages, integration guides, step-by-step tutorials and API reference.
+
+- Nest uses Express by default and can be configured to run on Fastify or Node's own node:http through HTTP adapters.
+- The site says to check Nest's first-party packages, such as authentication, mail, file storage, webhooks, queues, AI and MCP, before adding another library.
+
+## Docs
+
+- [First steps | NestJS](https://docs.nestjs.com/first-steps.md): Introduces building a basic NestJS CRUD app, covering project setup with the Nest CLI, Node.js prerequisites, platform adapters, running, linting, and coding agent skills.
+- [Controllers | NestJS](https://docs.nestjs.com/controllers.md): Explains how NestJS controllers handle requests and responses, covering routing, decorators, status codes, redirection, route parameters and request payloads.
+- [Providers | NestJS](https://docs.nestjs.com/providers.md): Explains the Nest provider concept: injectable classes, dependency injection, scopes, custom and optional providers, and module registration with code examples.
+- [Modules | NestJS](https://docs.nestjs.com/modules.md): Explains NestJS modules: the @Module() decorator, root and feature modules, exports, shared, global and dynamic modules, with code examples.
+- [Middleware | NestJS](https://docs.nestjs.com/middleware.md): Explains NestJS middleware: implementing class or functional middleware, applying it to routes, exclusions, global middleware, and error handling, with code examples.
+- [Exception filters | NestJS](https://docs.nestjs.com/exception-filters.md): Explains NestJS's built-in exceptions layer, HttpException usage, built-in exception classes, and how to write, bind and scope custom exception filters.
+- [Pipes | NestJS](https://docs.nestjs.com/pipes.md): Explains NestJS pipes: what they are, built-in pipes, binding them to route handlers, and writing custom validation and transformation pipes.
+- [Guards | NestJS](https://docs.nestjs.com/guards.md): Explains NestJS guards: classes implementing CanActivate that decide whether a request reaches a route handler, with examples for roles, binding and global registration.
+- [Interceptors | NestJS](https://docs.nestjs.com/interceptors.md): Explains NestJS interceptors: how they wrap handler execution, bind to controllers or globally, and handle response mapping, exception mapping, caching and timeouts.
+- [Custom decorators | NestJS](https://docs.nestjs.com/custom-decorators.md): Explains how to create custom param decorators in NestJS, including passing data, pipes, and composing decorators with applyDecorators.
+- [Standalone applications | NestJS](https://docs.nestjs.com/standalone-applications.md): Explains how to create and use a Nest standalone application context, including retrieving providers with get and select, dynamic modules, and closing the app.
+- [Custom providers | NestJS](https://docs.nestjs.com/fundamentals/custom-providers.md): Explains NestJS dependency injection in depth, covering standard and custom providers, value, class, factory and alias providers, tokens, and exporting providers.
+- [Async providers | NestJS](https://docs.nestjs.com/fundamentals/async-providers.md): Explains how to create asynchronous providers using async/await with useFactory, delaying app startup until tasks like database connections complete, and how to inject them.
+- [Dynamic modules | NestJS](https://docs.nestjs.com/fundamentals/dynamic-modules.md): Explains NestJS dynamic modules: how register-style methods pass runtime options, a worked IdGenerator example, and ConfigurableModuleBuilder usage.
+- [Injection scopes | NestJS](https://docs.nestjs.com/fundamentals/injection-scopes.md): Explains provider and controller injection scopes (singleton, request, transient), scope hierarchy, the REQUEST and INQUIRER tokens, performance tradeoffs, and durable providers for multi-tenant apps.
+
+## API
+
+- [Observability - SDK | NestJS](https://docs.nestjs.com/observability/sdk.md): Explains the @nestjs/observe SDK: installation via CLI or by hand, quick start wiring, configuration options, shutdown behaviour and automatic instrumentation.
+- [Usage - CLI | NestJS](https://docs.nestjs.com/cli/usages.md): Reference for Nest CLI commands such as new, generate, build, start, add, upgrade and deploy, with their arguments and options.
+- [Decorators - OpenAPI | NestJS](https://docs.nestjs.com/openapi/decorators.md): Lists the OpenAPI decorators exported by NestJS with the levels, method, controller or model, where each can be applied.
+
+## Guides
+
+- [Deployment | NestJS](https://docs.nestjs.com/deployment.md): A guide to deploying a NestJS application to production, covering building, environment setup, Docker, scaling, health checks, logging, and the Mau deployment platform.
+- [Migration guide - FAQ | NestJS](https://docs.nestjs.com/migration-guide.md): Guide for migrating a NestJS project from version 11 to version 12, covering packages, Node.js requirements, ESM, and breaking changes.
+- [File storage | NestJS](https://docs.nestjs.com/application/file-storage.md): Tutorial on @nestjs/storage covering named disks, uploads to disk, signed URLs, invoices, and switching from local storage to S3 or R2.
+- [Drizzle | NestJS](https://docs.nestjs.com/data/drizzle.md): Guide to using Drizzle ORM with NestJS via @nestjs/drizzle: schema, module registration, queries, relations, transactions, migrations, multiple databases and testing.
+- [Prisma | NestJS](https://docs.nestjs.com/data/prisma.md): Guide to integrating Prisma ORM with NestJS: installing Prisma, configuring SQLite or other databases, creating a PrismaService and module, querying, transactions and testing.
+- [Observability - Production rules | NestJS](https://docs.nestjs.com/observability/production-rules.md): Explains production rules that bound how many queries, outbound calls or LLM calls a request or job may make, how they are written, checked, and alerted on.
+- [Observability - Choosing an APM for NestJS | NestJS](https://docs.nestjs.com/observability/choosing-an-apm.md): Compares APM tools for NestJS, including NestJS Observe, OpenTelemetry, Sentry, Datadog, New Relic and Elastic APM, covering setup, Nest support and when to choose each.
+- [Resilience | NestJS](https://docs.nestjs.com/reliability/resilience.md): A tutorial on the @nestjs/resilience package, covering retries, timeouts, circuit breakers, bulkheads, fallbacks and policy objects, using an online store's shipping carrier as the example.
+- [Idempotency keys | NestJS](https://docs.nestjs.com/reliability/idempotency.md): Explains how to make API routes, GraphQL mutations and message handlers safe to retry using the @nestjs/idempotency package and Idempotency-Key headers.
+- [Transactional outbox | NestJS](https://docs.nestjs.com/reliability/outbox.md): Tutorial explaining the transactional outbox pattern in @nestjs/outbox, with setup of the PostgreSQL store, migrations, and module registration for an example order API.
+- [Distributed locks | NestJS](https://docs.nestjs.com/reliability/locks.md): A tutorial on @nestjs/locks for running scheduled jobs on one instance at a time, using a shared lock store in PostgreSQL with Drizzle.
+- [Node.js backend tutorials with NestJS | NestJS](https://docs.nestjs.com/tutorials/overview.md): An overview index of step-by-step NestJS backend tutorials, each building a complete application, with a table of what each builds and its hard parts.
+- [How to build a REST API with JWT authentication in Node.js | NestJS](https://docs.nestjs.com/tutorials/rest-api-jwt-authentication.md): A NestJS tutorial that builds a notes REST API step by step, covering validation, PostgreSQL storage, and JWT sign-in with code samples.
+- [How to build an e-commerce backend in Node.js | NestJS](https://docs.nestjs.com/tutorials/ecommerce-backend.md): A tutorial building an e-commerce backend in NestJS and PostgreSQL, covering catalog, carts, checkout and stock handling, with setup steps and code.
+- [How to build a multi-tenant SaaS backend in Node.js | NestJS](https://docs.nestjs.com/tutorials/multi-tenant-saas.md): A tutorial building a multi-tenant SaaS backend in NestJS and PostgreSQL, covering organizations, roles, invitations, and tenant-scoped queries.
+
+## Machine-readable resources
+
+- [llms-full.txt](https://docs.nestjs.com/llms-full.txt): The full text of the site's pages in one file.
+
+## Optional
+
+- [Support | NestJS](https://docs.nestjs.com/support.md): Explains that Nest is an MIT-licensed open source project funded by community support, and lists ways to sponsor or donate.
+- [Discover - Who is using Nest? | NestJS](https://docs.nestjs.com/discover/companies.md): A list of companies that have built projects with Nest, with instructions for adding a company via a GitHub issue or pull request.
