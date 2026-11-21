@@ -128,7 +128,8 @@ export class WebAppStack {
     for (const path of ['/', '/w/warm-up']) {
       for (;;) {
         if (this.webApp.exitCode !== null) throw new Error(`the web app exited:\n${this.webAppLog()}`);
-        const status = await fetch(`${this.webAppOrigin}${path}`).then(
+        const authorization = `Basic ${Buffer.from('user1:pass1').toString('base64')}`;
+        const status = await fetch(`${this.webAppOrigin}${path}`, { headers: { authorization } }).then(
           (response) => response.status,
           () => null,
         );

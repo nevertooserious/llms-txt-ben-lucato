@@ -116,7 +116,7 @@ The full DDL with comments is in [`db/schema.sql`](../../db/schema.sql).
 ### Design choices
 
 - **Each submission is its own site.** Nothing is shared between submissions: submitting a URL twice makes two sites, each with its own crawl data, overrides, excluded paths, versions and schedule. This costs repeat crawls and LLM calls for a popular URL, and two submissions can crawl one host at the same time. In exchange, nobody can reach a file by submitting its URL.
-- **No user accounts or tokens, for now.** Each site has a random `public_slug`, and anyone who knows it can read and change that site through the API. The slug is in the hosted URL, so it is not a secret once shared. Basic auth is planned for the write routes.
+- **One shared login, no accounts.** HTTP Basic auth (`apps/web/src/proxy.ts`) covers the web app and REST API. Anyone with the login can read and change every site. Only the hosted file is public, because a site's own `/llms.txt` proxies or redirects to it.
 - **Column groups in `pages` have one writer each.** Crawler, extractor and generator each own a set of columns, so a stage can be re-run without clobbering another's output.
 - **User edits are stored as inputs.** Overrides are applied by the generator on every run, so an edit survives regeneration. Only the description and an exclude flag can be overridden.
 - **A path is excluded by rule, not page by page.** `excluded_url_prefixes` holds URL prefixes (`https://example.com/blog`). Each render excludes every page at or under one, by whole path segments, so the rule covers pages a later crawl finds, which per-page flags cannot. The crawl still fetches and stores those pages, so including the path again needs no crawl.
@@ -205,7 +205,7 @@ A site with nothing to list besides its homepage publishes nothing: the run fail
 - **Pages:** an expandable list of every crawled page, grouped by the directories of its URL path, with the section each is listed under. Unticking a page excludes that page; unticking a path excludes everything under it, now and in later checks. Changes are collected and saved together. Saving renders the file again from the stored crawl, with no fetch and no LLM call, and records the result as a `user_edit` version; while a run is active the choices are only saved, and that run applies them.
 - **Editing descriptions:** overriding a page's description is not built yet.
 - **Site link:** `/w/{public_slug}`. The browser keeps the sites it created so the home page can show them as a table with each one's latest status. Submitting a site opens its details page.
-- **API (no authentication):** a REST API that the web app also uses, documented in the [root README](../../README.md#rest-api). A submission creates a site. A run has its own status, and a file is reached by version number or by the run that published it. A run that published nothing answers 404 with the code `run_produced_no_version`, rather than some other run's file. Errors carry a stable `code` beside the human-readable `error`.
+- **API (HTTP Basic auth):** a REST API that the web app also uses, documented in the [root README](../../README.md#rest-api). A submission creates a site. A run has its own status, and a file is reached by version number or by the run that published it. A run that published nothing answers 404 with the code `run_produced_no_version`, rather than some other run's file. Errors carry a stable `code` beside the human-readable `error`.
 - **Hosted URL:** a stable `/w/{public_slug}/llms.txt`. The spec puts llms.txt at the site's own root, so the site owner redirects or proxies to this URL. The [root README](../../README.md#serving-llmstxt-from-your-own-domain) explains how.
 - **Monitoring:** on for every site with an expiry, a "check now" button that renews it, and version history with diffs: the user picks any two versions and sees a line diff, computed in the browser.
 - **Versions:** a list of versions with counts of pages added, removed and changed, from which the user makes one live and pins it, or returns to following the latest.
@@ -220,6 +220,7 @@ The app is public, has no accounts, and fetches URLs that users supply.
 - **Submission limits:** a per-IP rate limit using `sites.creator_ip_hash` (10 new sites per hour by default), and a global concurrency cap from the queue. The IP is read from the right of `X-Forwarded-For`, counting back `TRUSTED_PROXY_HOPS` entries (default 1), because a client can put anything in the entries to the left. This needs the app to sit behind the hosting platform's proxy.
 - **Monitor expiry:** `monitoring_enabled_until` stops abandoned submissions from being re-crawled forever.
 - **Check-now cooldown:** a site is checked by hand at most once per 5 minutes, so nobody can keep a site under constant crawling. The active-run index already stops parallel crawls, but not back-to-back ones.
+- **Login:** HTTP Basic auth on every path except the hosted file and Next's static assets, compared in constant time. The username and password come from `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD`, defaulting to `user1` and `pass1`, which are public, so a deployment must set its own. Basic auth sends the password with each request, so a deployment needs HTTPS.
 - **Served files:** `text/plain` with `X-Content-Type-Options: nosniff`.
 - **Preview:** crawled titles and descriptions are untrusted and are escaped before display.
 
@@ -239,7 +240,7 @@ Checked against llmstxt.org.
 
 | Left out | Why |
 |---|---|
-| User accounts | A random slug per site covers the app for now; basic auth is planned |
+| User accounts | One shared HTTP Basic login covers the app without sessions or a user table |
 | Webhook and email notifications | Both are open relays on an app without accounts |
 | Adaptive check interval | A fixed interval plus "check now" is simpler and easier to demonstrate |
 | Generating an `llms-full.txt` | Not found in the spec; it would duplicate large content per version. A site's own is linked when it has one |

@@ -44,7 +44,10 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     site = await stack.startSite('editable-site');
     siteState = initialEditableSiteState();
     editableSiteStates.set(site.port, siteState);
-    page = await browser.newPage({ baseURL: stack.webAppOrigin });
+    page = await browser.newPage({
+      baseURL: stack.webAppOrigin,
+      httpCredentials: { username: 'user1', password: 'pass1' },
+    });
   });
 
   afterEach(async (context) => {
@@ -192,10 +195,20 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     await page.getByLabel('To version').selectOption('1');
     await visible(page.getByText('Pick two different versions to compare.'));
 
-    // The history is available from the API with no credentials.
+    // The history is available from the API with the login, and not without it.
     const slug = new URL(page.url()).pathname.split('/')[2]!;
     expect((await page.request.get(`/api/sites/${slug}/versions`)).status()).toBe(200);
     expect((await page.request.get(`/api/sites/${slug}/versions/1`)).status()).toBe(200);
+    const withoutLogin = await fetch(`${stack.webAppOrigin}/api/sites/${slug}/versions`);
+    expect(withoutLogin.status).toBe(401);
+    expect(withoutLogin.headers.get('www-authenticate')).toContain('Basic');
+    expect(await withoutLogin.json()).toMatchObject({ code: 'unauthorized' });
+    expect((await fetch(`${stack.webAppOrigin}/`)).status).toBe(401);
+    const wrongLogin = { authorization: `Basic ${Buffer.from('user1:wrong').toString('base64')}` };
+    expect((await fetch(`${stack.webAppOrigin}/api/sites/${slug}/versions`, { headers: wrongLogin })).status).toBe(401);
+
+    // The hosted file stays public, because sites proxy their /llms.txt to it.
+    expect((await fetch(`${stack.webAppOrigin}/w/${slug}/llms.txt`)).status).toBe(200);
   });
 
   it('ignores a page and a path, and keeps the path ignored for pages found later', async () => {

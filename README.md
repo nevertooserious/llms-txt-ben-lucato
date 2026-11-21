@@ -43,7 +43,7 @@ ESLint enforces these layers too. In the crawler only `network/` may open a conn
 ## Quick start with Docker
 
 ```sh
-docker compose up --build                # http://localhost:3000
+docker compose up --build                # http://localhost:3000, login user1 / pass1
 ```
 
 This starts Postgres (with `db/schema.sql` applied on first boot), the web app and the worker. No configuration is needed. To use Claude rather than heuristics, put `ANTHROPIC_API_KEY` in a `.env` file at the repository root and run the command again. `WEB_PORT` (default 3000) and `POSTGRES_PORT` (default 5433) change the host ports.
@@ -61,11 +61,11 @@ npm ci
 npx playwright install chromium          # headless browser for the crawler
 cp .env.example .env                     # set DATABASE_URL
 psql "$DATABASE_URL" -f db/schema.sql
-npm run dev:web                          # http://localhost:3000
+npm run dev:web                          # http://localhost:3000, login user1 / pass1
 npm run dev:worker
 ```
 
-Each process reads its configuration once at startup and stops with a message naming any missing or malformed variable. `DATABASE_URL` is required, and production also needs `ANTHROPIC_API_KEY` (worker); `LOG_LEVEL` (`debug`, `info`, `warn`, `error`), `PIPELINE_RUN_CONCURRENCY` and `CRAWL_PAGE_BUDGET` (worker) and `SUBMISSIONS_PER_IP_PER_HOUR` and `TRUSTED_PROXY_HOPS` (web) are optional. Logs are one JSON object per line; a run's lines carry its `pipelineRunId`.
+Each process reads its configuration once at startup and stops with a message naming any missing or malformed variable. `DATABASE_URL` is required, and production also needs `ANTHROPIC_API_KEY` (worker); `LOG_LEVEL` (`debug`, `info`, `warn`, `error`), `PIPELINE_RUN_CONCURRENCY` and `CRAWL_PAGE_BUDGET` (worker) and `SUBMISSIONS_PER_IP_PER_HOUR`, `TRUSTED_PROXY_HOPS`, `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` (web) are optional. Logs are one JSON object per line; a run's lines carry its `pipelineRunId`.
 
 ## Serving llms.txt from your own domain
 
@@ -92,7 +92,7 @@ The last one is for Vercel, in `vercel.json`. Use a temporary redirect, so clien
 
 ## REST API
 
-There is no authentication yet, so anyone who knows a site's slug can read, change or delete it. Do not expose a deployment you need to protect until basic auth is added.
+Every endpoint uses HTTP Basic auth except the live file, which stays public so sites can proxy to it. The web app uses the same login through the browser's sign-in prompt. The default is `user1` / `pass1`. Set `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` on any deployment, because the default is public.
 
 | Action | Request |
 |---|---|
@@ -109,19 +109,19 @@ There is no authentication yet, so anyone who knows a site's slug can read, chan
 | Follow the latest version | `DELETE /api/sites/{slug}/published-version` |
 | List crawled pages and what is ignored | `GET /api/sites/{slug}/pages` |
 | Set the ignored pages and paths | `PUT /api/sites/{slug}/pages` with `{"excludedUrls": [], "excludedUrlPrefixes": ["https://example.com/blog"]}` |
-| Get the live file | `GET /w/{slug}/llms.txt` |
+| Get the live file (no login) | `GET /w/{slug}/llms.txt` |
 
 ```sh
 # Submit, then poll the run until it finishes.
-curl -si localhost:3000/api/sites -H 'content-type: application/json' -d '{"url":"https://example.com"}'
+curl -si -u user1:pass1 localhost:3000/api/sites -H 'content-type: application/json' -d '{"url":"https://example.com"}'
 # 202, with {"publicSlug", "pipelineRunId", "runUrl", "llmsTxtUrl"}
-curl -s localhost:3000/api/sites/<slug>/runs/<runId>
+curl -s -u user1:pass1 localhost:3000/api/sites/<slug>/runs/<runId>
 # {"status": "running", "currentStage": "crawl", "pagesFetchedCount": 12, "versionNumber": null, ...}
 ```
 
 A run's `status` is `queued`, `running`, `succeeded`, `unchanged` or `failed`. While it is active, the response has a `Retry-After` header. Re-triggering during a run returns that run, and re-triggering within five minutes of the last run answers 429 with `Retry-After`.
 
-Errors are JSON with a message and a stable code, such as `{"error": "This site has no such run.", "code": "run_not_found"}`. The codes are `invalid_request`, `invalid_url`, `invalid_version_number`, `site_not_found`, `run_not_found`, `version_not_found`, `run_in_progress`, `run_produced_no_version`, `rate_limited`, `cooldown_active` and `internal_error`. Plain-text versions have an `ETag` and answer `If-None-Match` with 304.
+Errors are JSON with a message and a stable code, such as `{"error": "This site has no such run.", "code": "run_not_found"}`. The codes are `unauthorized`, `invalid_request`, `invalid_url`, `invalid_version_number`, `site_not_found`, `run_not_found`, `version_not_found`, `run_in_progress`, `run_produced_no_version`, `rate_limited`, `cooldown_active` and `internal_error`. Plain-text versions have an `ETag` and answer `If-None-Match` with 304.
 
 ## Checks
 
