@@ -1,5 +1,6 @@
 import type { PageExclusions, SaveExclusionsResult, SitePagesView } from '@/shared/site-pages';
 import type { LlmsTxtVersionSummaryView, SiteView } from '@/shared/site-view';
+import { goToLoginIfSignedOut } from './login-redirect';
 
 // Browser calls to the site routes.
 
@@ -19,6 +20,7 @@ async function call<T>(publicSlug: string, path: string, init: RequestInit = {})
     headers: { 'content-type': 'application/json' },
     cache: 'no-store',
   });
+  goToLoginIfSignedOut(response);
   const body = (await response.json().catch(() => ({}))) as T & { error?: string };
   if (!response.ok) throw new SiteApiError(body.error ?? `Request failed (${response.status}).`, response.status);
   return body;

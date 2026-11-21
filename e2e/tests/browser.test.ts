@@ -44,10 +44,8 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     site = await stack.startSite('editable-site');
     siteState = initialEditableSiteState();
     editableSiteStates.set(site.port, siteState);
-    page = await browser.newPage({
-      baseURL: stack.webAppOrigin,
-      httpCredentials: { username: 'user1', password: 'pass1' },
-    });
+    page = await browser.newPage({ baseURL: stack.webAppOrigin });
+    await signIn();
   });
 
   afterEach(async (context) => {
@@ -55,6 +53,21 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     await page?.close();
     editableSiteStates.delete(site.port);
   });
+
+  /** Fills in the login form. The page must already be showing it. */
+  async function submitLogin(password = 'pass1'): Promise<void> {
+    await page.getByLabel('Username').fill('user1');
+    await page.getByLabel('Password').fill(password);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+  }
+
+  /** A signed-out visit to the home page lands on the login page; signing in leads back. */
+  async function signIn(): Promise<void> {
+    await page.goto('/');
+    await page.waitForURL('/login');
+    await submitLogin();
+    await page.waitForURL('/');
+  }
 
   const runStatus = (text: string) => page.locator('.status-line').getByText(text, { exact: true });
 
@@ -80,6 +93,31 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     const rawPath = await rawLink().getAttribute('href');
     return (await page.request.get(rawPath!)).text();
   }
+
+  it('refuses a wrong password, returns to the page asked for, and signs out', async () => {
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.waitForURL('/login');
+
+    // A page asked for while signed out comes back after the login.
+    await page.goto('/w/no-such-site?from=test');
+    await page.waitForURL('/login?next=%2Fw%2Fno-such-site%3Ffrom%3Dtest');
+    await visible(page.getByRole('heading', { level: 2, name: 'Sign in' }));
+
+    await submitLogin('wrong');
+    await visible(page.getByRole('alert').getByText('That username or password is not right.'));
+
+    await submitLogin();
+    await page.waitForURL('/w/no-such-site?from=test');
+
+    // Signed out, the API refuses the browser without asking it to show its own prompt.
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.waitForURL('/login');
+    const refused = await page.evaluate(async () => {
+      const response = await fetch('/api/sites/no-such-site');
+      return { status: response.status, challenge: response.headers.get('www-authenticate') };
+    });
+    expect(refused).toEqual({ status: 401, challenge: null });
+  });
 
   it('generates an llms.txt for a new site', async () => {
     await generateFromHomePage();
@@ -203,7 +241,10 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     expect(withoutLogin.status).toBe(401);
     expect(withoutLogin.headers.get('www-authenticate')).toContain('Basic');
     expect(await withoutLogin.json()).toMatchObject({ code: 'unauthorized' });
-    expect((await fetch(`${stack.webAppOrigin}/`)).status).toBe(401);
+    // A page without the login goes to the login page.
+    const pageWithoutLogin = await fetch(`${stack.webAppOrigin}/w/${slug}`, { redirect: 'manual' });
+    expect(pageWithoutLogin.status).toBe(307);
+    expect(pageWithoutLogin.headers.get('location')).toBe(`/login?next=%2Fw%2F${slug}`);
     const wrongLogin = { authorization: `Basic ${Buffer.from('user1:wrong').toString('base64')}` };
     expect((await fetch(`${stack.webAppOrigin}/api/sites/${slug}/versions`, { headers: wrongLogin })).status).toBe(401);
 

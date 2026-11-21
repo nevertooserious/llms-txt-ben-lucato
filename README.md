@@ -92,7 +92,7 @@ The last one is for Vercel, in `vercel.json`. Use a temporary redirect, so clien
 
 ## REST API
 
-Every endpoint uses HTTP Basic auth except the live file, which stays public so sites can proxy to it. The web app uses the same login through the browser's sign-in prompt. The default is `user1` / `pass1`. Set `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` on any deployment, because the default is public.
+Every endpoint uses HTTP Basic auth except the live file, which stays public so sites can proxy to it. The web app uses the same login: a signed-out visitor lands on `/login`, and signing in there sets a cookie that lasts 30 days. The default is `user1` / `pass1`. Set `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` on any deployment, because the default is public.
 
 | Action | Request |
 |---|---|

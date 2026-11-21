@@ -1,7 +1,11 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { Geist_Mono } from 'next/font/google';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { basicAuthCredentials } from '@/server/http/basic-auth';
+import { isValidSessionToken, SESSION_COOKIE_NAME } from '@/server/http/session';
+import { signOut } from './login/actions';
 import './globals.css';
 
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' });
@@ -13,7 +17,9 @@ export const metadata: Metadata = {
 
 export const viewport = { themeColor: '#f4f4f4' };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const sessionToken = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
+  const isSignedIn = isValidSessionToken(sessionToken, basicAuthCredentials());
   return (
     <html lang="en" className={geistMono.variable}>
       <body>
@@ -22,9 +28,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <Link href="/" className="wordmark">
               llms.txt generator
             </Link>
-            <a href="https://llmstxt.org" target="_blank" rel="noreferrer">
-              Spec ↗
-            </a>
+            <nav className="masthead-links">
+              <a href="https://llmstxt.org" target="_blank" rel="noreferrer">
+                Spec ↗
+              </a>
+              {isSignedIn && (
+                <form action={signOut}>
+                  <button type="submit" className="link-button">
+                    Sign out
+                  </button>
+                </form>
+              )}
+            </nav>
           </div>
         </header>
         <div className="page">{children}</div>

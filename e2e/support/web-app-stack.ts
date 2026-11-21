@@ -125,7 +125,7 @@ export class WebAppStack {
    */
   private async waitUntilServing(): Promise<void> {
     const deadline = Date.now() + WEB_APP_START_TIMEOUT_MS;
-    for (const path of ['/', '/w/warm-up']) {
+    for (const path of ['/', '/login', '/w/warm-up']) {
       for (;;) {
         if (this.webApp.exitCode !== null) throw new Error(`the web app exited:\n${this.webAppLog()}`);
         const authorization = `Basic ${Buffer.from('user1:pass1').toString('base64')}`;
