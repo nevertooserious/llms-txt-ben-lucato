@@ -282,6 +282,27 @@ export interface WorkspacePageOverride {
   isExcluded: boolean;
 }
 
+/**
+ * Whether a URL is at or under a workspace's excluded URL prefix, by whole path segments:
+ * `https://example.com/blog` covers `/blog` and `/blog/2024/post`, not `/blog-archive`.
+ * A prefix with no path covers its whole host. Query strings and trailing slashes are
+ * ignored on both sides.
+ */
+export function isUrlUnderPrefix(url: string, urlPrefix: string): boolean {
+  let page: URL;
+  let prefix: URL;
+  try {
+    page = new URL(url);
+    prefix = new URL(urlPrefix);
+  } catch {
+    return false;
+  }
+  if (page.origin !== prefix.origin) return false;
+  const pagePath = page.pathname.replace(/\/+$/, '');
+  const prefixPath = prefix.pathname.replace(/\/+$/, '');
+  return pagePath === prefixPath || pagePath.startsWith(`${prefixPath}/`);
+}
+
 /** Queue names shared by the web app (producer) and the worker (consumer). */
 export const QUEUE_NAMES = {
   pipelineRun: 'pipeline-run',

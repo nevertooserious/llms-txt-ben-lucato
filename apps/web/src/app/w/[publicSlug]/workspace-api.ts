@@ -1,3 +1,4 @@
+import type { SaveExclusionsResult, WorkspaceExclusions, WorkspacePagesView } from '../../../shared/workspace-pages';
 import type { LlmsTxtVersionSummaryView, WorkspaceView } from '../../../shared/workspace-view';
 
 // Browser calls to the workspace routes, authorised with the secret link's token.
@@ -46,3 +47,9 @@ export const pinVersion = (publicSlug: string, accessToken: string, versionNumbe
 
 export const followLatestVersion = (publicSlug: string, accessToken: string) =>
   call<Record<string, never>>(publicSlug, accessToken, '/published-version', { method: 'DELETE' });
+
+export const fetchWorkspacePages = (publicSlug: string, accessToken: string) =>
+  call<WorkspacePagesView>(publicSlug, accessToken, '/pages');
+
+export const saveWorkspaceExclusions = (publicSlug: string, accessToken: string, exclusions: WorkspaceExclusions) =>
+  call<SaveExclusionsResult>(publicSlug, accessToken, '/pages', { method: 'PUT', body: JSON.stringify(exclusions) });

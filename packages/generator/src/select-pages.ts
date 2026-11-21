@@ -1,4 +1,4 @@
-import type { GeneratorPage, PageType, WorkspacePageOverride } from '@llms-txt/contracts';
+import { isUrlUnderPrefix, type GeneratorPage, type PageType, type WorkspacePageOverride } from '@llms-txt/contracts';
 
 // Which pages are listed, and where. Sections come from page type and, for pages of no
 // particular type, from the area of the site they sit in; the LLM never chooses them.
@@ -333,6 +333,29 @@ export function selectPages(
       },
     ];
   });
+}
+
+/**
+ * A workspace's overrides with every page at or under one of its excluded URL prefixes
+ * excluded too. The prefixes are applied to the pages of each render, so they cover
+ * pages found after the user set them. A page's description override is kept.
+ */
+export function excludePagesUnderUrlPrefixes(
+  overrides: readonly WorkspacePageOverride[],
+  excludedUrlPrefixes: readonly string[],
+  pages: readonly GeneratorPage[],
+): WorkspacePageOverride[] {
+  if (excludedUrlPrefixes.length === 0) return [...overrides];
+  const overridesByUrl = new Map(overrides.map((override) => [override.normalisedUrl, override]));
+  for (const { record } of pages) {
+    if (!excludedUrlPrefixes.some((urlPrefix) => isUrlUnderPrefix(record.normalisedUrl, urlPrefix))) continue;
+    overridesByUrl.set(record.normalisedUrl, {
+      normalisedUrl: record.normalisedUrl,
+      descriptionOverride: overridesByUrl.get(record.normalisedUrl)?.descriptionOverride ?? null,
+      isExcluded: true,
+    });
+  }
+  return [...overridesByUrl.values()];
 }
 
 /** Pages that score the same keep the order the site's navigation gives them; the rest follow. */

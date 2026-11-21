@@ -6,6 +6,7 @@ import { isActiveRunStatus, type WorkspaceView } from '../../../shared/workspace
 import { DeleteSiteControl } from './delete-site-control';
 import { LlmsTxtResult } from './llms-txt-result';
 import { MonitoringPanel } from './monitoring-panel';
+import { PagesPanel } from './pages-panel';
 import { RunProgress } from './run-progress';
 import { VersionComparison } from './version-comparison';
 import { VersionHistory } from './version-history';
@@ -123,6 +124,9 @@ export function WorkspaceScreen({ publicSlug }: { publicSlug: string }) {
         </section>
         <section className="cell">
           <LlmsTxtResult view={view} siteHost={siteHost} />
+        </section>
+        <section className="cell">
+          <PagesPanel view={view} accessToken={accessToken} onChanged={refresh} />
         </section>
         {view.publishedVersion && (
           <section className="cell">

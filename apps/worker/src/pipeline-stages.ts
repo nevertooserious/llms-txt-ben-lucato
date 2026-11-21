@@ -3,6 +3,7 @@ import type { CrawlSiteOptions } from '@llms-txt/crawler';
 import {
   adoptResolvedSiteRoot,
   finishPipelineRun,
+  loadExcludedUrlPrefixes,
   loadGeneratorPages,
   loadNewestVersion,
   loadSiteForRun,
@@ -26,6 +27,7 @@ import {
 import { extractPage } from '@llms-txt/extractor';
 import {
   decidePublication,
+  excludePagesUnderUrlPrefixes,
   NOTHING_TO_LIST_REASON,
   selectPages,
   siteNameFrom,
@@ -249,7 +251,11 @@ export async function runPipelineStages(
         siteNotes,
         machineReadableResourceUrls: crawl.machineReadableResourceUrls ?? site.machineReadableResourceUrls,
         pages: generatorPages,
-        overrides: await loadWorkspaceOverrides(databasePool, workspaceId),
+        overrides: excludePagesUnderUrlPrefixes(
+          await loadWorkspaceOverrides(databasePool, workspaceId),
+          await loadExcludedUrlPrefixes(databasePool, workspaceId),
+          generatorPages,
+        ),
       });
       const newestVersion = await loadNewestVersion(databasePool, workspaceId);
       const decision = decidePublication(newestVersion?.llmsTxtContent ?? null, rendered);

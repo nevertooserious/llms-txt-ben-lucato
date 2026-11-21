@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="688" style="color:#171717;font-family:system-ui,-apple-system,'Segoe UI',sans-serif" viewBox="0 0 1100 688" role="img" aria-label="Six tables. A site has many pages and many workspaces. Crawl state lives on sites and pages and is shared; each workspace has its own access token, page overrides and published llms.txt version.">
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="790" style="color:#171717;font-family:system-ui,-apple-system,'Segoe UI',sans-serif" viewBox="0 0 1100 790" role="img" aria-label="Seven tables. A site has many pages and many workspaces. Crawl state lives on sites and pages and is shared; each workspace has its own access token, page overrides, excluded paths and published llms.txt version.">
 <style>
 .b { fill: #fff; stroke: currentColor; stroke-width: 1.2; }
 .sep { stroke: currentColor; stroke-width: 1; opacity: .35; }
@@ -14,7 +14,7 @@
 .c3 { fill: #d97706; }
 .c4 { fill: #9333ea; }
 </style>
-<rect x="0" y="0" width="1100" height="688" fill="#ffffff"/>
+<rect x="0" y="0" width="1100" height="790" fill="#ffffff"/>
 
   <defs>
     <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -106,6 +106,14 @@
   <text class="f" x="394" y="610">workspace_id, page_id (primary key)</text>
   <text class="f" x="394" y="628">description_override, is_excluded</text>
 
+  <!-- workspace_excluded_url_prefixes -->
+  <rect class="b" x="380" y="666" width="360" height="66" rx="6"/>
+  <rect class="c4" x="384" y="707" width="3" height="14"/>
+  <text class="t" x="394" y="688">workspace_excluded_url_prefixes</text>
+  <text class="n" x="726" y="688" text-anchor="end">ignored paths</text>
+  <line class="sep" x1="380" y1="698" x2="740" y2="698"/>
+  <text class="f" x="394" y="718">workspace_id, url_prefix (primary key)</text>
+
   <!-- pipeline_runs -->
   <rect class="b" x="820" y="40" width="265" height="246" rx="6"/>
   <text class="t" x="834" y="62">pipeline_runs</text>
@@ -155,6 +163,9 @@
   <polyline class="ln" points="160,504 160,600 380,600" marker-end="url(#ar)"/>
   <text class="l" x="270" y="594" text-anchor="middle">has many</text>
 
-  <polyline class="ptr" points="100,504 100,666 952,666 952,524" marker-end="url(#arp)"/>
-  <text class="l" x="526" y="660" text-anchor="middle">published_version_id: the version served for that workspace</text>
+  <polyline class="ln" points="160,600 160,700 380,700" marker-end="url(#ar)"/>
+  <text class="l" x="270" y="694" text-anchor="middle">has many</text>
+
+  <polyline class="ptr" points="100,504 100,766 952,766 952,524" marker-end="url(#arp)"/>
+  <text class="l" x="526" y="760" text-anchor="middle">published_version_id: the version served for that workspace</text>
 </svg>

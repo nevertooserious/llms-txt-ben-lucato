@@ -135,6 +135,60 @@ export async function loadWorkspaceOverrides(database: Queryable, workspaceId: s
   }));
 }
 
+/**
+ * Makes `excludedUrls` the workspace's whole set of excluded pages: those pages are
+ * excluded, and any other page it had excluded is included again. Description overrides
+ * are kept. URLs that are not pages of the site are skipped.
+ */
+export async function replaceExcludedPages(
+  transaction: Transaction,
+  workspace: { id: string; siteId: string },
+  excludedUrls: readonly string[],
+): Promise<void> {
+  await transaction.query(
+    `insert into workspace_page_overrides (workspace_id, page_id, is_excluded)
+     select $1, pages.id, true from pages where pages.site_id = $2 and pages.normalised_url = any($3::text[])
+     on conflict (workspace_id, page_id) do update set is_excluded = true, updated_at = now()
+       where not workspace_page_overrides.is_excluded`,
+    [workspace.id, workspace.siteId, excludedUrls],
+  );
+  await transaction.query(
+    `update workspace_page_overrides overrides
+        set is_excluded = false, updated_at = now()
+       from pages
+      where overrides.workspace_id = $1 and overrides.is_excluded
+        and pages.id = overrides.page_id and pages.normalised_url <> all($2::text[])`,
+    [workspace.id, excludedUrls],
+  );
+}
+
+/** The URL prefixes whose pages the workspace keeps out of its file, in order. */
+export async function loadExcludedUrlPrefixes(database: Queryable, workspaceId: string): Promise<string[]> {
+  const result = await database.query<{ url_prefix: string }>(
+    'select url_prefix from workspace_excluded_url_prefixes where workspace_id = $1 order by url_prefix',
+    [workspaceId],
+  );
+  return result.rows.map((row) => row.url_prefix);
+}
+
+/** Makes `urlPrefixes` the workspace's whole set of excluded URL prefixes. */
+export async function replaceExcludedUrlPrefixes(
+  transaction: Transaction,
+  workspaceId: string,
+  urlPrefixes: readonly string[],
+): Promise<void> {
+  await transaction.query(
+    'delete from workspace_excluded_url_prefixes where workspace_id = $1 and url_prefix <> all($2::text[])',
+    [workspaceId, urlPrefixes],
+  );
+  await transaction.query(
+    `insert into workspace_excluded_url_prefixes (workspace_id, url_prefix)
+     select $1, unnest($2::text[])
+     on conflict (workspace_id, url_prefix) do nothing`,
+    [workspaceId, urlPrefixes],
+  );
+}
+
 /** What the workspace screen shows besides the latest run. */
 export interface WorkspaceOverview {
   rootUrl: string;

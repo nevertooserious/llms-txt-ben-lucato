@@ -94,7 +94,7 @@ A pure function from HTML to a `PageRecord`. No I/O, so it is tested against sav
 - **LLM failures:** the SDK retries transient errors. If the API is still unavailable, a page with an older assessment or a site with an older summary keeps it. A new page cannot be judged without one, so the run fails and the published file stays. A page the model refuses or answers unusably is left out and tried on the next run. Page text is passed as untrusted data, and output is forced to one line of plain text with links and markdown removed.
 - **No API key:** for local development and tests only, the worker skips the LLM: candidate pages are listed with the description the crawl gives them (above), the summary is the homepage's description, and there are no notes.
 - **Rendering:** deterministic, followed by validation against the spec. Output that fails validation is a bug, so it fails the run rather than being published.
-- **Per workspace:** the file is rendered once per workspace, applying that workspace's overrides.
+- **Per workspace:** the file is rendered once per workspace, applying that workspace's overrides and excluded paths.
 
 Still open: a site whose pages declare no language gets no locale filtering, and very large sites are only bounded by the page budget and the limits above.
 
@@ -110,15 +110,17 @@ The full DDL with comments is in [`db/schema.sql`](../../db/schema.sql).
 | `site_workspaces` | One submission of a site: access token, hosted slug, published version | Updated in place |
 | `pages` | Current state of each known URL of a site | Updated in place |
 | `workspace_page_overrides` | A workspace's edits to individual pages | Updated in place |
+| `workspace_excluded_url_prefixes` | The paths a workspace keeps out of its file | Replaced as a set |
 | `pipeline_runs` | One execution of crawl, extract, generate for a site | Written during the run, then fixed |
 | `llms_txt_versions` | Every published llms.txt of a workspace | Append-only |
 
 ### Design choices
 
-- **Crawl state is shared, ownership is not.** A site has many workspaces. A second person submitting the same site reuses the crawl and gets their own workspace, token and overrides.
+- **Crawl state is shared, ownership is not.** A site has many workspaces. A second person submitting the same site reuses the crawl and gets their own workspace, token, overrides and excluded paths.
 - **No user accounts.** Each submission returns a secret link containing a random token. Holding the link authorises editing that workspace. Only the token's SHA-256 is stored.
 - **Column groups in `pages` have one writer each.** Crawler, extractor and generator each own a set of columns, so a stage can be re-run without clobbering another's output.
 - **User edits are stored as inputs.** Overrides are applied by the generator on every run, so an edit survives regeneration. Only the description and an exclude flag can be overridden.
+- **A path is excluded by rule, not page by page.** `workspace_excluded_url_prefixes` holds URL prefixes (`https://example.com/blog`). Each render excludes every page at or under one, by whole path segments, so the rule covers pages a later crawl finds, which per-page flags cannot. The crawl still fetches and stores those pages: other workspaces of the site may list them.
 - **Rows are keyed on the normalised URL.** That is the URL after cleanup that needs no fetch: lowercase host, fragment and tracking parameters removed, query sorted, trailing slash stripped. The canonical URL a page declares is only known after fetching, so it is stored as a plain column and used to drop duplicates at selection.
 - **Publishing is a single pointer update.** A version becomes live when `site_workspaces.published_version_id` moves to it. Choosing an older version is the same operation, and sets `is_published_version_pinned`: runs then still record new versions, compared with the newest version rather than the live one so nothing is recorded twice, but the pointer stays until the user unpins it and returns to the newest.
 - **Raw HTML is not stored.** Only extracted markdown and hashes are kept. Improving the extractor means re-fetching pages.
@@ -152,7 +154,7 @@ A check runs on a fixed interval per site (default 7 days) or when a user presse
 The monitor only acts on a schedule. A request to check now arrives over HTTP, so the web app takes it and queues the run itself, through the same `startPipelineRun`. The two never call each other.
 
 - **Starting and renewing:** every submission turns monitoring on for 30 days and users cannot turn it off. "Check now" renews it for 30 days, including after it has lapsed. If the site has no check scheduled, it gets one a full interval out: the site was just crawled, so checking sooner would find nothing.
-- **Deleting a workspace:** removes its overrides, versions and hosted file. The site stays scheduled while another of its workspaces is monitoring. Its row and crawl data are deleted with its last workspace, unless a run is active, in which case the unscheduled row stays. A run skips a workspace deleted while it was generating. The delete locks the site row first (`deleteWorkspace` in `packages/db/src/workspaces.ts`).
+- **Deleting a workspace:** removes its overrides, excluded paths, versions and hosted file. The site stays scheduled while another of its workspaces is monitoring. Its row and crawl data are deleted with its last workspace, unless a run is active, in which case the unscheduled row stays. A run skips a workspace deleted while it was generating. The delete locks the site row first (`deleteWorkspace` in `packages/db/src/workspaces.ts`).
 - **The tick:** every 5 minutes, a pg-boss cron job in the worker reaps stale runs (section 4). Then it claims up to 100 due sites, skipping rows another tick has locked, moves each one's next check on by its interval, and queues a monitor run behind user requests. A due site whose workspaces have all let monitoring lapse is unscheduled at that point, so expiry needs no job of its own.
 - **Check now:** the same pipeline as a scheduled check, queued ahead of scheduled checks. A run already in progress is joined. Otherwise the site is checked at most once per 5 minutes, counted from its last run of any kind.
 
@@ -201,9 +203,10 @@ A site with nothing to list besides its homepage publishes nothing: the run fail
 
 - **Generate:** URL input, then the run's status polled from `pipeline_runs`: crawling, extracted, generated.
 - **Result:** rendered preview next to raw text, spec validation status, copy and download.
-- **Editing:** override a page's description or exclude a page.
+- **Pages:** an expandable list of every crawled page, grouped by the directories of its URL path, with the section each is listed under. Unticking a page excludes that page; unticking a path excludes everything under it, now and in later checks. Changes are collected and saved together. Saving renders the file again from the stored crawl, with no fetch and no LLM call, and records the result as a `user_edit` version; while a run is active the choices are only saved, and that run applies them.
+- **Editing descriptions:** overriding a page's description is not built yet.
 - **Secret link:** `/w/{public_slug}#token=…`. The token is in the fragment, which browsers never send, and the browser keeps the links it created so the home page can show them as a table of sites with each one's latest status. Submitting a site opens its details page.
-- **API:** `POST /api/sites` submits a URL. `GET /api/workspaces/{public_slug}` is what the workspace screen polls: the latest run, the published file with its validation result, and monitoring. `DELETE /api/workspaces/{public_slug}` deletes the workspace. `POST /api/workspaces/{public_slug}/checks` is "check now" and renews monitoring. `GET /api/workspaces/{public_slug}/versions` lists the version history and `GET .../versions/{version_number}` returns one version's text. `PUT /api/workspaces/{public_slug}/published-version` makes a version live and pins it, and `DELETE` on the same path unpins it. The workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
+- **API:** `POST /api/sites` submits a URL. `GET /api/workspaces/{public_slug}` is what the workspace screen polls: the latest run, the published file with its validation result, and monitoring. `DELETE /api/workspaces/{public_slug}` deletes the workspace. `POST /api/workspaces/{public_slug}/checks` is "check now" and renews monitoring. `GET /api/workspaces/{public_slug}/versions` lists the version history and `GET .../versions/{version_number}` returns one version's text. `PUT /api/workspaces/{public_slug}/published-version` makes a version live and pins it, and `DELETE` on the same path unpins it. `GET /api/workspaces/{public_slug}/pages` lists the crawled pages with what the workspace excludes, and `PUT` on the same path replaces the excluded pages and paths and renders the file again. The workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
 - **Hosted URL:** a stable `/w/{public_slug}/llms.txt`. The spec puts llms.txt at the site's own root, so the site owner redirects or proxies to this URL. The [root README](../../README.md#serving-llmstxt-from-your-own-domain) explains how.
 - **Monitoring:** on for every workspace with an expiry, a "check now" button that renews it, and version history with diffs: the user picks any two versions and sees a line diff, computed in the browser.
 - **Versions:** a list of versions with counts of pages added, removed and changed, from which the user makes one live and pins it, or returns to following the latest.

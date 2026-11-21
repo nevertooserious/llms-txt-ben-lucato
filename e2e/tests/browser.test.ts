@@ -198,6 +198,67 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     expect((await page.request.get(`/api/workspaces/${slug}/versions/1`)).status()).toBe(401);
   });
 
+  it('ignores a page and a path, and keeps the path ignored for pages found later', async () => {
+    await generateFromHomePage();
+    const pagesPanel = page.locator('.pages-panel');
+    const pageRow = (path: string) => pagesPanel.locator('.page-row', { has: page.getByText(path, { exact: true }) });
+
+    // The panel opens to the crawled pages, grouped by path, each with the section it is listed under.
+    await pagesPanel.getByRole('heading', { name: 'Pages' }).click();
+    await visible(pagesPanel.getByText('6 crawled · 5 listed · 0 ignored'));
+    await visible(pagesPanel.locator('.page-group-summary', { hasText: '/docs/' }).getByText('2 pages'));
+    await visible(pageRow('/docs/intro').getByText('Docs', { exact: true }));
+    expect(await pagesPanel.getByRole('checkbox', { name: '/', exact: true }).isDisabled()).toBe(true);
+
+    // Nothing changes until it is saved; then one new version leaves the page and the path out.
+    await pagesPanel.getByRole('checkbox', { name: '/pricing', exact: true }).uncheck();
+    await pagesPanel.getByRole('checkbox', { name: 'Include the path /docs/' }).uncheck();
+    await visible(pagesPanel.getByText('2 unsaved changes'));
+    await visible(pageRow('/docs/setup').getByText('Path ignored'));
+    expect(await rawLlmsTxt()).toContain(`${site.origin}/docs/intro`);
+
+    await pagesPanel.getByRole('button', { name: 'Save and regenerate' }).click();
+    await visible(pagesPanel.getByText('Saved. v2 is live.'));
+    await visible(page.getByText('Version 2', { exact: true }));
+    await visible(pagesPanel.getByText('6 crawled · 2 listed · 3 ignored'));
+    const afterSave = await rawLlmsTxt();
+    expect(afterSave).not.toContain(`${site.origin}/docs/`);
+    expect(afterSave).not.toContain(`${site.origin}/pricing`);
+    expect(afterSave).toContain(`${site.origin}/blog/hello`);
+
+    // The site gains a page under the ignored path and one outside it. The next check
+    // lists only the one outside.
+    siteState.pages['/docs/upgrade'] = { title: 'Upgrade', description: 'Move to the new version.', body: '<p>Steps.</p>' };
+    siteState.pages['/changelog'] = { title: 'Changelog', description: 'What changed.', body: '<p>Releases.</p>' };
+    await stack.databasePool.query(
+      `update pipeline_runs set created_at = created_at - interval '1 hour'
+        where site_id = (select id from sites where root_url = $1)`,
+      [site.origin],
+    );
+    await page.getByRole('button', { name: /check now/i }).click();
+    await visible(page.getByText('Version 3', { exact: true }), RUN_TIMEOUT_MS);
+    await visible(pageRow('/docs/upgrade').getByText('Path ignored'));
+    const afterCheck = await rawLlmsTxt();
+    expect(afterCheck).toContain(`${site.origin}/changelog`);
+    expect(afterCheck).not.toContain(`${site.origin}/docs/`);
+
+    // The path is listed above the tree, where it can be included again; a reload shows what was saved.
+    await page.reload();
+    await page.locator('.pages-panel').getByRole('heading', { name: 'Pages' }).click();
+    await page.getByRole('button', { name: 'Stop ignoring /docs/' }).click();
+    await page.getByRole('button', { name: 'Save and regenerate' }).click();
+    await visible(page.getByText('Saved. v4 is live.'));
+    const afterIncluding = await rawLlmsTxt();
+    expect(afterIncluding).toContain(`${site.origin}/docs/upgrade`);
+    expect(afterIncluding).not.toContain(`${site.origin}/pricing`);
+
+    // Changing what is ignored needs the secret token.
+    const slug = new URL(page.url()).pathname.split('/')[2]!;
+    expect((await page.request.get(`/api/workspaces/${slug}/pages`)).status()).toBe(401);
+    const unauthorised = await page.request.put(`/api/workspaces/${slug}/pages`, { data: { excludedUrls: [], excludedUrlPrefixes: [] } });
+    expect(unauthorised.status()).toBe(401);
+  });
+
   it('shows no page counts and no way to turn monitoring off', async () => {
     await generateFromHomePage();
     await visible(page.getByText('Next check:'));

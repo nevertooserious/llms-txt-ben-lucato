@@ -318,6 +318,37 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
       expect(listedUrls(llmsTxt)).not.toContain(urlOf(submitted.site, '/pricing'));
     });
 
+    it('an ignored path keeps out its pages, and the ones a later check finds under it', async () => {
+      const { submitted, state } = await submitEditableSite();
+      await harness.setExcludedPaths(submitted, ['/docs']);
+      state.pages['/docs/upgrade'] = { title: 'Upgrade', description: 'Move to the new version.', body: '<p>Steps.</p>' };
+      state.pages['/docs-archive'] = { title: 'Old docs', description: 'Earlier versions.', body: '<p>Kept for reference.</p>' };
+
+      expect(await harness.checkNow(submitted)).toMatchObject({ status: 'succeeded' });
+      // The crawl still stores the pages: ignoring is a workspace's choice about its file.
+      expect(await harness.storedPage(submitted, '/docs/upgrade')).toMatchObject({ http_status_code: 200, removed_at: null });
+      const listed = listedUrls((await harness.publishedLlmsTxt(submitted))!);
+      expect(listed.filter((url) => url.startsWith(urlOf(submitted.site, '/docs/')))).toEqual([]);
+      expect(listed).toContain(urlOf(submitted.site, '/docs-archive'));
+      expect(listed).toContain(urlOf(submitted.site, '/pricing'));
+
+      // No longer ignored, they are all listed by the next check.
+      await harness.setExcludedPaths(submitted, []);
+      state.pages['/pricing']!.description = 'New prices.';
+      expect(await harness.checkNow(submitted)).toMatchObject({ status: 'succeeded' });
+      const listedAgain = listedUrls((await harness.publishedLlmsTxt(submitted))!);
+      for (const path of ['/docs/intro', '/docs/setup', '/docs/upgrade']) expect(listedAgain).toContain(urlOf(submitted.site, path));
+    });
+
+    it('an ignored path belongs to one workspace of the site', async () => {
+      const { submitted } = await submitEditableSite();
+      await harness.setExcludedPaths(submitted, ['/docs']);
+      const second = await harness.submit(submitted.site);
+      expect(second.firstRun.status).toBe('succeeded');
+      expect(listedUrls((await harness.publishedLlmsTxt(second))!)).toContain(urlOf(submitted.site, '/docs/intro'));
+      expect(listedUrls((await harness.publishedLlmsTxt(submitted))!)).not.toContain(urlOf(submitted.site, '/docs/intro'));
+    });
+
     it('a second workspace on the same site gets its own file from the shared crawl', async () => {
       const { submitted } = await submitEditableSite();
       await harness.setOverride(submitted, '/pricing', { isExcluded: true });

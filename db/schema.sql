@@ -6,6 +6,7 @@
 --                             access token, the user's overrides and the published version
 --   pages                     current state of each known URL of a site; mutable
 --   workspace_page_overrides  a workspace's edits to individual pages
+--   workspace_excluded_url_prefixes  the paths a workspace keeps out of its file
 --   pipeline_runs             one row per execution of crawl -> extract -> generate for a site;
 --                             the audit log and the source of the status shown in the UI
 --   llms_txt_versions         every published llms.txt of a workspace; append-only
@@ -288,6 +289,22 @@ create table workspace_page_overrides (
   updated_at            timestamptz not null default now(),
 
   primary key (workspace_id, page_id)
+);
+
+-- ---------------------------------------------------------------------------
+-- workspace_excluded_url_prefixes
+-- ---------------------------------------------------------------------------
+-- Paths a workspace keeps out of its file. Every page at or under a prefix is left out,
+-- including pages a later crawl finds, which a per-page override cannot cover. Like the
+-- overrides, an input to the generator that is applied on every render.
+create table workspace_excluded_url_prefixes (
+  workspace_id  uuid not null references site_workspaces (id) on delete cascade,
+  -- Scheme, host and path, with no trailing slash, query or fragment.
+  -- "https://example.com/blog" covers /blog and all of /blog/, not /blog-archive.
+  url_prefix    text not null,
+  created_at    timestamptz not null default now(),
+
+  primary key (workspace_id, url_prefix)
 );
 
 -- ---------------------------------------------------------------------------

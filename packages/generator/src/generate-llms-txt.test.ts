@@ -3,7 +3,7 @@ import type { GeneratorPage, PageType, StoredPageAssessment } from '@llms-txt/co
 import { listedEntries } from './decide-publication';
 import { firstParagraphOf } from './entry-text';
 import { generateLlmsTxt, type GenerateLlmsTxtInput } from './generate-llms-txt';
-import { compareText, DEFAULT_SELECTION_LIMITS, isPaginationUrl } from './select-pages';
+import { compareText, DEFAULT_SELECTION_LIMITS, excludePagesUnderUrlPrefixes, isPaginationUrl } from './select-pages';
 import { validateLlmsTxt } from './validate-llms-txt';
 
 const ORIGIN = 'https://example.com';
@@ -241,6 +241,24 @@ describe('generateLlmsTxt', () => {
     });
     expect(llmsTxt).toContain(`- [Title of /kept](${ORIGIN}/kept): Written by the user.`);
     expect(llmsTxt).not.toContain('/dropped');
+  });
+
+  it('leaves out every page at or under an excluded URL prefix, keeping description overrides', () => {
+    const pages = [homepage, page('/blog'), page('/blog/post'), page('/blog-archive'), page('/docs/intro')];
+    const overrides = excludePagesUnderUrlPrefixes(
+      [
+        { normalisedUrl: `${ORIGIN}/blog/post`, descriptionOverride: 'Kept for later.', isExcluded: false },
+        { normalisedUrl: `${ORIGIN}/docs/intro`, descriptionOverride: 'Written by the user.', isExcluded: false },
+      ],
+      [`${ORIGIN}/blog`],
+      pages,
+    );
+    expect(overrides).toEqual([
+      { normalisedUrl: `${ORIGIN}/blog/post`, descriptionOverride: 'Kept for later.', isExcluded: true },
+      { normalisedUrl: `${ORIGIN}/docs/intro`, descriptionOverride: 'Written by the user.', isExcluded: false },
+      { normalisedUrl: `${ORIGIN}/blog`, descriptionOverride: null, isExcluded: true },
+    ]);
+    expect([...listedEntries(generate({ pages, overrides })).keys()]).toEqual([`${ORIGIN}/blog-archive`, `${ORIGIN}/docs/intro`]);
   });
 
   it('links the .md variant when one exists, and the URL as the site links it otherwise', () => {
