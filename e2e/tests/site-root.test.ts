@@ -97,3 +97,22 @@ describe('a site that refuses the crawler', () => {
     expect(crawl.failedFetches.map((failure) => failure.reason)).toEqual(['blocked']);
   });
 });
+
+describe('a site behind a bot challenge', () => {
+  it('records a 200 challenge page as a failure and passes no page on', async () => {
+    const port = await serve(() => (request, response) => {
+      if (request.url === '/robots.txt') response.writeHead(404).end();
+      else response.writeHead(200, { 'content-type': 'text/html' }).end('<!doctype html><title>Just a moment...</title><body><p>Checking your browser.</p></body>');
+    });
+    const crawl = await collectCrawl({
+      rootUrl: `http://challenge.test:${port}`,
+      pageBudget: 5,
+      networkPolicy: allowLoopbackPorts([port]),
+      resolveHostname,
+      minRequestIntervalMs: 0,
+      requiresHeadlessRendering: false,
+    });
+    expect(crawl.pages).toEqual([]);
+    expect(crawl.failedFetches.map((failure) => failure.reason)).toEqual(['bot_challenge']);
+  });
+});

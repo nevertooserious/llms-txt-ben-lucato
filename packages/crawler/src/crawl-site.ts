@@ -9,6 +9,7 @@ import type {
   LinkSignals,
   RawPage,
 } from '@llms-txt/contracts';
+import { looksLikeBotChallenge } from './detect-bot-challenge';
 import { HeadlessRenderer } from './headless-renderer';
 import { HttpFetcher, type FetchOutcome, type FetchRequest } from './http-fetcher';
 import { cleanUrlForFetch, isInScope, normaliseUrl } from './normalise-url';
@@ -454,6 +455,10 @@ class SiteCrawl {
       fetchMethod: 'plain_http',
     };
     if (outcome.httpStatusCode < 200 || outcome.httpStatusCode >= 300) return plainPage;
+    if (looksLikeBotChallenge(outcome.body, outcome.headers)) {
+      this.recordFailure(entry.fetchUrl, 'bot_challenge', 'The response was a bot-challenge page.', outcome.httpStatusCode);
+      return null;
+    }
 
     const plainSignals = readPageSignals(outcome.body, outcome.finalUrl, outcome.headers);
     if (!plainSignals.hasScripts) {
@@ -499,6 +504,10 @@ class SiteCrawl {
     }
     if (isErrorStatus(outcome.httpStatusCode)) {
       if (recordFailure) this.recordErrorStatus(url, outcome.httpStatusCode);
+      return null;
+    }
+    if (outcome.httpStatusCode >= 200 && outcome.httpStatusCode < 300 && looksLikeBotChallenge(outcome.html, outcome.headers)) {
+      if (recordFailure) this.recordFailure(url, 'bot_challenge', 'The rendered page was a bot-challenge page.', outcome.httpStatusCode);
       return null;
     }
     return {

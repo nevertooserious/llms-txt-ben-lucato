@@ -35,5 +35,6 @@ export {
   type HostnameResolver,
   type NetworkPolicy,
 } from './ssrf-guard';
+export { looksLikeBotChallenge } from './detect-bot-challenge';
 export { resolveSiteRootUrl, type ResolveSiteRootOptions } from './resolve-site-root';
 export { ROBOTS_USER_AGENT_TOKEN, type RobotsTxtStatus } from './robots-rules';
