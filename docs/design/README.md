@@ -63,7 +63,7 @@ Owns all network I/O. It hands each fetched page (404s, 410s and 304s included, 
 
 A pure function from HTML to a `PageRecord`. No I/O, so it is tested against saved HTML fixtures.
 
-- **Title:** Open Graph title, then the title tag, then the first H1.
+- **Title:** Open Graph title, then the title tag, then the first H1. Many sites set the Open Graph title to the site name on every page, so on an inner page where the title tag is that name plus a page name, the first H1 is used, then the title tag.
 - **Description:** meta description, then Open Graph description, then the first paragraph.
 - **Page type:** one of `home`, `docs`, `api`, `guide`, `blog`, `product`, `pricing`, `about`, `legal`, `other`.
 - **Language and canonical URL:** from `<html lang>` and `<link rel="canonical">`.
@@ -73,7 +73,7 @@ A pure function from HTML to a `PageRecord`. No I/O, so it is tested against sav
 
 ### Generator
 
-- **Selection:** the file lists durable, structural pages that explain the site and how to use it, not its stream of content. Three steps. Deterministic filters first, so nothing is paid for pages that cannot be listed: the homepage (it is the H1), `noindex` pages, pagination (`/page/2`, `?page=2`), and pages whose declared language differs from the homepage's (locale duplicates such as `/de/`). Then the page assessment (below) and workspace exclusions remove what does not belong. Last, pages are scored on navigation presence, crawl depth and inbound links (plus a lift for pages the site's own llms.txt lists), and one page per canonical URL is kept. Ties are broken by URL, comparing digit runs as numbers.
+- **Selection:** the file lists durable, structural pages that explain the site and how to use it, not its stream of content. Three steps. Deterministic filters first, so nothing is paid for pages that cannot be listed: the homepage (it is the H1) under any of its URLs, `noindex` pages, pagination (`/page/2`, `?page=2`), and pages whose declared language differs from the homepage's (locale duplicates such as `/de/`). URL variants with the same content (`/guide`, `/guide.html`, `/guide.md`, `/guide/index.html`) count as one page. Then the page assessment (below) and workspace exclusions remove what does not belong. Last, pages are scored on navigation presence, crawl depth and inbound links (plus a lift for pages the site's own llms.txt lists), and one page per canonical URL is kept. Ties are broken by URL, comparing digit runs as numbers.
 - **Page assessment:** Claude Haiku reads each candidate page and returns a one-line description, a listing value (`primary`, `optional` or `exclude`), a reason for any exclusion (`error_page`, `utility`, `thin`, `archive`, `individual_content`, `duplicate`) and a corrected page type. So a "not found" page served with a 200, a login page or a single blog post is left out. The model is told to choose `optional` when unsure.
 - **Sections:** derived from the assessed page type (the extractor's when there is no assessment), in a fixed order: Docs, API, Guides, Product, Pricing, About, Blog, Pages (for `other`). The LLM picks among these types but cannot create a section. `optional` and legal pages go under `Optional`.
 - **Limits:** at most 15 entries per section, 5 for Blog, and 60 outside `Optional`; the overflow goes under `Optional`, which holds at most 40. A flood of blog posts therefore cannot crowd out core pages. Starting values, in `packages/generator/src/select-pages.ts`.

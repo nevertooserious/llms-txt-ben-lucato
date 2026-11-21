@@ -19,9 +19,12 @@ export interface ExtractPageInput {
 const MINIMUM_PARAGRAPH_DESCRIPTION_LENGTH = 50;
 /** First-paragraph descriptions are cut to this length at a word boundary. */
 const MAXIMUM_PARAGRAPH_DESCRIPTION_LENGTH = 300;
+/** What sites put between a page's name and the site's name in <title>. */
+const TITLE_SEPARATORS = [' | ', ' - ', ' – ', ' — ', ' · ', ' :: '];
 
 /**
- * Title: Open Graph title, then <title>, then the first <h1>.
+ * Title: Open Graph title, then <title>, then the first <h1>. On an inner page whose
+ * Open Graph title is only the site name, the first <h1>, then <title>.
  * Description: meta description, then Open Graph description, then the first
  * paragraph of the main content.
  * Content: see selectMainContent; converted to markdown.
@@ -31,8 +34,13 @@ export function extractPage(input: ExtractPageInput): PageRecord {
   const baseUrl = documentBaseUrl($, input.finalUrl);
 
   // Metadata is read before content selection, which removes elements.
+  const openGraphTitle = metaContent($, 'meta[property="og:title"]');
+  const titleTag = nonEmptyText($('title').first().text());
+  const heading = firstHeading($);
   const title =
-    metaContent($, 'meta[property="og:title"]') ?? nonEmptyText($('title').first().text()) ?? firstHeading($);
+    !input.isHomepage && openGraphTitle !== null && titleTag !== null && isSiteNameOf(openGraphTitle, titleTag)
+      ? (heading ?? titleTag)
+      : (openGraphTitle ?? titleTag ?? heading);
   const metadataDescription =
     metaContent($, 'meta[name="description"]') ?? metaContent($, 'meta[property="og:description"]');
   const canonicalHref = $('link[rel~="canonical"][href]').first().attr('href');
@@ -66,6 +74,14 @@ export function extractPage(input: ExtractPageInput): PageRecord {
 
 function metaContent($: CheerioAPI, selector: string): string | null {
   return nonEmptyText($(selector).first().attr('content'));
+}
+
+/** Whether <title> is this text plus a page name: `Changes – Acme` or `Acme | Changes`. */
+function isSiteNameOf(openGraphTitle: string, titleTag: string): boolean {
+  return TITLE_SEPARATORS.some(
+    (separator) =>
+      titleTag.endsWith(`${separator}${openGraphTitle}`) || titleTag.startsWith(`${openGraphTitle}${separator}`),
+  );
 }
 
 function firstHeading($: CheerioAPI): string | null {

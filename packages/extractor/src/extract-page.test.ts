@@ -91,6 +91,22 @@ describe('extractPage rules', () => {
       expect(extract(page('', '<p>No title anywhere.</p>')).title).toBeNull();
     });
 
+    it('uses the <h1>, then <title>, when an inner page has the site name as its og:title', () => {
+      const openGraph = '<meta property="og:title" content="Acme">';
+      const inner = { normalisedUrl: 'https://acme.test/changes', finalUrl: 'https://acme.test/changes', isHomepage: false };
+
+      const withHeading = page(`${openGraph}<title>changes – Acme</title>`, '<h1>What changed</h1>');
+      expect(extractPage({ ...inner, html: withHeading }).title).toBe('What changed');
+      const withoutHeading = page(`${openGraph}<title>Acme | Changes</title>`);
+      expect(extractPage({ ...inner, html: withoutHeading }).title).toBe('Acme | Changes');
+    });
+
+    it('keeps the site name as the homepage title', () => {
+      const html = page('<meta property="og:title" content="Acme"><title>Welcome – Acme</title>', '<h1>Build faster</h1>');
+      const title = extractPage({ html, normalisedUrl: 'https://acme.test', finalUrl: 'https://acme.test/', isHomepage: true }).title;
+      expect(title).toBe('Acme');
+    });
+
     it('skips empty candidates and collapses whitespace', () => {
       const html = page('<meta property="og:title" content="  "><title>\n  Spread\n  over lines </title>');
       expect(extract(html).title).toBe('Spread over lines');
