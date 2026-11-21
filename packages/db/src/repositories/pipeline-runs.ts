@@ -166,6 +166,10 @@ export interface PipelineRunSummary {
   createdAt: Date;
   startedAt: Date | null;
   finishedAt: Date | null;
+  pagesDiscoveredCount: number;
+  pagesFetchedCount: number;
+  pagesChangedCount: number;
+  pagesFailedCount: number;
 }
 
 /** The site's most recently created run, for the frontend to poll, or null if it has none. */
@@ -182,8 +186,13 @@ export async function loadLatestPipelineRunSummary(
     created_at: Date;
     started_at: Date | null;
     finished_at: Date | null;
+    pages_discovered_count: number;
+    pages_fetched_count: number;
+    pages_changed_count: number;
+    pages_failed_count: number;
   }>(
-    `select id, status, current_stage, triggered_by, error_message, created_at, started_at, finished_at
+    `select id, status, current_stage, triggered_by, error_message, created_at, started_at, finished_at,
+            pages_discovered_count, pages_fetched_count, pages_changed_count, pages_failed_count
        from pipeline_runs
       where site_id = $1
       order by created_at desc
@@ -201,15 +210,15 @@ export async function loadLatestPipelineRunSummary(
     createdAt: row.created_at,
     startedAt: row.started_at,
     finishedAt: row.finished_at,
+    pagesDiscoveredCount: row.pages_discovered_count,
+    pagesFetchedCount: row.pages_fetched_count,
+    pagesChangedCount: row.pages_changed_count,
+    pagesFailedCount: row.pages_failed_count,
   };
 }
 
 /** One run of a site, with what it did and the version it published, if any. */
 export interface PipelineRunDetail extends PipelineRunSummary {
-  pagesDiscoveredCount: number;
-  pagesFetchedCount: number;
-  pagesChangedCount: number;
-  pagesFailedCount: number;
   /** The version this run published. Null while it is active, and for a run that changed nothing or failed. */
   versionNumber: number | null;
 }
