@@ -208,6 +208,19 @@ describe('discovery', () => {
     expect(pageAt(result, site, '/').crawlSignals.crawlDepth).toBe(0);
   });
 
+  it('numbers pages in the order it first saw links to them', async () => {
+    const result = await crawl('hydrated-site', { requiresHeadlessRendering: false });
+    const positions = Object.values(result.linkSignals)
+      .map((signals) => signals.firstLinkPosition)
+      .filter((position) => position !== null);
+    // Every linked page has its own place, counted from 0 with no gaps.
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions.map((_position, index) => index));
+    // The homepage's own links come before those first seen on the pages it links.
+    const depthOneLast = Math.max(...result.pages.filter((page) => page.crawlSignals.crawlDepth === 1).map((page) => result.linkSignals[page.normalisedUrl]!.firstLinkPosition!));
+    const deeper = result.pages.filter((page) => page.crawlSignals.crawlDepth > 1).map((page) => result.linkSignals[page.normalisedUrl]!.firstLinkPosition!);
+    for (const position of deeper) expect(position).toBeGreaterThan(depthOneLast);
+  });
+
   it('respects the page budget on a large sitemap index', async () => {
     const site = sites['large-sitemap-site'];
     const result = await crawl('large-sitemap-site', { pageBudget: 25 });

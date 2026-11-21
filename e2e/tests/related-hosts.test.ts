@@ -107,6 +107,7 @@ describe('related hosts', () => {
       inboundLinkCount: 2,
       navigationLabel: 'Docs',
       navigationPosition: 1,
+      firstLinkPosition: expect.any(Number),
     });
     expect(crawledUrls()).not.toContain(`${docsUrl}/deeper`);
     expect(requests).not.toContain('docs.site.test/deeper');

@@ -27,6 +27,7 @@ function innerPage(title: string | null, path = '/page'): GeneratorPage {
       inboundLinkCount: 0,
       navigationLabel: null,
       navigationPosition: null,
+      firstLinkPosition: null,
     },
     markdownVariantUrl: null,
   };

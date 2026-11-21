@@ -72,7 +72,11 @@ const fakeCrawl =
       pagesFetchedCount: pages.length,
       pagesWithContentCount: pages.filter((page) => (page.status ?? 200) === 200).length,
       linkSignals: Object.fromEntries(
-        pages.map((page) => [urlOf(page), { isInSiteNavigation: page.path !== '/', inboundLinkCount: 1, navigationLabel: null, navigationPosition: null }]),
+        pages.map((page, index) => [
+          urlOf(page),
+          // Linked in the order given, as a homepage listing them would.
+          { isInSiteNavigation: page.path !== '/', inboundLinkCount: 1, navigationLabel: null, navigationPosition: null, firstLinkPosition: index },
+        ]),
       ),
       unchangedPerSitemapUrls: [],
       failedFetches,
@@ -289,6 +293,25 @@ describe('runPipeline', () => {
     const published = await versions(workspaceId);
     expect(published).toHaveLength(2);
     expect(published.at(-1)!.llms_txt_content).not.toContain('/old');
+  });
+
+  it('stores the order the first crawl saw links in, and keeps it on later checks', async () => {
+    const { siteId } = await newSiteWithWorkspace();
+    const positions = async () => {
+      const result = await databasePool.query<{ path: string; first_link_position: number | null }>(
+        `select regexp_replace(normalised_url, '^https://[^/]+', '') as path, first_link_position
+           from pages where site_id = $1 order by first_link_position`,
+        [siteId],
+      );
+      return result.rows.map((row) => [row.path, row.first_link_position]);
+    };
+    await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/zebra' }, { path: '/apple' }]));
+    expect(await positions()).toEqual([['', 0], ['/zebra', 1], ['/apple', 2]]);
+
+    // A later check reads fewer pages, so it sees the links in another order. The order
+    // the file was built with stays, and a page found now takes the place it is seen in.
+    await run(siteId, fakeCrawl([{ path: '/', title: 'Acme' }, { path: '/apple' }, { path: '/zebra' }, { path: '/new' }]));
+    expect(await positions()).toEqual([['', 0], ['/zebra', 1], ['/apple', 2], ['/new', 3]]);
   });
 
   it('fails a run with too many failed fetches, records no 404s, and leaves the published file', async () => {

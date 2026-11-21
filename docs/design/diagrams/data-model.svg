@@ -68,9 +68,9 @@
   <text class="g" x="394" y="136">crawler</text>
   <text class="f" x="466" y="136">http_status_code, http_etag</text>
   <text class="f" x="466" y="154">http_last_modified, last_fetched_at</text>
-  <text class="f" x="466" y="172">fetch_method, crawl_depth</text>
+  <text class="f" x="466" y="172">crawl_depth, first_link_position</text>
   <text class="f" x="466" y="190">discovered_via, inbound_link_count</text>
-  <text class="f" x="466" y="208">is_in_site_navigation</text>
+  <text class="f" x="466" y="208">is_in_site_navigation, fetch_method</text>
   <text class="f" x="466" y="226">sitemap_last_modified_at</text>
   <text class="f" x="466" y="244">consecutive_not_found_count</text>
   <text class="f" x="466" y="262">markdown_variant_url</text>
