@@ -1,5 +1,5 @@
 import type { PageExclusions, SaveExclusionsResult, SitePagesView } from '@/shared/site-pages';
-import type { LlmsTxtVersionSummaryView, SiteView } from '@/shared/site-view';
+import type { SiteView } from '@/shared/site-view';
 import { goToLoginIfSignedOut } from './login-redirect';
 
 // Browser calls to the site routes.
@@ -27,9 +27,6 @@ async function call<T>(publicSlug: string, path: string, init: RequestInit = {})
 }
 
 export const fetchSiteView = (publicSlug: string) => call<SiteView>(publicSlug, '');
-
-export const fetchVersionSummaries = (publicSlug: string) =>
-  call<LlmsTxtVersionSummaryView[]>(publicSlug, '/versions');
 
 export const fetchVersionContent = (publicSlug: string, versionNumber: number) =>
   call<{ versionNumber: number; llmsTxtContent: string }>(publicSlug, `/versions/${versionNumber}`);

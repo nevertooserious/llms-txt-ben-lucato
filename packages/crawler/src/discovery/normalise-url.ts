@@ -9,10 +9,10 @@ const TRACKING_PARAMETER_PATTERN = /^(utm_\w+|gclid|gbraid|wbraid|dclid|fbclid|m
  * removed, query sorted, trailing slash stripped (except the bare root). Returns null
  * for anything that is not an absolute http or https URL.
  */
-export function normaliseUrl(rawUrl: string, baseUrl?: string): string | null {
+export function normaliseUrl(rawUrl: string): string | null {
   let url: URL;
   try {
-    url = new URL(rawUrl.trim(), baseUrl);
+    url = new URL(rawUrl.trim());
   } catch {
     return null;
   }
@@ -40,10 +40,10 @@ export function normaliseUrl(rawUrl: string, baseUrl?: string): string | null {
  * `normaliseUrl`, the trailing slash and query order are kept, because servers may treat
  * `/about` and `/about/` differently. Null for anything that is not http or https.
  */
-export function cleanUrlForFetch(rawUrl: string, baseUrl?: string): string | null {
+export function cleanUrlForFetch(rawUrl: string): string | null {
   let url: URL;
   try {
-    url = new URL(rawUrl.trim(), baseUrl);
+    url = new URL(rawUrl.trim());
   } catch {
     return null;
   }
@@ -52,7 +52,6 @@ export function cleanUrlForFetch(rawUrl: string, baseUrl?: string): string | nul
   url.hash = '';
   const trackingNames = [...url.searchParams.keys()].filter((name) => TRACKING_PARAMETER_PATTERN.test(name));
   for (const name of trackingNames) url.searchParams.delete(name);
-  if (url.search === '?') url.search = '';
   return url.href;
 }
 

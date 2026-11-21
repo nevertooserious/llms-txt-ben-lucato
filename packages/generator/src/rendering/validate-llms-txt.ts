@@ -5,7 +5,7 @@ export interface LlmsTxtValidationResult {
 }
 
 /** `- [title](url)` with an optional `: description`. Brackets in the title are escaped; the URL has no spaces or `)`. */
-export const ENTRY_PATTERN = /^- \[(?:\\.|[^\]\\])+\]\([^()\s]+\)(?:: \S.*)?$/;
+const ENTRY_PATTERN = /^- \[(?:\\.|[^\]\\])+\]\([^()\s]+\)(?:: \S.*)?$/;
 
 const HEADING_PATTERN = /^(#{1,6})(?:\s+(.*))?$/;
 

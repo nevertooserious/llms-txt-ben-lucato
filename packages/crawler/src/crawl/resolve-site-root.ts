@@ -1,6 +1,6 @@
 import { HttpFetcher } from '../network/http-fetcher';
 import { cleanUrlForFetch, normaliseUrl } from '../discovery/normalise-url';
-import { parseRobotsTxt, ROBOTS_TXT_MAX_PARSED_BYTES } from '../discovery/robots-rules';
+import { parseRobotsTxt, ROBOTS_TXT_MAX_PARSED_BYTES, robotsTxtUnavailable } from '../discovery/robots-rules';
 import type { HostnameResolver, NetworkPolicy } from '../network/ssrf-guard';
 
 export interface ResolveSiteRootOptions {
@@ -37,12 +37,18 @@ export async function resolveSiteRootUrl(options: ResolveSiteRootOptions): Promi
       truncateAtMaxBytes: true,
     });
     if (robotsTxt.kind === 'failed' || robotsTxt.httpStatusCode >= 500) return rootUrl;
-    if (robotsTxt.httpStatusCode >= 200 && robotsTxt.httpStatusCode < 300) {
-      if (!parseRobotsTxt(robotsTxtUrl, robotsTxt.body).isAllowed(fetchUrl)) return rootUrl;
-    }
+    const isSuccess = robotsTxt.httpStatusCode >= 200 && robotsTxt.httpStatusCode < 300;
+    const robots = isSuccess ? parseRobotsTxt(robotsTxtUrl, robotsTxt.body) : robotsTxtUnavailable;
+    if (!robots.isAllowed(fetchUrl)) return rootUrl;
 
     await new Promise((resolve) => setTimeout(resolve, options.minRequestIntervalMs ?? 500));
-    const homepage = await fetcher.fetch({ url: fetchUrl, acceptedContentTypes: ['text/html', 'application/xhtml+xml'] });
+    const rootHost = new URL(rootUrl).host;
+    const homepage = await fetcher.fetch({
+      url: fetchUrl,
+      acceptedContentTypes: ['text/html', 'application/xhtml+xml'],
+      // The rules read are this host's; a redirect within it obeys them, as in the crawl.
+      isRedirectAllowed: (url) => new URL(url).host !== rootHost || robots.isAllowed(url),
+    });
     if (homepage.kind === 'failed' || homepage.httpStatusCode < 200 || homepage.httpStatusCode >= 300) return rootUrl;
 
     const finalUrl = new URL(homepage.finalUrl);

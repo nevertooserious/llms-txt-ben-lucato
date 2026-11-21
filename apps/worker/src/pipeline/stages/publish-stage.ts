@@ -46,12 +46,14 @@ export async function publishStage(
     return { status: 'unchanged', isRecorded: await finishPipelineRun(databasePool, pipelineRunId, { status: 'unchanged' }) };
   }
 
-  const version = await withTransaction(databasePool, async (transaction) => {
+  // The version and the run's outcome are written together, so a worker that stops between
+  // the two cannot leave a published version behind a run that is later reaped as failed.
+  const { version, status, isRecorded } = await withTransaction(databasePool, async (transaction) => {
     // A run the reaper has failed must not publish, even if it got this far.
     if (!(await lockRunningPipelineRun(transaction, pipelineRunId))) {
       throw new PipelineRunFailure('The run was failed for missing heartbeats before it could publish.');
     }
-    return publishLlmsTxtVersion(transaction, {
+    const version = await publishLlmsTxtVersion(transaction, {
       siteId,
       pipelineRunId,
       createdBy: 'pipeline',
@@ -60,10 +62,11 @@ export async function publishStage(
       listedPageCount: decision.listedPageCount,
       pageChanges: decision.pageChanges,
     });
+    const status = version === null ? ('unchanged' as const) : ('succeeded' as const);
+    return { version, status, isRecorded: await finishPipelineRun(transaction, pipelineRunId, { status }) };
   });
   if (version !== null) {
     logger.info('published', { versionNumber: version.versionNumber, isLive: version.isLive, ...decision.pageChanges });
   }
-  const status = version === null ? 'unchanged' : 'succeeded';
-  return { status, isRecorded: await finishPipelineRun(databasePool, pipelineRunId, { status }) };
+  return { status, isRecorded };
 }

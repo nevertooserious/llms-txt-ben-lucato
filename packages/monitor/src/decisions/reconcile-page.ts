@@ -99,9 +99,16 @@ export function reconcilePage(stored: StoredPage | undefined, page: RawPage, now
   };
 }
 
-/** A sitemap <lastmod> as ISO 8601, or null when absent or unreadable. */
+/**
+ * A sitemap <lastmod> as ISO 8601, or null when absent or unreadable. A year outside
+ * 1 to 9999 is unreadable too: JavaScript reads "202401" as the year 202401 and writes
+ * it as "+202401-...", which Postgres rejects, and saving the page would fail the run.
+ */
 export function sitemapDate(lastModified: string | null): string | null {
   if (lastModified === null) return null;
   const time = Date.parse(lastModified);
-  return Number.isNaN(time) ? null : new Date(time).toISOString();
+  if (Number.isNaN(time)) return null;
+  const date = new Date(time);
+  const year = date.getUTCFullYear();
+  return year >= 1 && year <= 9999 ? date.toISOString() : null;
 }

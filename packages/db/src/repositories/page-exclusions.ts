@@ -7,7 +7,9 @@ import type { Queryable, Transaction } from '../connection/transaction';
 /**
  * Makes `excludedUrls` the site's whole set of excluded pages: those pages are excluded,
  * and any other page that was excluded is included again. Description overrides are
- * kept. URLs that are not pages of the site are skipped.
+ * kept. URLs that are not pages of the site are skipped. A removed page keeps its
+ * exclusion: the site screen does not show it, so its absence from the set is not the
+ * user including it again, and it stays out of the file if it comes back.
  */
 export async function replaceExcludedPages(
   transaction: Transaction,
@@ -26,7 +28,8 @@ export async function replaceExcludedPages(
         set is_excluded = false, updated_at = now()
        from pages
       where pages.id = overrides.page_id and pages.site_id = $1
-        and overrides.is_excluded and pages.normalised_url <> all($2::text[])`,
+        and overrides.is_excluded and pages.removed_at is null
+        and pages.normalised_url <> all($2::text[])`,
     [siteId, excludedUrls],
   );
 }

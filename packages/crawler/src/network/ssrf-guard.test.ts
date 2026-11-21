@@ -19,7 +19,7 @@ describe('isBlockedAddress', () => {
     expect(isBlockedAddress(address)).toBe(true);
   });
 
-  it.each(['::', '::1', '[::1]', 'fc00::1', 'fd12:3456::1', 'fdaa::2', 'fe80::1', 'fe80::1%eth0', 'ff02::1'])(
+  it.each(['::', '::1', '[::1]', 'fc00::1', 'fd12:3456::1', 'fdaa::2', 'fe80::1', 'fe80::1%eth0', 'ff02::1', '64:ff9b:1::a00:1'])(
     'blocks IPv6 loopback, unique-local and link-local: %s',
     (address) => {
       expect(isBlockedAddress(address)).toBe(true);

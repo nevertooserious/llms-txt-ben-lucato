@@ -67,21 +67,6 @@ export async function listLlmsTxtVersions(database: Queryable, siteId: string): 
   }));
 }
 
-/** The text of one version of a site, or null if it has no such version. */
-export async function loadLlmsTxtVersionContent(
-  database: Queryable,
-  siteId: string,
-  versionNumber: number,
-): Promise<string | null> {
-  const result = await database.query<{ llms_txt_content: string }>(
-    `select llms_txt_content
-       from llms_txt_versions
-      where site_id = $1 and version_number = $2`,
-    [siteId, versionNumber],
-  );
-  return result.rows[0]?.llms_txt_content ?? null;
-}
-
 export interface LlmsTxtVersionFile {
   versionNumber: number;
   llmsTxtContent: string;
@@ -108,6 +93,15 @@ export async function loadLlmsTxtVersionFile(
         llmsTxtContent: row.llms_txt_content,
         llmsTxtContentHash: row.llms_txt_content_hash,
       };
+}
+
+/** The text of one version of a site, or null if it has no such version. */
+export async function loadLlmsTxtVersionContent(
+  database: Queryable,
+  siteId: string,
+  versionNumber: number,
+): Promise<string | null> {
+  return (await loadLlmsTxtVersionFile(database, siteId, versionNumber))?.llmsTxtContent ?? null;
 }
 
 export interface NewLlmsTxtVersion {

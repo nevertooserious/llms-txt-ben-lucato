@@ -23,4 +23,9 @@ describe('parsePageExclusions', () => {
     expect(parsePageExclusions({ excludedUrls: [], excludedUrlPrefixes: ['javascript:alert(1)'] })).toBeNull();
     expect(parsePageExclusions({ excludedUrls: [], excludedUrlPrefixes: Array(501).fill('https://example.com/a') })).toBeNull();
   });
+
+  it('refuses a prefix that is too long once it is percent-encoded', () => {
+    const excludedUrlPrefixes = [`https://example.com/${'文'.repeat(1_000)}`];
+    expect(parsePageExclusions({ excludedUrls: [], excludedUrlPrefixes })).toBeNull();
+  });
 });

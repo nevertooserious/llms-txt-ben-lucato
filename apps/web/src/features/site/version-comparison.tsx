@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { collapseUnchangedLines, diffLines } from '@/shared/diff-lines';
 import type { LlmsTxtVersionSummaryView } from '@/shared/site-view';
-import { fetchVersionContent, fetchVersionSummaries, SiteApiError } from '@/browser/site-api';
+import { fetchVersionContent, SiteApiError } from '@/browser/site-api';
 
 const LINE_MARKERS = { unchanged: ' ', added: '+', removed: '−' } as const;
 
@@ -12,15 +12,15 @@ const errorMessage = (error: unknown) =>
 
 export function VersionComparison({
   publicSlug,
+  versions,
   publishedVersionNumber,
-  newestVersionNumber,
 }: {
   publicSlug: string;
+  /** Newest first. */
+  versions: LlmsTxtVersionSummaryView[];
+  /** Not the newest version while an older one is pinned. */
   publishedVersionNumber: number;
-  /** Differs from the published version while an older one is pinned. */
-  newestVersionNumber: number;
 }) {
-  const [versions, setVersions] = useState<LlmsTxtVersionSummaryView[] | null>(null);
   // Null until the user picks: the comparison then follows the two newest versions.
   const [chosenFromVersion, setChosenFromVersion] = useState<number | null>(null);
   const [chosenToVersion, setChosenToVersion] = useState<number | null>(null);
@@ -28,23 +28,8 @@ export function VersionComparison({
   const [contents, setContents] = useState<Record<number, string>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (newestVersionNumber < 2) return;
-    let isCancelled = false;
-    fetchVersionSummaries(publicSlug)
-      .then((loaded) => {
-        if (!isCancelled) setVersions(loaded);
-      })
-      .catch((error: unknown) => {
-        if (!isCancelled) setLoadError(errorMessage(error));
-      });
-    return () => {
-      isCancelled = true;
-    };
-  }, [publicSlug, newestVersionNumber]);
-
-  const fromVersion = chosenFromVersion ?? versions?.[1]?.versionNumber ?? null;
-  const toVersion = chosenToVersion ?? versions?.[0]?.versionNumber ?? null;
+  const fromVersion = chosenFromVersion ?? versions[1]?.versionNumber ?? null;
+  const toVersion = chosenToVersion ?? versions[0]?.versionNumber ?? null;
   const fromContent = fromVersion === null ? undefined : contents[fromVersion];
   const toContent = toVersion === null ? undefined : contents[toVersion];
 
@@ -84,7 +69,7 @@ export function VersionComparison({
     <label className="version-select">
       <span className="label">{label}</span>
       <select value={value ?? ''} onChange={(event) => onChange(Number(event.target.value))}>
-        {versions?.map((version) => (
+        {versions.map((version) => (
           <option key={version.versionNumber} value={version.versionNumber}>
             {`v${version.versionNumber} · ${version.listedPageCount} pages · ${new Date(version.createdAt).toLocaleString()}`}
             {version.versionNumber === publishedVersionNumber ? ' · live' : ''}
@@ -100,10 +85,8 @@ export function VersionComparison({
         <h2 className="cell-title">Compare versions</h2>
       </header>
 
-      {newestVersionNumber < 2 ? (
+      {versions.length < 2 ? (
         <p className="empty-state">There is one version so far. A new one appears here when the site changes.</p>
-      ) : versions === null ? (
-        loadError ? <p className="notice notice-danger">{loadError}</p> : <p className="hint">Loading versions…</p>
       ) : (
         <>
           <div className="version-controls">

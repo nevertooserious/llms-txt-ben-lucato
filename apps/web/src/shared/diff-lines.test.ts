@@ -33,6 +33,14 @@ describe('diffLines', () => {
     expect(marked(diffLines('a\na', 'a\na\na'))).toEqual([' a', ' a', '+a']);
   });
 
+  it('treats an empty text as having no lines', () => {
+    expect(marked(diffLines('', 'a\nb\n'))).toEqual(['+a', '+b']);
+    expect(marked(diffLines('a\n', ''))).toEqual(['-a']);
+    expect(diffLines('', '')).toEqual([]);
+    // A text that is one blank line still has that line.
+    expect(marked(diffLines('\n', 'a\n'))).toEqual(['-', '+a']);
+  });
+
   it('still shows every line when the texts are too large to align', () => {
     const from = Array.from({ length: 5000 }, (_, index) => `from ${index}`).join('\n');
     const to = Array.from({ length: 5000 }, (_, index) => `to ${index}`).join('\n');

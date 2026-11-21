@@ -1,4 +1,4 @@
-import { logLevel, positiveInteger, requiredString, type Environment, type LogLevel } from '@llms-txt/runtime';
+import { logLevel, optionalString, positiveInteger, requiredString, type Environment, type LogLevel } from '@llms-txt/runtime';
 
 /** Everything the worker reads from its environment, checked once at startup. */
 export interface WorkerConfig {
@@ -33,6 +33,6 @@ export function readWorkerConfig(environment: Environment = process.env): Worker
     maxMonitorChecksPerTick: 100,
     crawlPageBudget: positiveInteger(environment, 'CRAWL_PAGE_BUDGET', 200),
     maxFailedFetchShare: 0.5,
-    anthropicApiKey: environment.ANTHROPIC_API_KEY?.trim() || null,
+    anthropicApiKey: optionalString(environment, 'ANTHROPIC_API_KEY'),
   };
 }
