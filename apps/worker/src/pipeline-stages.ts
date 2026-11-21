@@ -24,7 +24,14 @@ import {
   type StoredPage,
 } from '@llms-txt/db';
 import { extractPage } from '@llms-txt/extractor';
-import { decidePublication, siteNameFrom, type GenerateLlmsTxtInput, type LlmClient } from '@llms-txt/generator';
+import {
+  decidePublication,
+  NOTHING_TO_LIST_REASON,
+  selectPages,
+  siteNameFrom,
+  type GenerateLlmsTxtInput,
+  type LlmClient,
+} from '@llms-txt/generator';
 import {
   assessSitemapLastModifiedTrust,
   evaluateSafetyGate,
@@ -220,6 +227,14 @@ export async function runPipelineStages(
         pages: loadedPages,
       })
     : { pages: loadedPages, siteSummary: site.generatedSummary };
+  // Judged for the site, before any workspace's exclusions: a user may empty their own
+  // file. A site that has published before is let through: its pages went one by one, on
+  // their own 404s, and the file should lose those links rather than keep them.
+  if (selectPages(generatorPages, []).length === 0) {
+    const workspaceIds = await loadWorkspaceIdsForSite(databasePool, site.id);
+    const newestVersions = await Promise.all(workspaceIds.map((workspaceId) => loadNewestVersion(databasePool, workspaceId)));
+    if (newestVersions.every((version) => version === null)) throw new PipelineRunFailure(NOTHING_TO_LIST_REASON);
+  }
   const renderedWorkspaceIds = new Set<string>();
   let publishedCount = 0;
   for (;;) {

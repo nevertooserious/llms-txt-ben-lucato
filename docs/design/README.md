@@ -59,7 +59,7 @@ Owns all network I/O. It hands each fetched page (404s, 410s and 304s included, 
 - **Markdown variants:** probes for a `.md` version of each page (`index.html.md` for a URL without a file name), which the spec recommends linking in preference to HTML. Probing stops after three misses on a site that has none.
 - **Scope:** only URLs under the site's `root_url`, on a path segment boundary. One exception: a page on another host of the same site that the homepage navigation links (`docs.example.com` from `www.example.com`) is fetched as a single page, under that host's own robots.txt, and its links are not followed. A site's most useful pages are often there. At most 15 per crawl. The site's domain is its host without a leading `www.`, so no public suffix list is needed; the cost is that a site at `docs.example.com` is not related to `blog.example.com`.
 - **Meta refresh:** a page that sends the reader on within 5 seconds through `<meta http-equiv="refresh">` is a redirect written in HTML. Its target is queued in its place, keeping its depth and its place in the navigation, and the stub is not stored.
-- **Known limitation:** hash-routed sites (`/#/docs`) are one page to the crawler, because fragments are dropped in normalisation and never reach the server.
+- **Known limitation:** hash-routed sites (`/#/docs`) are one page to the crawler, because fragments are dropped in normalisation and never reach the server. Such a site has nothing to list, so its run fails with that reason (section 5, Publishing).
 
 ### Extractor
 
@@ -191,6 +191,8 @@ A page fetched in full that has both an old and a new `lastmod`, and an old and 
 ### Publishing
 
 Entries are regenerated only for changed pages. The file is rendered per workspace, and a new version is written only where the text differs from that workspace's published version.
+
+A site with nothing to list besides its homepage publishes nothing: the run fails and says why. A file that is only a name and a summary usually means the crawl could not get past the homepage (a single-page app, hash routing, a login wall, an app that crashed in the browser). The rule is for a site's first file. A site that has published before is let through, so a file whose last page went on its own 404s loses that link instead of keeping it.
 
 ## 6. Frontend
 
