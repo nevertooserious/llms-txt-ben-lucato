@@ -22,9 +22,14 @@ export function loadSavedWorkspaces(): SavedWorkspace[] {
 }
 
 export function saveWorkspace(workspace: SavedWorkspace): void {
-  const others = loadSavedWorkspaces().filter((saved) => saved.publicSlug !== workspace.publicSlug);
+  const saved = loadSavedWorkspaces();
+  // The workspace screen saves on every poll, so a known site keeps its place and date.
+  const existing = saved.find((entry) => entry.publicSlug === workspace.publicSlug);
+  const updated = existing
+    ? saved.map((entry) => (entry === existing ? { ...workspace, createdAt: existing.createdAt } : entry))
+    : [workspace, ...saved].slice(0, 20);
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([workspace, ...others].slice(0, 20)));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   } catch {
     // Storage full or blocked: the secret link still works on its own.
   }

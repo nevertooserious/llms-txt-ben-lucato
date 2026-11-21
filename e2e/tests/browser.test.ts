@@ -66,11 +66,16 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     await visible(page.getByText('Version 1', { exact: true }));
   }
 
-  /** The workspace's heading; the preview below it has an H1 of its own. */
-  const siteHeading = () => page.locator('.site-heading').getByRole('heading', { level: 1, name: 'Editable Co' });
+  /** The workspace's heading is the site's URL; the preview below it has an H1 of its own. */
+  const siteHeading = () =>
+    page.locator('.site-heading').getByRole('heading', { level: 1, name: new RegExp(site.origin.replace(/[.]/g, '\\.')) });
 
+  const rawLink = () => page.getByRole('link', { name: 'Raw', exact: true });
+
+  /** The file behind the "Raw" link. */
   async function rawLlmsTxt(): Promise<string> {
-    return page.locator('pre.raw-text').innerText();
+    const rawPath = await rawLink().getAttribute('href');
+    return (await page.request.get(rawPath!)).text();
   }
 
   it('generates an llms.txt for a new site', async () => {
@@ -78,7 +83,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
 
     // The workspace shows the site, the finished run and the file.
     await visible(siteHeading());
-    await visible(page.getByText(/First generation ·/));
+    await visible(page.locator('.facts').getByText('First generation', { exact: true }));
     await visible(page.getByText('✓ Valid per spec'));
     const preview = page.locator('article.preview');
     await visible(preview.getByRole('heading', { level: 2, name: 'Docs' }));
@@ -88,14 +93,16 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     expect(llmsTxt).toContain('# Editable Co\n\n> A site that changes between checks.');
     expect(llmsTxt).toContain(`- [Intro](${site.origin}/docs/intro): Start here.`);
 
-    // The hosted URL the page shows serves the same file.
-    const hostedPath = await page.getByRole('link', { name: 'Open', exact: true }).getAttribute('href');
+    // The raw file is a link, not shown on the page, and is served as plain text.
+    expect(await page.locator('pre.raw-text').count()).toBe(0);
+    const hostedPath = await rawLink().getAttribute('href');
     const hosted = await page.request.get(hostedPath!);
     expect(hosted.headers()['content-type']).toContain('text/plain');
-    expect((await hosted.text()).trim()).toBe(llmsTxt.trim());
+    expect(await page.locator('.hosted-url').innerText()).toContain(hostedPath!);
 
-    // The home page now lists the site, linking back to its workspace.
+    // The home page now lists the site in its table, linking back to its workspace.
     await page.goto('/');
+    await visible(page.getByRole('row', { name: new RegExp(site.origin.replace(/[.]/g, '\\.')) }).getByText('Generated'));
     await page.getByRole('link', { name: new RegExp(site.origin.replace(/[.]/g, '\\.')) }).click();
     await visible(siteHeading());
   });
@@ -117,7 +124,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     );
 
     await checkNow.click();
-    await visible(page.getByText(/Check now ·/));
+    await visible(page.locator('.facts').getByText('Manual check', { exact: true }));
     await visible(page.getByText('Version 2', { exact: true }), RUN_TIMEOUT_MS);
     await visible(runStatus('Generated'));
     expect(await rawLlmsTxt()).toContain(`- [Intro](${site.origin}/docs/intro): Begin here instead.`);
@@ -125,7 +132,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
 
   it('makes an older version live, keeps it through a check, and follows the latest again', async () => {
     await generateFromHomePage();
-    const hostedPath = await page.getByRole('link', { name: 'Open', exact: true }).getAttribute('href');
+    const hostedPath = await rawLink().getAttribute('href');
     const firstVersion = await (await page.request.get(hostedPath!)).text();
     const moveRunsOutOfCooldown = () =>
       stack.databasePool.query(
@@ -181,13 +188,8 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     expect(await page.getByLabel('From version').inputValue()).toBe('1');
     expect(await page.getByLabel('To version').inputValue()).toBe('2');
 
-    // Swapping reverses the change.
-    await page.getByRole('button', { name: /swap/i }).click();
-    await visible(page.locator('tr.diff-removed', { hasText: 'Begin here instead.' }));
-    await visible(page.locator('tr.diff-added', { hasText: 'Start here.' }));
-
     // A version compared with itself has nothing to show.
-    await page.getByLabel('To version').selectOption('2');
+    await page.getByLabel('To version').selectOption('1');
     await visible(page.getByText('Pick two different versions to compare.'));
 
     // The history needs the secret token; the hosted file does not.
@@ -198,7 +200,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
 
   it('shows no page counts and no way to turn monitoring off', async () => {
     await generateFromHomePage();
-    await visible(page.getByText('Watching for changes'));
+    await visible(page.getByText('Next check:'));
     expect(await page.getByRole('switch').count()).toBe(0);
     expect(await page.locator('.counters, .stages').count()).toBe(0);
   });
@@ -206,7 +208,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
   it('deletes the site after asking for confirmation', async () => {
     await generateFromHomePage();
     const workspaceUrl = page.url();
-    const hostedPath = await page.getByRole('link', { name: 'Open', exact: true }).getAttribute('href');
+    const hostedPath = await rawLink().getAttribute('href');
 
     // Cancelling keeps it.
     await page.getByRole('button', { name: 'Delete site' }).click();

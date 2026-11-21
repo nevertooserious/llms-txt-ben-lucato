@@ -53,3 +53,19 @@ export interface LlmsTxtVersionSummaryView {
 export function isActiveRunStatus(status: PipelineRunStatus): boolean {
   return status === 'queued' || status === 'running';
 }
+
+/** Where the site is in the process. Extraction happens during the crawl, so it is done once generating starts. */
+export function runStatusLabel(run: Pick<PipelineRunView, 'status' | 'currentStage'>): string {
+  switch (run.status) {
+    case 'queued':
+      return 'Queued';
+    case 'running':
+      return run.currentStage === 'generate' ? 'Extracted' : 'Crawling';
+    case 'succeeded':
+      return 'Generated';
+    case 'unchanged':
+      return 'Generated, no changes';
+    case 'failed':
+      return 'Failed';
+  }
+}

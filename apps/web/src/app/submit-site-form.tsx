@@ -49,9 +49,6 @@ export function SubmitSiteForm() {
   return (
     <form onSubmit={submit}>
       <div className="url-form">
-        <span className="url-form-prefix" aria-hidden="true">
-          →
-        </span>
         <label htmlFor="site-url" className="visually-hidden">
           Website URL
         </label>
@@ -66,7 +63,7 @@ export function SubmitSiteForm() {
           required
           disabled={isSubmitting}
         />
-        <button type="submit" className="button button-primary" disabled={isSubmitting}>
+        <button type="submit" className="button" disabled={isSubmitting}>
           {isSubmitting ? 'Starting…' : 'Generate'}
         </button>
       </div>
