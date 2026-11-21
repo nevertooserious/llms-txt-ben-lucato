@@ -38,6 +38,29 @@ npm run dev:worker
 
 Each process reads its configuration once at startup and stops with a message naming any missing or malformed variable. `DATABASE_URL` is required; `LOG_LEVEL` (`debug`, `info`, `warn`, `error`), `PIPELINE_RUN_CONCURRENCY` and `CRAWL_PAGE_BUDGET` (worker) and `SUBMISSIONS_PER_IP_PER_HOUR` and `TRUSTED_PROXY_HOPS` (web) are optional. Logs are one JSON object per line; a run's lines carry its `pipelineRunId`.
 
+## Serving llms.txt from your own domain
+
+The spec puts the file at `/llms.txt` on your site. Each workspace has a stable hosted URL, `https://<app>/w/<slug>/llms.txt`, shown on its page, which always serves the latest version. Point your own path at it with a proxy, which keeps your domain in the response, or a redirect.
+
+```nginx
+# nginx: proxy
+location = /llms.txt {
+  proxy_pass https://<app>/w/<slug>/llms.txt;
+  proxy_ssl_server_name on;
+}
+```
+
+```text
+# Netlify or Cloudflare Pages, in _redirects: 200 proxies (Netlify only), 302 redirects
+/llms.txt https://<app>/w/<slug>/llms.txt 302
+```
+
+```json
+{ "redirects": [{ "source": "/llms.txt", "destination": "https://<app>/w/<slug>/llms.txt", "permanent": false }] }
+```
+
+The last one is for Vercel, in `vercel.json`. Use a temporary redirect, so clients keep asking your domain.
+
 ## Checks
 
 | Command | What it runs |
