@@ -15,6 +15,7 @@ export {
   claimPipelineRun,
   finishPipelineRun,
   loadLatestPipelineRun,
+  loadLatestPipelineRunSummary,
   lockRunningPipelineRun,
   reapStalePipelineRuns,
   recordPipelineRunHeartbeat,
@@ -23,6 +24,8 @@ export {
   type LatestPipelineRun,
   type PipelineRunProgress,
   type PipelineRunStage,
+  type PipelineRunStatus,
+  type PipelineRunSummary,
   type StalePipelineRunThresholds,
 } from './pipeline-runs';
 export {
@@ -41,8 +44,10 @@ export {
   loadWorkspaceAccess,
   loadWorkspaceIdsForSite,
   loadWorkspaceOverrides,
+  loadWorkspaceOverview,
   type NewWorkspace,
   type WorkspaceAccess,
+  type WorkspaceOverview,
 } from './workspaces';
 export {
   disableWorkspaceMonitoring,

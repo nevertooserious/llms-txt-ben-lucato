@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps it up to date as the site changes. The design is in [`docs/design/README.md`](docs/design/README.md).
 
-Status: the extractor, the crawler, the run lifecycle (submission, queueing, reaper, monitor tick), the run itself (crawl, extract, reconcile, publish) and monitoring (turning it on and off per workspace, scheduled checks, "check now") are implemented. The API is in place; the UI is not. The generator's rendering is a stub, so runs fail at the generate stage until it lands.
+Status: the extractor, the crawler, the run lifecycle (submission, queueing, reaper, monitor tick), the run itself (crawl, extract, reconcile, publish) and monitoring (turning it on and off per workspace, scheduled checks, "check now") are implemented. The UI covers generating a file (submit a URL, watch the run, preview, copy, download, the hosted URL) and monitoring (turn it on and off, "check now"). The generator's renderer is a placeholder: it lists every crawled page, grouped by page type, with no scoring, duplicate handling or LLM, so the whole flow runs end to end until the real generator lands.
 
 ## Layout
 

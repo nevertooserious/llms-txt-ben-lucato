@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps that file up to date as the site changes.
 
-Status: the extractor, the crawler, the run lifecycle, the worker's run of the stages and the monitor's scheduling are implemented. The generator's rendering is a typed stub (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
+Status: the extractor, the crawler, the run lifecycle, the worker's run of the stages and the monitor's scheduling are implemented. The frontend covers generate, result and monitoring. The generator's renderer is a placeholder that lists every crawled page by page type (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
 
 ## Contents
 
@@ -182,7 +182,8 @@ Entries are regenerated only for changed pages. The file is rendered per workspa
 - **Generate:** URL input, then progress polled from `pipeline_runs` (pages discovered, fetched, changed).
 - **Result:** rendered preview next to raw text, spec validation status, copy and download.
 - **Editing:** override a page's description or exclude a page.
-- **API:** `POST /api/sites` submits a URL. `PUT /api/workspaces/{public_slug}/monitoring` with `{"enabled": true | false}` turns monitoring on, renews it or turns it off. `POST /api/workspaces/{public_slug}/checks` is "check now". Both workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
+- **Secret link:** `/w/{public_slug}#token=…`. The token is in the fragment, which browsers never send, and the browser keeps the links it created so the home page can list them.
+- **API:** `POST /api/sites` submits a URL. `GET /api/workspaces/{public_slug}` is what the workspace screen polls: the latest run, the published file with its validation result, and monitoring. `PUT /api/workspaces/{public_slug}/monitoring` with `{"enabled": true | false}` turns monitoring on, renews it or turns it off. `POST /api/workspaces/{public_slug}/checks` is "check now". The workspace routes take the secret link's token as `Authorization: Bearer <token>`, which keeps it out of request URLs and the logs that record them.
 - **Hosted URL:** a stable `/w/{public_slug}/llms.txt`. The spec puts llms.txt at the site's own root, so the site owner redirects or proxies to this URL. The README has to explain how.
 - **Monitoring:** opt-in per workspace with an expiry, a "check now" button, and version history with diffs.
 
