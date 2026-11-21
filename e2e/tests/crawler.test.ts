@@ -228,6 +228,12 @@ describe('discovery', () => {
     expect(requestsFor(site, /^\/posts\/\d+$/).length).toBeLessThanOrEqual(25);
   });
 
+  it('fetches a navigation page first even when the sitemap listed it earlier', async () => {
+    const site = sites['large-sitemap-site'];
+    const result = await crawl('large-sitemap-site', { pageBudget: 25 });
+    expect(pageAt(result, site, '/posts/90')?.crawlSignals.discoveredVia).toBe('navigation');
+  });
+
   it('never fetches paths disallowed by robots.txt', async () => {
     const site = sites['static-site'];
     const result = await crawl('static-site');

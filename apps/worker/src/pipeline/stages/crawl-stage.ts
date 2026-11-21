@@ -53,6 +53,7 @@ export async function crawlStage(
   const deferredNotFound: Array<Extract<PageReconciliation, { kind: 'not_found' }>> = [];
   const trustObservations: SitemapLastModifiedObservation[] = [];
   let pagesDiscoveredCount = 0;
+  let pagesHandledCount = 0;
   let lastProgressWriteAt = 0;
 
   const handlePage = async (page: RawPage): Promise<void> => {
@@ -106,10 +107,13 @@ export async function crawlStage(
     onProgress: (progress) => (pagesDiscoveredCount = progress.pagesDiscovered),
     onPage: async (page) => {
       await handlePage(page);
+      pagesHandledCount += 1;
       if (Date.now() - lastProgressWriteAt >= PROGRESS_WRITE_INTERVAL_MS) {
         lastProgressWriteAt = Date.now();
         await recordPipelineRunProgress(databasePool, pipelineRunId, {
           pagesDiscoveredCount,
+          // A running count for the site screen; the crawl's own count replaces it at the end.
+          pagesFetchedCount: pagesHandledCount,
           pagesChangedCount: changedUrls.size,
         });
       }
