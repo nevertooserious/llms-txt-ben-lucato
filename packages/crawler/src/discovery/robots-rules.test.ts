@@ -36,6 +36,37 @@ describe('parseRobotsTxt', () => {
     expect(rules.isAllowed('https://example.com/a?session=1')).toBe(false);
   });
 
+  it.each([
+    ['a Sitemap line', 'Sitemap: https://example.com/sitemap.xml'],
+    ['a Crawl-delay line', 'Crawl-delay: 4'],
+    ['a record it does not know', 'Content-Signal: search=yes'],
+  ])('ends a group at the next User-agent line when %s follows its rules', (_name, record) => {
+    // gnu.org's layout: the * group, then a line that is not a rule, then bots it shuts out.
+    const rules = parseRobotsTxt(
+      robotsTxtUrl,
+      `User-agent: *\nDisallow: /private/\n${record}\n\n# SEO\nUser-agent: BadBot\nDisallow: /\n`,
+    );
+    expect(rules.isAllowed('https://example.com/')).toBe(true);
+    expect(rules.isAllowed('https://example.com/docs')).toBe(true);
+    expect(rules.isAllowed('https://example.com/private/notes')).toBe(false);
+  });
+
+  it('still reads a crawl delay and a sitemap that follow the rules of their group', () => {
+    const rules = parseRobotsTxt(
+      robotsTxtUrl,
+      'User-agent: Other\nDisallow: /\nCrawl-delay: 9\n\nUser-agent: *\nDisallow: /private/\nCrawl-delay: 4\nSitemap: /sitemap.xml\n\nUser-agent: BadBot\nCrawl-delay: 60\nDisallow: /\n',
+    );
+    expect(rules.crawlDelaySeconds).toBe(4);
+    expect(rules.sitemapUrls).toEqual(['https://example.com/sitemap.xml']);
+    expect(rules.isAllowed('https://example.com/docs')).toBe(true);
+  });
+
+  it('keeps consecutive User-agent lines as one group', () => {
+    const rules = parseRobotsTxt(robotsTxtUrl, 'User-agent: BadBot\nUser-agent: *\nSitemap: /sitemap.xml\nDisallow: /private/\n');
+    expect(rules.isAllowed('https://example.com/private/notes')).toBe(false);
+    expect(rules.isAllowed('https://example.com/docs')).toBe(true);
+  });
+
   it('reads sitemaps and the crawl delay as given', () => {
     const rules = parseRobotsTxt(
       robotsTxtUrl,

@@ -58,6 +58,64 @@ describe('crawler limits', () => {
     expect(requested).not.toContain('/from-nav');
   });
 
+  it('renders an app whose script bundle is larger than a page may be, up to the limits for scripts', async () => {
+    // Real client-rendered apps ship bundles of 10 MB and more. Scaled down here: each
+    // script is 1.5 MB, over the 1 MB allowed for other responses.
+    const padding = `/*${'x'.repeat(1.5 * 1024 * 1024)}*/`;
+    const script = (text: string) => `${padding}document.body.insertAdjacentHTML('beforeend', '<p>${text}</p>');`;
+    const { rootUrl, port } = await serve((request, response) => {
+      if (request.url === '/app.js') response.writeHead(200, { 'content-type': 'text/javascript' }).end(script('From the bundle'));
+      else if (request.url === '/more.js') response.writeHead(200, { 'content-type': 'text/javascript' }).end(script('From a second bundle'));
+      else if (request.url === '/two-bundles') {
+        response.writeHead(200, { 'content-type': 'text/html' }).end(html('<script src="/app.js"></script><script src="/more.js"></script>'));
+      } else response.writeHead(200, { 'content-type': 'text/html' }).end(html('<script src="/app.js"></script>'));
+    });
+    const megabyte = 1024 * 1024;
+    const headlessRenderer = new HeadlessRenderer({
+      networkPolicy: allowLoopbackPorts([port]),
+      timeoutMs: 10_000,
+      maxResponseBytes: megabyte,
+      maxScriptBytes: 2 * megabyte,
+      maxRenderBytes: 2.5 * megabyte,
+    });
+    try {
+      const oneBundle = await headlessRenderer.render(rootUrl);
+      expect(oneBundle).toMatchObject({ kind: 'rendered', html: expect.stringContaining('From the bundle') });
+
+      // Together the two bundles pass what one render may download, so they cannot both
+      // arrive. Which is cut short depends on how the browser interleaves the downloads.
+      const twoBundles = await headlessRenderer.render(`${rootUrl}/two-bundles`);
+      if (twoBundles.kind !== 'rendered') throw new Error(`expected a rendered page, got ${twoBundles.reason}`);
+      const arrived = ['From the bundle', 'From a second bundle'].filter((text) => twoBundles.html.includes(text));
+      expect(arrived.length).toBeLessThan(2);
+    } finally {
+      await headlessRenderer.close();
+    }
+  });
+
+  it('renders an app that waits for a stylesheet before showing a route, without fetching the stylesheet', async () => {
+    const requested: string[] = [];
+    // What Vite's preload helper does for a route loaded on demand.
+    const waitForStylesheet = `<script>
+      var link = document.createElement('link'); link.rel = 'stylesheet'; link.href = '/route.css';
+      link.onload = function () { document.body.insertAdjacentHTML('beforeend', '<p>The route</p>'); };
+      link.onerror = function () { document.body.insertAdjacentHTML('beforeend', '<p>Unable to preload CSS</p>'); };
+      document.head.appendChild(link);
+    </script>`;
+    const { rootUrl, port } = await serve((request, response) => {
+      requested.push(request.url ?? '');
+      response.writeHead(200, { 'content-type': 'text/html' }).end(html(waitForStylesheet));
+    });
+    const headlessRenderer = new HeadlessRenderer({ networkPolicy: allowLoopbackPorts([port]), timeoutMs: 10_000 });
+    try {
+      const rendered = await headlessRenderer.render(rootUrl);
+      expect(rendered).toMatchObject({ kind: 'rendered', html: expect.stringContaining('The route') });
+      expect(requested).not.toContain('/route.css');
+    } finally {
+      await headlessRenderer.close();
+    }
+  });
+
   it('skips a non-HTML link on a rendered site without counting a failure', async () => {
     const { rootUrl, port } = await serve((request, response) => {
       if (request.url === '/robots.txt') response.writeHead(404).end();

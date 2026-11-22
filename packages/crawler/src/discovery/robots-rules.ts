@@ -26,7 +26,10 @@ export interface RobotsRules {
 }
 
 export function parseRobotsTxt(robotsTxtUrl: string, robotsTxt: string): RobotsRules {
-  const robots = robotsParser(robotsTxtUrl, truncateToBytes(robotsTxt, ROBOTS_TXT_MAX_PARSED_BYTES));
+  const robots = robotsParser(
+    robotsTxtUrl,
+    withOtherRecordsBeforeRules(truncateToBytes(robotsTxt, ROBOTS_TXT_MAX_PARSED_BYTES)),
+  );
   const crawlDelay = robots.getCrawlDelay(ROBOTS_USER_AGENT_TOKEN);
   return {
     status: 'parsed',
@@ -36,6 +39,48 @@ export function parseRobotsTxt(robotsTxtUrl: string, robotsTxt: string): RobotsR
     crawlDelaySeconds: crawlDelay === undefined || !Number.isFinite(crawlDelay) || crawlDelay < 0 ? null : crawlDelay,
     sitemapUrls: robots.getSitemaps().flatMap((sitemapUrl) => absoluteUrl(sitemapUrl, robotsTxtUrl)),
   };
+}
+
+/**
+ * Moves each record that is not `User-agent`, `Allow` or `Disallow` (`Sitemap`,
+ * `Crawl-delay`, anything unknown) from after its group's rules to before them.
+ *
+ * RFC 9309 (section 2.2.4) says such records must not interfere with parsing the groups:
+ * a `User-agent` line after rules starts a new group, whatever lies between. The parser
+ * instead lets one of these records hold the group open, so in
+ *
+ *   User-agent: *
+ *   Disallow: /private/
+ *   Sitemap: https://example.com/sitemap.xml
+ *
+ *   User-agent: BadBot
+ *   Disallow: /
+ *
+ * it reads `Disallow: /` as a rule for `*` too and the whole site as closed. Ahead of the
+ * rules the record means the same and the group ends where it should.
+ */
+function withOtherRecordsBeforeRules(robotsTxt: string): string {
+  const output: string[] = [];
+  /** Where a moved record goes: just after the current group's `User-agent` lines. Null before any group. */
+  let afterUserAgentLines: number | null = null;
+  let groupHasRules = false;
+  for (const line of robotsTxt.split(/\r\n|\r|\n/)) {
+    const record = /^\s*([^#:\s]+)\s*:/.exec(line)?.[1]?.toLowerCase();
+    if (record === 'user-agent') {
+      output.push(line);
+      afterUserAgentLines = output.length;
+      groupHasRules = false;
+    } else if (record === 'allow' || record === 'disallow') {
+      output.push(line);
+      groupHasRules = true;
+    } else if (record !== undefined && groupHasRules && afterUserAgentLines !== null) {
+      output.splice(afterUserAgentLines, 0, line);
+      afterUserAgentLines += 1;
+    } else {
+      output.push(line);
+    }
+  }
+  return output.join('\n');
 }
 
 /** A Sitemap line's URL. The protocol asks for a full URL; a path is taken as on this host. */
