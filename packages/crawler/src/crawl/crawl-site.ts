@@ -17,6 +17,7 @@ import { HttpFetcher, type FetchOutcome, type FetchRequest } from '../network/ht
 import { cleanUrlForFetch, isInScope, isOnRelatedHost, normaliseUrl } from '../discovery/normalise-url';
 import { parseSitemap } from '../discovery/parse-sitemap';
 import { computeLinkGraphSignals } from './link-graph';
+import { pageFamilyKeyOf } from './page-family';
 import { readPageSignals, readVisibleTextBlocks, type PageSignals } from '../page-signals/read-page-signals';
 import {
   fragmentRouteLinksOf,
@@ -115,6 +116,14 @@ const MARKDOWN_PROBES_BEFORE_GIVING_UP = 3;
 const MAX_RELATED_HOST_PAGES = 15;
 /** Most machine-readable files (llms-full.txt and other versions of it, a section's llms.txt, an OpenAPI description) requested per crawl. */
 const MAX_MACHINE_READABLE_RESOURCE_CHECKS = 20;
+/**
+ * Pages of one family (see pageFamilyKeyOf) fetched before the rest of it waits for every
+ * other page. A site's stream of content is most of its URLs, and comes first in its
+ * sitemap: without this a budget is spent on a blog's latest posts before its about
+ * page, its guides or its archive are reached. A dozen is enough to learn what a family
+ * is, and when nothing else is waiting the rest of it is fetched as before.
+ */
+const FAMILY_PAGES_FETCHED_BEFORE_OTHERS = 12;
 /** Routes rendered to confirm that a homepage linking routes of itself is a hash-routed site. */
 const FRAGMENT_ROUTES_OPENED_TO_CONFIRM = 2;
 /** Enough to learn that such a file is there; its content is not read. */
@@ -137,6 +146,8 @@ interface FrontierEntry {
   discoveredVia: DiscoverySource;
   sitemapLastModified: string | null;
   order: number;
+  /** The family whose other pages this one waits behind once enough are fetched; null when it never waits. */
+  familyKey: string | null;
   /**
    * On another host of the same site (docs.example.com), which the homepage navigation
    * links. Fetched as one page under that host's robots.txt; its links are not followed.
@@ -185,6 +196,8 @@ class SiteCrawl {
   private routesOnUrlFragment: boolean;
   private readonly frontier = new Map<string, FrontierEntry>();
   private readonly pending = new Set<string>();
+  /** How many pages of each family have been taken from the frontier. */
+  private readonly pagesTakenByFamily = new Map<string, number>();
   private readonly fetchedUrls = new Set<string>();
   /** The links of each page read in this crawl, in page order. */
   private readonly outboundLinksRead = new Map<string, string[]>();
@@ -554,20 +567,46 @@ class SiteCrawl {
       discoveredVia,
       sitemapLastModified,
       order: this.insertionOrder++,
+      familyKey: isRelated ? null : pageFamilyKeyOf(url, this.rootUrl),
       isOnRelatedHost: isRelated,
     });
     this.pending.add(url);
     return true;
   }
 
+  /**
+   * The next page in order: nearest the homepage first, then by how it was found. A page
+   * whose family has had its share waits behind every page that has not.
+   */
   private takeNextFromFrontier(): FrontierEntry | undefined {
     let best: FrontierEntry | undefined;
+    let bestIsHeldBack = false;
     for (const url of this.pending) {
       const entry = this.frontier.get(url)!;
-      if (best === undefined || compareEntries(entry, best) < 0) best = entry;
+      const isHeldBack = this.isHeldBack(entry);
+      const isBetter =
+        best === undefined || (isHeldBack !== bestIsHeldBack ? bestIsHeldBack : compareEntries(entry, best) < 0);
+      if (isBetter) {
+        best = entry;
+        bestIsHeldBack = isHeldBack;
+      }
     }
-    if (best !== undefined) this.pending.delete(best.url);
+    if (best === undefined) return undefined;
+    this.pending.delete(best.url);
+    if (best.familyKey !== null) {
+      this.pagesTakenByFamily.set(best.familyKey, (this.pagesTakenByFamily.get(best.familyKey) ?? 0) + 1);
+    }
     return best;
+  }
+
+  /**
+   * Whether enough of the page's family has been fetched for it to wait. A page the
+   * navigation or the site's own llms.txt names was chosen by the site, and never waits.
+   */
+  private isHeldBack(entry: FrontierEntry): boolean {
+    if (entry.familyKey === null) return false;
+    if (entry.discoveredVia === 'navigation' || entry.discoveredVia === 'existing_llms_txt') return false;
+    return (this.pagesTakenByFamily.get(entry.familyKey) ?? 0) >= FAMILY_PAGES_FETCHED_BEFORE_OTHERS;
   }
 
   // --- fetching --------------------------------------------------------------------
