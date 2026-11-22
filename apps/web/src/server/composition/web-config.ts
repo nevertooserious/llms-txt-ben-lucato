@@ -1,4 +1,5 @@
-import { logLevel, requiredString, type Environment, type LogLevel } from '@llms-txt/runtime';
+import { DEFAULT_CRAWL_PAGE_BUDGET } from '@llms-txt/contracts';
+import { logLevel, positiveInteger, requiredString, type Environment, type LogLevel } from '@llms-txt/runtime';
 import type { BasicAuthCredentials } from '../http/basic-auth';
 
 /** Everything the web app reads from its environment, checked on first use. */
@@ -7,6 +8,8 @@ export interface WebConfig {
   logLevel: LogLevel;
   /** Least time between a site's last run and a "check now" (docs/design/README.md, section 7). */
   checkNowCooldownSeconds: number;
+  /** Most pages one run fetches. The worker enforces it from the same variable; the web app only shows it. */
+  crawlPageBudget: number;
 }
 
 export function readWebConfig(environment: Environment = process.env): WebConfig {
@@ -14,6 +17,7 @@ export function readWebConfig(environment: Environment = process.env): WebConfig
     databaseUrl: requiredString(environment, 'DATABASE_URL'),
     logLevel: logLevel(environment, 'LOG_LEVEL', 'info'),
     checkNowCooldownSeconds: 5 * 60,
+    crawlPageBudget: positiveInteger(environment, 'CRAWL_PAGE_BUDGET', DEFAULT_CRAWL_PAGE_BUDGET),
   };
 }
 

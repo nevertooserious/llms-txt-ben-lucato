@@ -96,8 +96,8 @@ create table sites (
   -- so a site that moves to server rendering is noticed.
   requires_headless_rendering      boolean,
   headless_rendering_decided_at    timestamptz,
-  -- Crawler: the site's own files for machines, as it links them: llms-full.txt, an
-  -- llms.txt for one part of the site, an OpenAPI description. Each is requested again on
+  -- Crawler: the site's own files for machines, as it links them: llms-full.txt and other
+  -- versions of it (llms-small.txt), an llms.txt for one part of the site, an OpenAPI description. Each is requested again on
   -- every crawl and kept while it answers; a crawl that could not tell leaves this alone.
   machine_readable_resource_urls   text[] not null default '{}',
 

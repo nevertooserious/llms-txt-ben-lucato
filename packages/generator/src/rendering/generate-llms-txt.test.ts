@@ -225,6 +225,7 @@ describe('generateLlmsTxt', () => {
       machineReadableResourceUrls: [
         `${ORIGIN}/api/openapi.json`,
         `${ORIGIN}/workers/llms.txt`,
+        `${ORIGIN}/llms-small.txt`,
         `${ORIGIN}/llms-full.txt`,
         `${ORIGIN}/not-a-resource.txt`,
         `${ORIGIN}/llms-full.txt`,
@@ -234,6 +235,7 @@ describe('generateLlmsTxt', () => {
     expect(llmsTxt).toContain(
       [
         `- [llms-full.txt](${ORIGIN}/llms-full.txt): The full text of the site's pages in one file.`,
+        `- [llms-small.txt](${ORIGIN}/llms-small.txt): Another version of the site's text in one file, often shorter than the full one.`,
         `- [workers/llms.txt](${ORIGIN}/workers/llms.txt): An llms.txt index for this part of the site.`,
         `- [api/openapi.json](${ORIGIN}/api/openapi.json): Machine-readable OpenAPI description of the API.`,
       ].join('\n'),
@@ -335,6 +337,53 @@ describe('generateLlmsTxt', () => {
     });
     expect(llmsTxt).toContain(`](${ORIGIN}/guide.md)`);
     expect(llmsTxt).toContain(`](${ORIGIN}/about/)`);
+  });
+
+  describe('the homepage’s markdown file', () => {
+    const docs = page('/docs', { pageType: 'docs' });
+    const terms = page('/terms', { pageType: 'legal' });
+
+    it('is the first entry of the first section, titled by what the homepage’s title says besides the site’s name', () => {
+      const specification = page('/', {
+        title: 'The example file – Example',
+        description: 'A proposal for example files.',
+        markdownVariantUrl: `${ORIGIN}/index.md`,
+      });
+      const llmsTxt = generate({ pages: [specification, docs, terms], siteSummary: 'Example makes examples.' });
+      expect(llmsTxt).toContain(
+        `## Docs\n\n- [The example file](${ORIGIN}/index.md): A proposal for example files.\n- [Title of /docs](${ORIGIN}/docs)`,
+      );
+      expect(Object.keys(sections(llmsTxt))).toEqual(['Docs', 'Optional']);
+      expect(validateLlmsTxt(llmsTxt).isValid).toBe(true);
+    });
+
+    it('is called Home, and described as what it is, when the homepage says no more than the file already does', () => {
+      const llmsTxt = generate({ pages: [page('/', { title: 'Example', description: 'Example makes examples.', markdownVariantUrl: `${ORIGIN}/README.md` }), docs] });
+      expect(llmsTxt).toContain(`> Example makes examples.\n\n## Docs\n\n- [Home](${ORIGIN}/README.md): The homepage's text as markdown.\n`);
+    });
+
+    it('gets a section of its own before Optional when no other section is there', () => {
+      const llmsTxt = generate({ pages: [page('/', { title: 'Example', markdownVariantUrl: `${ORIGIN}/index.md` }), terms] });
+      expect(Object.keys(sections(llmsTxt))).toEqual(['Pages', 'Optional']);
+    });
+
+    it('keeps its title from another page, which takes the navigation’s label', () => {
+      const llmsTxt = generate({
+        pages: [
+          page('/', { title: 'Example', markdownVariantUrl: `${ORIGIN}/index.md` }),
+          page('/start', { title: 'Home', pageType: 'docs', navigationLabel: 'Start here' }),
+        ],
+      });
+      expect(llmsTxt).toContain(`- [Home](${ORIGIN}/index.md)`);
+      expect(llmsTxt).toContain(`- [Start here](${ORIGIN}/start)`);
+    });
+
+    it('is not listed without a markdown file, or when the user excluded the homepage', () => {
+      expect(generate({ pages: [homepage, docs] })).not.toContain('[Home]');
+      const withMarkdown = page('/', { title: 'Example', markdownVariantUrl: `${ORIGIN}/index.md` });
+      const overrides = [{ normalisedUrl: ORIGIN, descriptionOverride: null, isExcluded: true, isKept: false }];
+      expect(generate({ pages: [withMarkdown, docs], overrides })).not.toContain('index.md');
+    });
   });
 
   it('leaves out pages with a noindex directive', () => {
@@ -778,6 +827,70 @@ describe('entry titles', () => {
     expect(titleOf(llmsTxt, '/events')).toBe('Our Events');
     expect(titleOf(llmsTxt, '/events/python-events')).toBe('Python Events');
     expect(titleOf(llmsTxt, '/events/user-groups')).toBe('User Groups');
+  });
+
+  describe('on a site whose titles end with the name of one of several areas', () => {
+    // svelte.dev: every page of a documentation set ends its title with the set's name.
+    const pages = [
+      page('/', { title: 'Svelte • Web development for the rest of us' }),
+      page('/docs/svelte', { title: 'Overview • Svelte Docs', pageType: 'docs' }),
+      page('/docs/svelte/stores', { title: 'Stores • Svelte Docs', pageType: 'docs' }),
+      page('/docs/svelte/faq', { title: 'Frequently asked questions • Svelte Docs', pageType: 'docs' }),
+      page('/docs/svelte/testing', { title: 'Testing • Svelte Docs', pageType: 'docs' }),
+      page('/docs/kit', { title: 'Introduction • SvelteKit Docs', pageType: 'docs' }),
+      page('/docs/kit/routing', { title: 'Routing • SvelteKit Docs', pageType: 'docs' }),
+      page('/docs/kit/testing', { title: 'Testing • SvelteKit Docs', pageType: 'docs' }),
+      page('/docs', { title: 'Docs • Svelte', pageType: 'docs' }),
+    ];
+    const llmsTxt = generate({ siteTitle: 'Svelte', pages });
+
+    it('keeps the area’s name on a title that says only what kind of page it is', () => {
+      expect(titleOf(llmsTxt, '/docs/svelte')).toBe('Overview • Svelte Docs');
+      expect(titleOf(llmsTxt, '/docs/kit')).toBe('Introduction • SvelteKit Docs');
+      expect(titleOf(llmsTxt, '/docs/svelte/faq')).toBe('Frequently asked questions • Svelte Docs');
+    });
+
+    it('keeps it on a title that pages of two areas share', () => {
+      expect(titleOf(llmsTxt, '/docs/svelte/testing')).toBe('Testing • Svelte Docs');
+      expect(titleOf(llmsTxt, '/docs/kit/testing')).toBe('Testing • SvelteKit Docs');
+    });
+
+    it('takes it off every other title, and takes the site’s own name off all of them', () => {
+      expect(titleOf(llmsTxt, '/docs/svelte/stores')).toBe('Stores');
+      expect(titleOf(llmsTxt, '/docs/kit/routing')).toBe('Routing');
+      expect(titleOf(llmsTxt, '/docs')).toBe('Docs');
+    });
+  });
+
+  it('takes a name off a generic title when every title of the site ends with it', () => {
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/docs/overview', { title: 'Overview | Example Docs' }),
+        page('/docs/install', { title: 'Installation | Example Docs' }),
+      ],
+    });
+    expect(titleOf(llmsTxt, '/docs/overview')).toBe('Overview');
+    expect(titleOf(llmsTxt, '/docs/install')).toBe('Installation');
+  });
+
+  it('does not take a publisher’s name for an area’s, where it stands outside the project’s', () => {
+    const llmsTxt = generate({
+      siteTitle: 'GNU',
+      pages: [
+        homepage,
+        page('/a', { title: 'Introduction - GNU Project - Free Software Foundation' }),
+        page('/b', { title: 'Licenses - GNU Project - Free Software Foundation' }),
+        page('/c', { title: 'Overview - Free Software Foundation' }),
+      ],
+    });
+    expect(titleOf(llmsTxt, '/a')).toBe('Introduction');
+    expect(titleOf(llmsTxt, '/c')).toBe('Overview');
+  });
+
+  it('uses the navigation’s label for a page titled only with its own host', () => {
+    const tools = page('/tools', { title: 'example.com', navigationLabel: 'Tools' });
+    expect(titleOf(generate({ pages: [homepage, tools] }), '/tools')).toBe('Tools');
   });
 
   it('drops a name that several titles end with, and the page’s own host', () => {

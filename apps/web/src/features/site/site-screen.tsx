@@ -102,7 +102,7 @@ export function SiteScreen({ publicSlug }: { publicSlug: string }) {
       </section>
       <div className="ledger">
         <section className="cell cell-half">
-          <RunProgress run={view.latestRun} hasPublishedVersion={view.publishedVersion !== null} />
+          <RunProgress run={view.latestRun} crawlPageBudget={view.crawlPageBudget} hasPublishedVersion={view.publishedVersion !== null} />
         </section>
         <section className="cell cell-half">
           <MonitoringPanel view={view} onChanged={refresh} />

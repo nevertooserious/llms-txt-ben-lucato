@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { machineReadableResourceKindOf } from '@llms-txt/contracts';
-import { htmlUrlForMarkdownLink, markdownVariantUrlFor, parseRetryAfter } from './crawl-site';
+import { homepageMarkdownVariantUrlsFor, htmlUrlForMarkdownLink, markdownVariantUrlFor, parseRetryAfter } from './crawl-site';
 
 // crawlSite itself runs against fixture sites in e2e/tests/crawler.test.ts.
 
@@ -29,9 +29,37 @@ describe('markdownVariantUrlFor', () => {
   });
 });
 
+describe('homepageMarkdownVariantUrlsFor', () => {
+  it('tries index.html.md, then index.md, in the homepage’s directory', () => {
+    expect(homepageMarkdownVariantUrlsFor('https://example.com/')).toEqual([
+      'https://example.com/index.html.md',
+      'https://example.com/index.md',
+    ]);
+    expect(homepageMarkdownVariantUrlsFor('https://example.com/docs/index.html')).toEqual([
+      'https://example.com/docs/index.html.md',
+      'https://example.com/docs/index.md',
+    ]);
+  });
+
+  it('tries README.md first on a site that routes on the URL fragment', () => {
+    expect(homepageMarkdownVariantUrlsFor('https://example.com/docs/#/', { routesOnUrlFragment: true })).toEqual([
+      'https://example.com/docs/README.md',
+      'https://example.com/docs/index.html.md',
+      'https://example.com/docs/index.md',
+    ]);
+  });
+
+  it('has none for a homepage under a query string', () => {
+    expect(homepageMarkdownVariantUrlsFor('https://example.com/?lang=en')).toEqual([]);
+  });
+});
+
 describe('machineReadableResourceKindOf', () => {
   it.each([
     ['https://example.com/llms-full.txt', 'llms_full_txt'],
+    ['https://example.com/llms-small.txt', 'llms_text_variant'],
+    ['https://example.com/docs/LLMs-Medium.txt', 'llms_text_variant'],
+    ['https://example.com/llms-.txt', null],
     ['https://example.com/workers/llms.txt', 'llms_txt_index'],
     ['https://example.com/api/OpenAPI.yaml?v=2', 'openapi_description'],
     ['https://example.com/swagger.json', 'openapi_description'],

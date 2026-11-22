@@ -46,6 +46,45 @@ describe('crawler limits', () => {
     expect(result.pages[0]?.markdownVariantUrl).toBeNull();
   });
 
+  it('finds the homepage’s markdown under index.md when there is no index.html.md', async () => {
+    const { rootUrl, port } = await serve((request, response) => {
+      if (request.url === '/') response.writeHead(200, { 'content-type': 'text/html' }).end(html('Hello'));
+      else if (request.url === '/index.md') response.writeHead(200, { 'content-type': 'text/markdown' }).end('# Hello\n');
+      else response.writeHead(404).end();
+    });
+    const result = await crawl(rootUrl, port);
+    expect(result.pages[0]?.markdownVariantUrl).toBe(`${rootUrl}/index.md`);
+  });
+
+  describe('a family of many pages', () => {
+    const links = (paths: string[]) => paths.map((path) => `<a href="${path}">${path}</a>`).join(' ');
+    const numbered = (prefix: string) => Array.from({ length: 30 }, (_, index) => `${prefix}/${index + 1}`);
+    const serveSiteLinking = (paths: string[]) =>
+      serve((request, response) => {
+        if (request.url === '/') response.writeHead(200, { 'content-type': 'text/html' }).end(html(links(paths)));
+        else if (paths.includes(request.url!)) response.writeHead(200, { 'content-type': 'text/html' }).end(html(`Page ${request.url}`));
+        else response.writeHead(404).end();
+      });
+    const pathsOf = (result: Awaited<ReturnType<typeof crawl>>, rootUrl: string) =>
+      result.pages.map((page) => page.normalisedUrl.slice(rootUrl.length));
+
+    it('waits behind the site’s other pages once a dozen of it are fetched', async () => {
+      // A blog links its latest posts before its about page, and has more posts than budget.
+      const { rootUrl, port } = await serveSiteLinking([...numbered('/posts'), '/team/people', '/story/history']);
+      const paths = pathsOf(await crawl(rootUrl, port, { pageBudget: 16 }), rootUrl);
+      expect(paths).toHaveLength(16);
+      expect(paths).toEqual(expect.arrayContaining(['/team/people', '/story/history']));
+      // The rest of the budget goes back to the posts, in the site's order.
+      expect(paths.filter((path) => path.startsWith('/posts/'))).toEqual(numbered('/posts').slice(0, 13));
+    });
+
+    it('is fetched in the site’s order when it is documentation', async () => {
+      const { rootUrl, port } = await serveSiteLinking([...numbered('/docs'), '/team/people']);
+      const paths = pathsOf(await crawl(rootUrl, port, { pageBudget: 16 }), rootUrl);
+      expect(paths).toEqual(['', ...numbered('/docs').slice(0, 15)]);
+    });
+  });
+
   it('does not follow navigation links from a nofollow homepage, but still records them', async () => {
     const requested: string[] = [];
     const { rootUrl, port } = await serve((request, response) => {

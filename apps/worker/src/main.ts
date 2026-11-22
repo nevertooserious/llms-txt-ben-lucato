@@ -39,9 +39,17 @@ await scheduleMonitorTick(queue);
 
 logger.info('worker started', { pipelineRunConcurrency: config.pipelineRunConcurrency });
 
+// How long a stopping worker lets its runs finish. A deploy stops the old worker while
+// runs are under way, and a run that is cut off fails as "stopped sending heartbeats".
+// The host must wait at least this long before it kills the process: on Railway that is
+// RAILWAY_DEPLOYMENT_DRAINING_SECONDS on the worker service, which is 0 if unset.
+const RUN_DRAIN_TIMEOUT_MILLISECONDS = 10 * 60_000;
+
 async function shutDown(signal: string): Promise<void> {
   logger.info('worker stopping', { signal });
-  await queue.stop();
+  // Takes no new jobs, and returns once the running ones end or the time is up.
+  await queue.stop({ timeout: RUN_DRAIN_TIMEOUT_MILLISECONDS });
+  logger.info('worker stopped');
   await headlessRenderer.close();
   await databasePool.end();
   process.exit(0);

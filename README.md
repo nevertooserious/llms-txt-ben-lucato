@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps it up to date as the site changes. The design is in [`docs/design/README.md`](docs/design/README.md).
 
-Status: the extractor, the crawler, the run lifecycle (submission, queueing, reaper, monitor tick), the run itself (crawl, extract, reconcile, publish), the generator and monitoring (on from submission, scheduled checks, "check now") are implemented. So is the UI for generating a file (submit a URL, watch the run, preview, copy, download, the hosted URL) for monitoring ("check now"), for choosing which version is live, for ignoring pages or whole paths of the site, and for deleting a site. With `ANTHROPIC_API_KEY` set, Claude Haiku assesses each candidate page (description, whether it belongs, page type) and Claude Opus writes the site summary and, where a site needs them, a few notes under it. The file also lists the machine-readable files a site has (`llms-full.txt`, section `llms.txt` files, OpenAPI descriptions). These calls have not yet run against the live API. Without a key the worker uses heuristics, which is meant only for local development and tests.
+Status: the extractor, the crawler, the run lifecycle (submission, queueing, reaper, monitor tick), the run itself (crawl, extract, reconcile, publish), the generator and monitoring (on from submission, scheduled checks, "check now") are implemented. So is the UI for generating a file (submit a URL, watch the run, preview, copy, download, the hosted URL) for monitoring ("check now"), for choosing which version is live, for ignoring pages or whole paths of the site, and for deleting a site. With `ANTHROPIC_API_KEY` set, Claude Haiku assesses each candidate page (description, whether it belongs, page type) and Claude Opus writes the site summary and, where a site needs them, a few notes under it. The file also lists the machine-readable files a site has (`llms-full.txt`, section `llms.txt` files, OpenAPI descriptions). Without a key the worker uses heuristics, which is meant only for local development and tests.
 
 ## Layout
 
@@ -65,7 +65,7 @@ npm run dev:web                          # http://localhost:3000, login user1 / 
 npm run dev:worker
 ```
 
-Each process reads its configuration once at startup and stops with a message naming any missing or malformed variable. `DATABASE_URL` is required, and the worker needs `ANTHROPIC_API_KEY` unless `LLM_CLIENT=stub`; `LOG_LEVEL` (`debug`, `info`, `warn`, `error`), `PIPELINE_RUN_CONCURRENCY` and `CRAWL_PAGE_BUDGET` (worker) and `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` (web) are optional. Logs are one JSON object per line; a run's lines carry its `pipelineRunId`.
+Each process reads its configuration once at startup and stops with a message naming any missing or malformed variable. `DATABASE_URL` is required, and the worker needs `ANTHROPIC_API_KEY` unless `LLM_CLIENT=stub`; `LOG_LEVEL` (`debug`, `info`, `warn`, `error`), `PIPELINE_RUN_CONCURRENCY` (worker), `CRAWL_PAGE_BUDGET` (worker, and web, which shows it beside a run's page count, so set it on both) and `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` (web) are optional. Logs are one JSON object per line; a run's lines carry its `pipelineRunId`.
 
 ## Serving llms.txt from your own domain
 
@@ -130,7 +130,9 @@ Errors are JSON with a message and a stable code, such as `{"error": "This site 
 
 The app runs on [Railway](https://railway.com) as three services in one project: `web`, `worker` and Postgres. Both app services build the repository's `Dockerfile`, and the `SERVICE_ROLE` variable on each (`web` or `worker`) tells `scripts/start-service.sh` which process to start. A merge to `main` deploys both, from the `deploy` job in `.github/workflows/ci.yml`, after the other jobs pass. It needs the repository secret `RAILWAY_TOKEN`, a Railway project token.
 
-Variables are set on the Railway services, not in the repository: `DATABASE_URL` on both (a reference to the Postgres service), `BASIC_AUTH_USERNAME`, `BASIC_AUTH_PASSWORD` and `DEMO_SITE_ENABLED` on `web`, and `ANTHROPIC_API_KEY` on `worker`. The login is the default `user1` / `pass1`, and `db/demo-seed.sql` was applied once after the schema, so the demo workspace is there too.
+Variables are set on the Railway services, not in the repository: `DATABASE_URL` on both (a reference to the Postgres service), `BASIC_AUTH_USERNAME`, `BASIC_AUTH_PASSWORD` and `DEMO_SITE_ENABLED` on `web`, and `ANTHROPIC_API_KEY` on `worker`. The login is not the default one. `db/demo-seed.sql` was applied once after the schema and its site was handed to the deployment's user, so the demo workspace is there too.
+
+A deploy replaces the worker while runs may be under way. The old worker takes no new runs and has 10 minutes to finish its own, which needs `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` (set to 660) on the `worker` service; Railway otherwise kills it at once and those runs fail.
 
 A deploy does not touch the schema. `db/schema.sql` was applied once to the empty database, so a schema change has to be applied to production by hand before the code that needs it is merged.
 

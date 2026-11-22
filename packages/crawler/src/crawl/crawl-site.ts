@@ -17,6 +17,7 @@ import { HttpFetcher, type FetchOutcome, type FetchRequest } from '../network/ht
 import { cleanUrlForFetch, isInScope, isOnRelatedHost, normaliseUrl } from '../discovery/normalise-url';
 import { parseSitemap } from '../discovery/parse-sitemap';
 import { computeLinkGraphSignals } from './link-graph';
+import { pageFamilyKeyOf } from './page-family';
 import { readPageSignals, readVisibleTextBlocks, type PageSignals } from '../page-signals/read-page-signals';
 import {
   fragmentRouteLinksOf,
@@ -113,8 +114,16 @@ const MARKDOWN_PROBES_BEFORE_GIVING_UP = 3;
  * page; its links are not followed. Stored pages on those hosts are re-checked besides.
  */
 const MAX_RELATED_HOST_PAGES = 15;
-/** Most machine-readable files (llms-full.txt, a section's llms.txt, an OpenAPI description) requested per crawl. */
+/** Most machine-readable files (llms-full.txt and other versions of it, a section's llms.txt, an OpenAPI description) requested per crawl. */
 const MAX_MACHINE_READABLE_RESOURCE_CHECKS = 20;
+/**
+ * Pages of one family (see pageFamilyKeyOf) fetched before the rest of it waits for every
+ * other page. A site's stream of content is most of its URLs, and comes first in its
+ * sitemap: without this a budget is spent on a blog's latest posts before its about
+ * page, its guides or its archive are reached. A dozen is enough to learn what a family
+ * is, and when nothing else is waiting the rest of it is fetched as before.
+ */
+const FAMILY_PAGES_FETCHED_BEFORE_OTHERS = 12;
 /** Routes rendered to confirm that a homepage linking routes of itself is a hash-routed site. */
 const FRAGMENT_ROUTES_OPENED_TO_CONFIRM = 2;
 /** Enough to learn that such a file is there; its content is not read. */
@@ -137,6 +146,8 @@ interface FrontierEntry {
   discoveredVia: DiscoverySource;
   sitemapLastModified: string | null;
   order: number;
+  /** The family whose other pages this one waits behind once enough are fetched; null when it never waits. */
+  familyKey: string | null;
   /**
    * On another host of the same site (docs.example.com), which the homepage navigation
    * links. Fetched as one page under that host's robots.txt; its links are not followed.
@@ -185,6 +196,8 @@ class SiteCrawl {
   private routesOnUrlFragment: boolean;
   private readonly frontier = new Map<string, FrontierEntry>();
   private readonly pending = new Set<string>();
+  /** How many pages of each family have been taken from the frontier. */
+  private readonly pagesTakenByFamily = new Map<string, number>();
   private readonly fetchedUrls = new Set<string>();
   /** The links of each page read in this crawl, in page order. */
   private readonly outboundLinksRead = new Map<string, string[]>();
@@ -554,20 +567,46 @@ class SiteCrawl {
       discoveredVia,
       sitemapLastModified,
       order: this.insertionOrder++,
+      familyKey: isRelated ? null : pageFamilyKeyOf(url, this.rootUrl),
       isOnRelatedHost: isRelated,
     });
     this.pending.add(url);
     return true;
   }
 
+  /**
+   * The next page in order: nearest the homepage first, then by how it was found. A page
+   * whose family has had its share waits behind every page that has not.
+   */
   private takeNextFromFrontier(): FrontierEntry | undefined {
     let best: FrontierEntry | undefined;
+    let bestIsHeldBack = false;
     for (const url of this.pending) {
       const entry = this.frontier.get(url)!;
-      if (best === undefined || compareEntries(entry, best) < 0) best = entry;
+      const isHeldBack = this.isHeldBack(entry);
+      const isBetter =
+        best === undefined || (isHeldBack !== bestIsHeldBack ? bestIsHeldBack : compareEntries(entry, best) < 0);
+      if (isBetter) {
+        best = entry;
+        bestIsHeldBack = isHeldBack;
+      }
     }
-    if (best !== undefined) this.pending.delete(best.url);
+    if (best === undefined) return undefined;
+    this.pending.delete(best.url);
+    if (best.familyKey !== null) {
+      this.pagesTakenByFamily.set(best.familyKey, (this.pagesTakenByFamily.get(best.familyKey) ?? 0) + 1);
+    }
     return best;
+  }
+
+  /**
+   * Whether enough of the page's family has been fetched for it to wait. A page the
+   * navigation or the site's own llms.txt names was chosen by the site, and never waits.
+   */
+  private isHeldBack(entry: FrontierEntry): boolean {
+    if (entry.familyKey === null) return false;
+    if (entry.discoveredVia === 'navigation' || entry.discoveredVia === 'existing_llms_txt') return false;
+    return (this.pagesTakenByFamily.get(entry.familyKey) ?? 0) >= FAMILY_PAGES_FETCHED_BEFORE_OTHERS;
   }
 
   // --- fetching --------------------------------------------------------------------
@@ -617,7 +656,7 @@ class SiteCrawl {
         this.outboundLinksRead.set(entry.url, []);
       } else {
         this.followLinks(entry, signals);
-        markdownVariantUrl = await this.probeMarkdownVariant(page.finalUrl);
+        markdownVariantUrl = await this.probeMarkdownVariant(page.finalUrl, { isHomepage: entry.crawlDepth === 0 });
       }
     } else if (page.httpStatusCode === 304) {
       this.notModifiedUrls.add(entry.url);
@@ -850,24 +889,33 @@ class SiteCrawl {
    * The llms.txt site says that some site can/should serve .MD files adjacent to
    * their HTML files. If they're present, we should use them instead.
    */
-  private async probeMarkdownVariant(pageUrl: string): Promise<string | null> {
+  private async probeMarkdownVariant(pageUrl: string, { isHomepage = false } = {}): Promise<string | null> {
     if (!this.markdownVariantsFound && this.markdownProbeMisses >= MARKDOWN_PROBES_BEFORE_GIVING_UP) return null;
-    const markdownUrl = markdownVariantUrlFor(pageUrl);
-    if (markdownUrl === null || !this.isAllowedByRobots(markdownUrl)) return null;
-
-    const outcome = await this.politeFetch({
-      url: markdownUrl,
-      acceptedContentTypes: TEXT_TYPES,
-      isRedirectAllowed: this.isRedirectAllowed,
-    });
-    const found =
-      outcome.kind === 'response' &&
-      outcome.httpStatusCode === 200 &&
-      outcome.contentType !== null &&
-      isInScope(outcome.finalUrl, this.rootUrl);
-    if (found) this.markdownVariantsFound = true;
-    else this.markdownProbeMisses += 1;
-    return found ? outcome.finalUrl : null;
+    // The homepage's file goes by more names than any other page's, and the homepage is
+    // listed only when it has one, so each name is tried. Together they count as one miss.
+    const markdownUrls = isHomepage
+      ? homepageMarkdownVariantUrlsFor(pageUrl, { routesOnUrlFragment: this.routesOnUrlFragment })
+      : [markdownVariantUrlFor(pageUrl)];
+    let wasProbed = false;
+    for (const markdownUrl of markdownUrls) {
+      if (markdownUrl === null || !this.isAllowedByRobots(markdownUrl)) continue;
+      wasProbed = true;
+      const outcome = await this.politeFetch({
+        url: markdownUrl,
+        acceptedContentTypes: TEXT_TYPES,
+        isRedirectAllowed: this.isRedirectAllowed,
+      });
+      const found =
+        outcome.kind === 'response' &&
+        outcome.httpStatusCode === 200 &&
+        outcome.contentType !== null &&
+        isInScope(outcome.finalUrl, this.rootUrl);
+      if (!found) continue;
+      this.markdownVariantsFound = true;
+      return outcome.finalUrl;
+    }
+    if (wasProbed) this.markdownProbeMisses += 1;
+    return null;
   }
 
   /**
@@ -993,6 +1041,27 @@ export function markdownVariantUrlFor(pageUrl: string): string | null {
   const lastSegment = url.pathname.split('/').pop() ?? '';
   url.pathname = lastSegment === '' ? `${url.pathname.replace(/\/$/, '')}/index.html.md` : `${url.pathname}.md`;
   return url.href;
+}
+
+/**
+ * The names a homepage's markdown goes by, likeliest first: `index.html.md` as the
+ * llms.txt proposal has it, `index.md` as sites built from markdown serve it, and on a
+ * site that routes on the URL fragment `README.md`, the file its root route shows (Docsify).
+ */
+export function homepageMarkdownVariantUrlsFor(
+  homepageUrl: string,
+  { routesOnUrlFragment = false } = {},
+): string[] {
+  const url = new URL(homepageUrl);
+  if (url.search !== '' || url.pathname.endsWith('.md')) return [];
+  url.hash = '';
+  // The homepage is a directory (`/docs/`, `/docs`) or a file in one (`/docs/index.html`).
+  const directory = url.pathname.replace(/\/[^/]*\.[^/]*$/, '').replace(/\/+$/, '');
+  const fileNames = [...(routesOnUrlFragment ? ['README.md'] : []), 'index.html.md', 'index.md'];
+  return fileNames.map((fileName) => {
+    url.pathname = `${directory}/${fileName}`;
+    return url.href;
+  });
 }
 
 /** An llms.txt usually links .md variants; the page to crawl is the HTML they come from. */
