@@ -36,8 +36,15 @@ export interface HeadlessRendererOptions {
   timeoutMs?: number;
   /** Renders running at once across the process; browsers are memory-hungry. */
   maxConcurrentRenders?: number;
-  /** Cap on each response the browser receives. */
+  /** Cap on each response the browser receives, scripts apart. */
   maxResponseBytes?: number;
+  /**
+   * Cap on each script. Larger than the rest, because a client-rendered app ships as one
+   * bundle that is often 10 MB or more once uncompressed, and without it the page is empty.
+   */
+  maxScriptBytes?: number;
+  /** Cap on everything one render downloads, so many large scripts cannot add up without limit. */
+  maxRenderBytes?: number;
 }
 
 export interface RenderedPage {
@@ -74,7 +81,7 @@ export interface RenderOptions {
 }
 
 // Resource types that cannot change the DOM text; skipped to save time and memory.
-const SKIPPED_RESOURCE_TYPES = new Set(['image', 'media', 'font', 'stylesheet']);
+const SKIPPED_RESOURCE_TYPES = new Set(['image', 'media', 'font']);
 // Request and response headers that describe one hop, not the message.
 const HOP_BY_HOP_HEADERS = new Set([
   'connection',
@@ -98,6 +105,8 @@ interface NavigationState {
   wasDisallowedByRobots: boolean;
   /** Set when the main frame's response was not an HTML document (a PDF, say). */
   wasNotHtml: boolean;
+  /** What is left of the render's download allowance. */
+  remainingBytes: number;
 }
 
 /** How long the page's text must stay the same before it counts as settled. */
@@ -116,12 +125,16 @@ export class HeadlessRenderer {
   private readonly userAgent: string;
   private readonly timeoutMs: number;
   private readonly maxResponseBytes: number;
+  private readonly maxScriptBytes: number;
+  private readonly maxRenderBytes: number;
   private readonly renderSlots: Semaphore;
 
   constructor(options: HeadlessRendererOptions = {}) {
     this.userAgent = options.userAgent ?? DEFAULT_USER_AGENT;
     this.timeoutMs = options.timeoutMs ?? 20_000;
     this.maxResponseBytes = options.maxResponseBytes ?? 5 * 1024 * 1024;
+    this.maxScriptBytes = options.maxScriptBytes ?? 20 * 1024 * 1024;
+    this.maxRenderBytes = options.maxRenderBytes ?? 50 * 1024 * 1024;
     this.renderSlots = new Semaphore(options.maxConcurrentRenders ?? 2);
     this.dispatcher = new Agent({
       connect: buildGuardedConnector({
@@ -177,7 +190,12 @@ export class HeadlessRenderer {
       javaScriptEnabled: true,
     });
     const blockedRequestUrls: string[] = [];
-    const navigation: NavigationState = { redirectTarget: null, wasDisallowedByRobots: false, wasNotHtml: false };
+    const navigation: NavigationState = {
+      redirectTarget: null,
+      wasDisallowedByRobots: false,
+      wasNotHtml: false,
+      remainingBytes: this.maxRenderBytes,
+    };
     const deadline = Date.now() + this.timeoutMs;
     // Aborts the requests Node is still making for the page once the render is over.
     const renderEnded = new AbortController();
@@ -269,6 +287,13 @@ export class HeadlessRenderer {
       await route.abort('aborted').catch(() => undefined);
       return;
     }
+    // Stylesheets are skipped too, but answered with an empty one, not refused: an app
+    // that loads its routes on demand waits for each route's stylesheet, and gives up on
+    // the route when one fails to load (Vite's preload helper does), leaving the page empty.
+    if (browserRequest.resourceType() === 'stylesheet') {
+      await route.fulfill({ status: 200, contentType: 'text/css', body: '' }).catch(() => undefined);
+      return;
+    }
     const isMainFrameNavigation = browserRequest.isNavigationRequest() && browserRequest.frame() === page.mainFrame();
 
     let currentUrl = browserRequest.url();
@@ -322,10 +347,13 @@ export class HeadlessRenderer {
           return;
         }
 
+        const maxBytes = browserRequest.resourceType() === 'script' ? this.maxScriptBytes : this.maxResponseBytes;
+        const responseBody = await readCapped(response.body, Math.min(maxBytes, navigation.remainingBytes));
+        navigation.remainingBytes -= responseBody.length;
         await route.fulfill({
           status: response.statusCode,
           headers: forwardableResponseHeaders(response.headers),
-          body: await readCapped(response.body, this.maxResponseBytes),
+          body: responseBody,
         });
         return;
       }
