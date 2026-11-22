@@ -7,13 +7,11 @@ import {
 } from '@llms-txt/contracts';
 import {
   alternativeTitlesOf,
-  buildEntryTextContext,
+  buildNamingContext,
   entryTitleIn,
-  normaliseForComparison,
-  singleLine,
-  truncate,
-  type EntryTextContext,
-} from '../entry-text';
+  type NamingContext,
+} from '../naming';
+import { normaliseForComparison, singleLine, truncate } from '../text/normalise-text';
 import {
   DEFAULT_SELECTION_LIMITS,
   homepageOf,
@@ -65,7 +63,7 @@ export function generateLlmsTxt(input: GenerateLlmsTxtInput): string {
   const siteTitle = singleLine(input.siteTitle);
   const summary = truncate(singleLine(input.siteSummary ?? homepageOf(input.pages)?.record.description ?? ''));
   const selected = selectPages(input.pages, input.overrides, input.limits ?? DEFAULT_SELECTION_LIMITS);
-  const context = buildEntryTextContext(siteTitle, input.pages);
+  const context = buildNamingContext(siteTitle, input.pages);
   const titles = entryTitlesOf(selected, context);
 
   const blocks: string[] = [`# ${siteTitle || 'Untitled site'}`];
@@ -103,7 +101,7 @@ export function generateLlmsTxt(input: GenerateLlmsTxtInput): string {
  * told apart, so of pages that share one, the highest-scoring keeps it and the others
  * take the navigation's label for them or a title from their URL, when that is free.
  */
-function entryTitlesOf(selected: readonly SelectedPage[], context: EntryTextContext): Map<string, string> {
+function entryTitlesOf(selected: readonly SelectedPage[], context: NamingContext): Map<string, string> {
   const titles = new Map<string, string>();
   const taken = new Set<string>();
   for (const { page } of selected) {

@@ -32,7 +32,7 @@ Each package's `src/` is grouped by layer, and `src/index.ts` is its only entry 
 | `packages/contracts` | One module per hand-off: `crawl`, `page-record`, `page-assessment`, `generation`, `pipeline-jobs`, `machine-readable-resources` |
 | `packages/crawler` | `network/` (HTTP fetcher, headless renderer, SSRF guard), `discovery/` (robots.txt, sitemaps, URL normalisation), `page-signals/` (what a fetched page says about itself and whether to render it), `crawl/` (the crawl loop that uses the other three) |
 | `packages/extractor` | `html/` (parsing, main content), `record/` (markdown, page type, hashes); `extract-page.ts` puts them together |
-| `packages/generator` | `selection/` (candidates, scores, sections, limits), `entry-text/` (site name, titles, descriptions), `enrichment/` (LLM prompts, parsing, cache hashes), `rendering/` (render and validate), `publication/` (publish or not) |
+| `packages/generator` | `selection/` (candidates, scores, sections, limits), `naming/` (site name, entry titles), `text/` (shared text helpers), `enrichment/` (LLM prompts, parsing, cache hashes), `rendering/` (render and validate), `publication/` (publish or not) |
 | `packages/monitor` | `scheduling/` (the tick) |
 | `packages/db` | `connection/` (pool, transactions), `repositories/` (one module per table), `queue/` (the pipeline-run queue) |
 | `apps/worker` | `main.ts` (composition root), `config/`, `jobs/` (queue consumers), `llm/` (Anthropic client), `pipeline/` (the run's lifecycle, one module per stage in `pipeline/stages/`, and the pure rules they call in `pipeline/decisions/`: page reconciliation, safety gate, sitemap trust) |

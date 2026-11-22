@@ -1,7 +1,7 @@
 import type { GeneratorPage } from '@llms-txt/contracts';
 import { titleCaseOf } from '../selection';
-import type { EntryTextContext } from './entry-text-context';
-import { singleLine } from './text';
+import type { NamingContext } from './naming-context';
+import { singleLine } from '../text/normalise-text';
 import { TITLE_SEPARATORS } from './title-parts';
 
 /** A longer title is a headline or a sentence, not a name. */
@@ -21,7 +21,7 @@ export function entryTitle(page: GeneratorPage, siteTitle: string): string {
  * that is missing, or is a headline or a sentence rather than a name, the text of the
  * navigation link to the page, then a title made from the URL.
  */
-export function entryTitleIn(page: GeneratorPage, context: EntryTextContext): string {
+export function entryTitleIn(page: GeneratorPage, context: NamingContext): string {
   const ownTitle = ownTitleOf(page, context);
   if (ownTitle !== null && !looksLikeSentence(ownTitle)) return ownTitle;
   return alternativeTitlesOf(page)[0] ?? ownTitle ?? titleFromUrl(page);
@@ -39,7 +39,7 @@ export function alternativeTitlesOf(page: GeneratorPage): string[] {
 /** The page's title with site names removed, or null when nothing of its own is left. */
 function ownTitleOf(
   page: GeneratorPage,
-  context: Pick<EntryTextContext, 'siteTitle' | 'homepageTitle' | 'titleSuffixes'>,
+  context: Pick<NamingContext, 'siteTitle' | 'homepageTitle' | 'titleSuffixes'>,
 ): string | null {
   let title = singleLine(page.record.title ?? '');
   // A page on another host of the site may end its title with that host (`| docs.acme.com`).

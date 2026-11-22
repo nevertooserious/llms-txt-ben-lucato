@@ -1,4 +1,4 @@
-// Text helpers the entry text and the renderer share.
+// Text helpers that naming, enrichment and the renderer share.
 
 /** Descriptions are cut to this length at a word boundary, so an entry stays one readable line. */
 const MAXIMUM_DESCRIPTION_LENGTH = 300;

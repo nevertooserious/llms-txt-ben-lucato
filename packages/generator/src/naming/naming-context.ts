@@ -1,10 +1,10 @@
 import type { GeneratorPage } from '@llms-txt/contracts';
 import { homepageOf } from '../selection';
-import { singleLine } from './text';
+import { singleLine } from '../text/normalise-text';
 import { lastTitlePartOf, MINIMUM_PAGES_SHARING_SITE_NAME } from './title-parts';
 
 /** What the pages of a site share, worked out once per render. */
-export interface EntryTextContext {
+export interface NamingContext {
   siteTitle: string;
   /** The homepage's own title, which some sites repeat as every page's og:title. */
   homepageTitle: string;
@@ -12,7 +12,7 @@ export interface EntryTextContext {
   titleSuffixes: readonly string[];
 }
 
-export function buildEntryTextContext(siteTitle: string, pages: readonly GeneratorPage[]): EntryTextContext {
+export function buildNamingContext(siteTitle: string, pages: readonly GeneratorPage[]): NamingContext {
   const homepage = homepageOf(pages);
   const suffixes = titleEndsOnSeveralPages(pages);
   if (siteTitle !== '') suffixes.add(siteTitle);

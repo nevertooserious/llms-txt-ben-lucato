@@ -7,7 +7,7 @@ import {
   type PageExclusionReason,
   type PageListingValue,
 } from '@llms-txt/contracts';
-import { normaliseForComparison } from '../entry-text';
+import { normaliseForComparison } from '../text/normalise-text';
 import { LlmOutputRejectedError, MAXIMUM_SITE_NOTES, type GeneratedSiteSummary } from './llm-client';
 
 // What the generator accepts back from the LLM: every answer is checked against the
