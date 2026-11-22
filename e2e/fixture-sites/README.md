@@ -15,7 +15,7 @@ charset parameter, so a page's own `<meta charset>` decides its encoding.
 | `client-app-shell` | An empty shell for every path; JavaScript renders each route and the navigation, and loads part of the homepage after a timer |
 | `metadata-ssr-site` | Title and description in the server's HTML; body rendered by JavaScript |
 | `hydrated-site` | Fully server-rendered, with a hydration script that changes no text; no sitemap |
-| `hash-routing-site` | Routes on the URL fragment |
+| `hash-routing-site` | Routes on the URL fragment (`/#/install`), one route two segments deep and one with a `.md` file beside the page |
 | `mixed-site` | Server-rendered, except one client-rendered section at `/app/` |
 | `markdown-site` | An existing llms.txt and `.md` variants for some pages |
 | `large-sitemap-site` | A sitemap index of 1,500 generated posts |

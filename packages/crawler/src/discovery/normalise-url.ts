@@ -1,15 +1,26 @@
 // A page's identity is its normalised URL (docs/design/README.md, section 3): the URL
 // after cleanup that needs no fetch.
 
+import { fragmentRoutePathOf } from '@llms-txt/contracts';
+
+export interface UrlFragmentOptions {
+  /**
+   * Keep a fragment that names a client-side route (`#/install`). Only for the pages of a
+   * site that routes on the fragment; everywhere else a fragment is a place in a page.
+   */
+  keepRouteFragment?: boolean;
+}
+
 // Parameters that track a visit rather than select content.
 const TRACKING_PARAMETER_PATTERN = /^(utm_\w+|gclid|gbraid|wbraid|dclid|fbclid|msclkid|mc_cid|mc_eid|_ga|_gl|yclid|igshid)$/i;
 
 /**
  * Lowercase scheme and host, default port dropped, fragment and tracking parameters
  * removed, query sorted, trailing slash stripped (except the bare root). Returns null
- * for anything that is not an absolute http or https URL.
+ * for anything that is not an absolute http or https URL. With `keepRouteFragment`, a
+ * route in the fragment stays, written one way: `#!/install/` becomes `#/install`.
  */
-export function normaliseUrl(rawUrl: string): string | null {
+export function normaliseUrl(rawUrl: string, { keepRouteFragment = false }: UrlFragmentOptions = {}): string | null {
   let url: URL;
   try {
     url = new URL(rawUrl.trim());
@@ -19,6 +30,7 @@ export function normaliseUrl(rawUrl: string): string | null {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
   if (url.username !== '' || url.password !== '') return null;
 
+  const routePath = keepRouteFragment ? fragmentRoutePathOf(url) : '';
   url.hash = '';
   const keptParameters = [...url.searchParams].filter(([name]) => !TRACKING_PARAMETER_PATTERN.test(name));
   keptParameters.sort(([nameA, valueA], [nameB, valueB]) =>
@@ -29,6 +41,7 @@ export function normaliseUrl(rawUrl: string): string | null {
   if (url.pathname.length > 1 && url.pathname.endsWith('/')) url.pathname = url.pathname.replace(/\/+$/, '');
   // URL already lowercases the scheme and host and drops default ports.
   const normalised = url.href;
+  if (routePath !== '') return `${normalised}#${routePath}`;
   // A bare origin keeps no trailing slash, to match how sites.root_url is stored.
   return url.pathname === '/' && url.search === '' ? normalised.slice(0, -1) : normalised;
 }
@@ -38,9 +51,11 @@ export function normaliseUrl(rawUrl: string): string | null {
  * (case of scheme and host, default port, dot segments, percent-encoding case, which the
  * URL parser does), plus the fragment and tracking parameters dropped. Unlike
  * `normaliseUrl`, the trailing slash and query order are kept, because servers may treat
- * `/about` and `/about/` differently. Null for anything that is not http or https.
+ * `/about` and `/about/` differently. Null for anything that is not http or https. With
+ * `keepRouteFragment`, a route in the fragment stays as the site wrote it, for the
+ * browser to open.
  */
-export function cleanUrlForFetch(rawUrl: string): string | null {
+export function cleanUrlForFetch(rawUrl: string, { keepRouteFragment = false }: UrlFragmentOptions = {}): string | null {
   let url: URL;
   try {
     url = new URL(rawUrl.trim());
@@ -49,7 +64,7 @@ export function cleanUrlForFetch(rawUrl: string): string | null {
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
   if (url.username !== '' || url.password !== '') return null;
-  url.hash = '';
+  if (!keepRouteFragment || fragmentRoutePathOf(url) === '') url.hash = '';
   const trackingNames = [...url.searchParams.keys()].filter((name) => TRACKING_PARAMETER_PATTERN.test(name));
   for (const name of trackingNames) url.searchParams.delete(name);
   return url.href;

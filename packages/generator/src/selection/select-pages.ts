@@ -1,4 +1,4 @@
-import type { GeneratorPage, PageOverride } from '@llms-txt/contracts';
+import { fragmentRoutePathOf, type GeneratorPage, type PageOverride } from '@llms-txt/contracts';
 import { pagesCoveredByBroaderPage } from './broader-pages';
 import { listingCandidates } from './listing-candidates';
 import { homepageOf } from './page-kinds';
@@ -79,12 +79,16 @@ function linkOrderOf(page: GeneratorPage): number {
 
 /**
  * Pages that declare the same canonical URL are one page. The one at that URL wins;
- * otherwise the highest-scoring one.
+ * otherwise the highest-scoring one. A route in the URL fragment is its own page whatever
+ * it declares: every route is the same document, which can name only one canonical URL.
  */
 function keepOnePerCanonicalUrl(pages: readonly GeneratorPage[]): GeneratorPage[] {
   const byCanonical = new Map<string, GeneratorPage>();
   for (const page of pages) {
-    const key = canonicalKey(page.record.canonicalUrl ?? page.record.normalisedUrl);
+    const isFragmentRoute = fragmentRoutePathOf(new URL(page.record.normalisedUrl)) !== '';
+    const key = isFragmentRoute
+      ? page.record.normalisedUrl
+      : canonicalKey(page.record.canonicalUrl ?? page.record.normalisedUrl);
     const current = byCanonical.get(key);
     if (current === undefined || isBetterRepresentative(page, current, key)) byCanonical.set(key, page);
   }

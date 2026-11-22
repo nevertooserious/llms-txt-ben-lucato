@@ -379,6 +379,23 @@ describe('generateLlmsTxt', () => {
     ]);
   });
 
+  it('lists the routes of a site that routes on the URL fragment as separate pages', () => {
+    // Every route is the same document, so all of them declare the one canonical URL.
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/#/install', { contentDigest: 'install', canonicalUrl: ORIGIN }),
+        page('/#/configure', { contentDigest: 'configure', canonicalUrl: ORIGIN }),
+        page('/#/guide', { contentDigest: 'guide', canonicalUrl: ORIGIN, markdownVariantUrl: `${ORIGIN}/guide.md` }),
+      ],
+    });
+    expect(Object.values(sections(llmsTxt)).flat().sort()).toEqual([
+      `${ORIGIN}/#/configure`,
+      `${ORIGIN}/#/install`,
+      `${ORIGIN}/guide.md`,
+    ]);
+  });
+
   it('keeps pages at similar URLs when their content differs', () => {
     const llmsTxt = generate({
       pages: [homepage, page('/guide', { contentDigest: 'one' }), page('/guide.html', { contentDigest: 'two' })],

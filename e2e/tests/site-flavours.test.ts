@@ -114,11 +114,17 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
       expect(result.llmsTxt).toMatch(new RegExp(`- \\[Dashboard\\]\\(${result.site.origin}/app/?\\)`));
     });
 
-    it('hash routing: fails clearly as a known limitation, and publishes nothing', async () => {
-      const result = await harness.submit(await harness.startSite('hash-routing-site'));
-      expect(result.firstRun).toMatchObject({ status: 'failed', errorMessage: expect.stringContaining('URL fragment') });
-      expect(await harness.publishedLlmsTxt(result)).toBeNull();
-      expect(await harness.storedPagePaths(result)).toEqual(['/']);
+    it('hash routing: lists each route, by its markdown file where the site has one', async () => {
+      const result = await generate('hash-routing-site');
+      const { origin } = result.site;
+      expect(await harness.storedPagePaths(result)).toEqual(['/', '/#/configure', '/#/guide', '/#/guide/plugins', '/#/install']);
+      expect(listedUrls(result.llmsTxt).sort()).toEqual([
+        `${origin}/#/configure`,
+        `${origin}/#/guide/plugins`,
+        `${origin}/#/install`,
+        `${origin}/guide.md`,
+      ]);
+      expect(result.llmsTxt).toContain(`- [Install](${origin}/#/install)`);
     });
   });
 

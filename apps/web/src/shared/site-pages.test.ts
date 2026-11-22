@@ -58,3 +58,13 @@ describe('groupPagesByPath', () => {
     expect(groups.map((group) => group.urlPrefix)).toEqual(['https://example.com/docs/v2', 'https://docs.example.com']);
   });
 });
+
+describe('groupPagesByPath, on a site that routes on the URL fragment', () => {
+  it('groups routes as it groups paths, and gives a group the prefix that covers its routes', () => {
+    const pages = ['/', '/#/install', '/#/guide', '/#/guide/setup', '/#/guide/plugins'].map(page);
+    const tree = groupPagesByPath(pages, ROOT_URL);
+    expect(outline(tree)).toEqual(['/', '/#/guide/ (3)', '  /#/guide', '  /#/guide/plugins', '  /#/guide/setup', '/#/install']);
+    const guide = tree.find((item): item is PathTreeGroup => item.kind === 'group')!;
+    expect(guide.urlPrefix).toBe('https://example.com/#/guide');
+  });
+});

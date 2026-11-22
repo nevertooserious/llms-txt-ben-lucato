@@ -1,6 +1,8 @@
 // The JSON of GET /api/sites/{publicSlug}/pages, and how the site screen groups
 // those pages by URL path. Shared by the route handler and the browser.
 
+import { fragmentRoutePathOf } from '@llms-txt/contracts';
+
 export interface SitePageView {
   normalisedUrl: string;
   title: string | null;
@@ -134,6 +136,14 @@ function stepsTo(url: string, rootHost: string | null): Array<{ key: string; lab
     label = `${label}/${segment}`;
     urlPrefix = `${urlPrefix}/${segment}`;
     steps.push({ key: segment, label, urlPrefix });
+  }
+  // On a site that routes on the URL fragment, the route's segments follow the path's.
+  const routeSegments = fragmentRoutePathOf(parsed).split('/').filter((part) => part !== '');
+  for (const [index, segment] of routeSegments.entries()) {
+    const separator = index === 0 ? '/#/' : '/';
+    label = `${label}${separator}${segment}`;
+    urlPrefix = `${urlPrefix}${separator}${segment}`;
+    steps.push({ key: `${separator}${segment}`, label, urlPrefix });
   }
   return steps;
 }

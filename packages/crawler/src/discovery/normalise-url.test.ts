@@ -85,3 +85,27 @@ describe('isOnRelatedHost', () => {
     expect(isOnRelatedHost('http://docs.localhost/a', 'http://localhost')).toBe(false);
   });
 });
+
+describe('a route in the URL fragment', () => {
+  it('is dropped like any fragment unless asked for', () => {
+    expect(normaliseUrl('https://example.com/#/install')).toBe('https://example.com');
+    expect(cleanUrlForFetch('https://example.com/#/install')).toBe('https://example.com/');
+  });
+
+  it.each([
+    ['https://example.com/#/install', 'https://example.com/#/install'],
+    ['https://example.com#/install', 'https://example.com/#/install'],
+    ['https://example.com/#!/install/', 'https://example.com/#/install'],
+    ['https://example.com/#/install?id=usage', 'https://example.com/#/install'],
+    ['https://example.com/docs/#/guide/setup', 'https://example.com/docs#/guide/setup'],
+    ['https://example.com/#/', 'https://example.com'],
+    ['https://example.com/page#section', 'https://example.com/page'],
+  ])('is kept in the identity of %s, written one way', (rawUrl, expected) => {
+    expect(normaliseUrl(rawUrl, { keepRouteFragment: true })).toBe(expected);
+  });
+
+  it('is requested as the site wrote it', () => {
+    expect(cleanUrlForFetch('https://example.com/#!/install', { keepRouteFragment: true })).toBe('https://example.com/#!/install');
+    expect(cleanUrlForFetch('https://example.com/page#section', { keepRouteFragment: true })).toBe('https://example.com/page');
+  });
+});

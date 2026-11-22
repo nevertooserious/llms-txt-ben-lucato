@@ -116,6 +116,34 @@ describe('crawler limits', () => {
     }
   });
 
+  it('does not take links that open a section of one page for routes, as on a Swagger UI page', async () => {
+    // Every operation is on the page from the start; `#/Pets/addPet` only opens its details.
+    const swaggerLikeApp = `<script>
+      var operations = ['listPets', 'addPet', 'getPet', 'deletePet'];
+      function render() {
+        var opened = (location.hash.split('/')[2] || '');
+        document.querySelector('main').innerHTML = operations.map(function (name) {
+          return '<section><a href="#/Pets/' + name + '">' + name + '</a><p>The ' + name + ' operation of the pet store API, described at some length.</p>' +
+            (name === opened ? '<p>Parameters and responses.</p>' : '') + '</section>';
+        }).join('');
+      }
+      window.addEventListener('hashchange', render);
+      render();
+    </script>`;
+    const { rootUrl, port } = await serve((request, response) => {
+      if (request.url === '/robots.txt') response.writeHead(404).end();
+      else response.writeHead(200, { 'content-type': 'text/html' }).end(html(swaggerLikeApp));
+    });
+    const headlessRenderer = new HeadlessRenderer({ networkPolicy: allowLoopbackPorts([port]), timeoutMs: 10_000 });
+    try {
+      const result = await crawl(rootUrl, port, { requiresHeadlessRendering: true, headlessRenderer });
+      expect(result.pages.map((page) => page.normalisedUrl)).toEqual([rootUrl]);
+      expect(result.failedFetches).toEqual([]);
+    } finally {
+      await headlessRenderer.close();
+    }
+  });
+
   it('skips a non-HTML link on a rendered site without counting a failure', async () => {
     const { rootUrl, port } = await serve((request, response) => {
       if (request.url === '/robots.txt') response.writeHead(404).end();

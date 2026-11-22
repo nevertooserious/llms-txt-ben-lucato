@@ -178,6 +178,7 @@ create table pages (
   -- The row's identity: the URL after cleanup that needs no fetch (lowercase host,
   -- fragment and tracking params removed, query sorted, trailing slash and default port
   -- stripped). The crawler requests the URL as the site linked it, and keys on this.
+  -- On a site that routes on the URL fragment, the route stays: https://example.com/#/install.
   normalised_url                       text not null,
 
   -- Crawler: fetch fingerprint and discovery signals.
@@ -308,7 +309,8 @@ create table page_overrides (
 -- fetches and stores those pages.
 create table excluded_url_prefixes (
   site_id     uuid not null references sites (id) on delete cascade,
-  -- Scheme, host and path, with no trailing slash, query or fragment.
+  -- Scheme, host and path, with no trailing slash or query, and no fragment except the
+  -- route of a site that routes on it (https://example.com/#/guide).
   -- "https://example.com/blog" covers /blog and all of /blog/, not /blog-archive.
   url_prefix  text not null,
   created_at  timestamptz not null default now(),

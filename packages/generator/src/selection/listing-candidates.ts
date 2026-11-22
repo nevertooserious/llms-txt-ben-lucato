@@ -1,4 +1,4 @@
-import type { GeneratorPage } from '@llms-txt/contracts';
+import { pagePathOf, type GeneratorPage } from '@llms-txt/contracts';
 import { homepageOf, isDocumentationPage, JOB_BOARD_SEGMENT } from './page-kinds';
 import { canonicalKey, compareText, isPaginationUrl, pathSegmentsOf } from './url-paths';
 
@@ -102,8 +102,7 @@ const LOCALE_SEGMENT = /^[a-z]{2}(?:[-_][a-z]{2})?$/;
  */
 function urlVariantKey(page: GeneratorPage): string {
   const url = new URL(page.record.normalisedUrl);
-  const path = url.pathname
-    .replace(/\/+$/, '')
+  const path = pagePathOf(url)
     .replace(/\.md$/i, '')
     .replace(/\.html?$/i, '')
     .replace(/\/index$/i, '');
