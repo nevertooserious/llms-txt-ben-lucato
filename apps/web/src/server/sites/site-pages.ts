@@ -97,6 +97,7 @@ export async function loadSitePagesView(
   const sectionNameByUrl = new Map(
     selectPages(loadedPages, excludePagesUnderUrlPrefixes(overrides, excludedUrlPrefixes, loadedPages)).map((selected) => [selected.page.record.normalisedUrl, selected.sectionName]),
   );
+  const urlsChosenByGenerator = new Set(selectPages(loadedPages, []).map((selected) => selected.page.record.normalisedUrl));
   return {
     pages: loadedPages.map((page) => ({
       normalisedUrl: page.record.normalisedUrl,
@@ -105,6 +106,7 @@ export async function loadSitePagesView(
       isExcluded: excludedUrls.has(page.record.normalisedUrl),
       isKept: keptUrls.has(page.record.normalisedUrl),
       canBeKept: keepableUrls.has(page.record.normalisedUrl),
+      isChosenByGenerator: urlsChosenByGenerator.has(page.record.normalisedUrl),
       listedInSection: sectionNameByUrl.get(page.record.normalisedUrl) ?? null,
     })),
     excludedUrlPrefixes,

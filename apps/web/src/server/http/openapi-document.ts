@@ -186,6 +186,10 @@ const schemas: Record<string, JsonSchema> = {
     isExcluded: { type: 'boolean', description: 'The user ignores this page by itself.' },
     isKept: { type: 'boolean', description: 'The user lists this page even if the generator would leave it out.' },
     canBeKept: { type: 'boolean', description: 'The generator assessed this page, so keeping it can list it.' },
+    isChosenByGenerator: {
+      type: 'boolean',
+      description: "The generator lists this page by itself, with none of the user's choices applied.",
+    },
     listedInSection: nullable('string', { description: 'The section the page is listed under, if any.' }),
   }),
   SitePages: objectOf({

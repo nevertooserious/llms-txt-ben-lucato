@@ -14,6 +14,8 @@ export interface SitePageView {
   isKept: boolean;
   /** The generator assessed this page, so keeping it can list it. */
   canBeKept: boolean;
+  /** The generator lists this page by itself, with none of the user's choices applied. */
+  isChosenByGenerator: boolean;
   /** The section the page is listed under with the saved choices, or null if it is not listed. */
   listedInSection: string | null;
 }

@@ -10,6 +10,7 @@ const page = (path: string): SitePageView => ({
   isExcluded: false,
   isKept: false,
   canBeKept: false,
+  isChosenByGenerator: false,
   listedInSection: null,
 });
 
