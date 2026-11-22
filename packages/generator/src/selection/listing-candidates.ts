@@ -59,8 +59,8 @@ function isUtilityPage(page: GeneratorPage): boolean {
 /**
  * A tag, category or author listing, a page under a job board, or one numbered record
  * (`/events/8219`): the site's stream of content, not its structure. A numbered page the
- * navigation links (`/report/2024`) is one the site chose to show, and numbered blog
- * posts are left to the Blog section's own small limit.
+ * navigation links (`/report/2024`) is one the site chose to show, and a numbered blog
+ * post is left to the assessment.
  */
 function isArchiveOrRecordPage(page: GeneratorPage): boolean {
   if (isDocumentationPage(page)) return false;
