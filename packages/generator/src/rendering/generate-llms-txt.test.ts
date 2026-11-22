@@ -225,6 +225,7 @@ describe('generateLlmsTxt', () => {
       machineReadableResourceUrls: [
         `${ORIGIN}/api/openapi.json`,
         `${ORIGIN}/workers/llms.txt`,
+        `${ORIGIN}/llms-small.txt`,
         `${ORIGIN}/llms-full.txt`,
         `${ORIGIN}/not-a-resource.txt`,
         `${ORIGIN}/llms-full.txt`,
@@ -234,6 +235,7 @@ describe('generateLlmsTxt', () => {
     expect(llmsTxt).toContain(
       [
         `- [llms-full.txt](${ORIGIN}/llms-full.txt): The full text of the site's pages in one file.`,
+        `- [llms-small.txt](${ORIGIN}/llms-small.txt): Another version of the site's text in one file, often shorter than the full one.`,
         `- [workers/llms.txt](${ORIGIN}/workers/llms.txt): An llms.txt index for this part of the site.`,
         `- [api/openapi.json](${ORIGIN}/api/openapi.json): Machine-readable OpenAPI description of the API.`,
       ].join('\n'),

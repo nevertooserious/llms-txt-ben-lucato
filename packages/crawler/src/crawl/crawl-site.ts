@@ -113,7 +113,7 @@ const MARKDOWN_PROBES_BEFORE_GIVING_UP = 3;
  * page; its links are not followed. Stored pages on those hosts are re-checked besides.
  */
 const MAX_RELATED_HOST_PAGES = 15;
-/** Most machine-readable files (llms-full.txt, a section's llms.txt, an OpenAPI description) requested per crawl. */
+/** Most machine-readable files (llms-full.txt and other versions of it, a section's llms.txt, an OpenAPI description) requested per crawl. */
 const MAX_MACHINE_READABLE_RESOURCE_CHECKS = 20;
 /** Routes rendered to confirm that a homepage linking routes of itself is a hash-routed site. */
 const FRAGMENT_ROUTES_OPENED_TO_CONFIRM = 2;

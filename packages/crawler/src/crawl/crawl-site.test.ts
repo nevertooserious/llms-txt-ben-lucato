@@ -32,6 +32,9 @@ describe('markdownVariantUrlFor', () => {
 describe('machineReadableResourceKindOf', () => {
   it.each([
     ['https://example.com/llms-full.txt', 'llms_full_txt'],
+    ['https://example.com/llms-small.txt', 'llms_text_variant'],
+    ['https://example.com/docs/LLMs-Medium.txt', 'llms_text_variant'],
+    ['https://example.com/llms-.txt', null],
     ['https://example.com/workers/llms.txt', 'llms_txt_index'],
     ['https://example.com/api/OpenAPI.yaml?v=2', 'openapi_description'],
     ['https://example.com/swagger.json', 'openapi_description'],
