@@ -2,6 +2,7 @@
 // hand-written SQL in this package, grouped by the table it writes, and the rest of the
 // code calls these functions. Only this package may import `pg` (eslint.config.js).
 export { createDatabasePool, type DatabasePool } from './connection/database-pool';
+export { isUniqueViolation } from './connection/database-errors';
 export { withTransaction, type Queryable, type Transaction } from './connection/transaction';
 export {
   createPipelineQueues,
@@ -36,6 +37,7 @@ export {
   deleteSite,
   listSitesOwnedBy,
   loadOwnedSiteIdBySlug,
+  loadOwnedSiteSlugByUrl,
   loadPageOverrides,
   loadPublishedLlmsTxt,
   loadSiteForRun,

@@ -50,8 +50,12 @@ create table sites (
 
   -- Crawl scope: scheme + host + optional path prefix, lowercase host, no trailing
   -- slash. "https://example.com" or "https://example.com/docs". Replaced by where the
-  -- homepage redirects on the first crawl. Not unique: each submission is its own site.
+  -- homepage redirects on the first crawl. A user has one site per root URL
+  -- (sites_owner_root_url_key).
   root_url                         text not null,
+  -- The root URL as the user submitted it, which a redirect never replaces, so the same
+  -- address submitted again is recognised (sites_owner_submitted_url_key).
+  submitted_url                    text not null,
 
   -- Identifier in every URL of this site: /w/{public_slug}/llms.txt and the API.
   public_slug                      text not null unique,
@@ -112,6 +116,9 @@ create index sites_due_for_monitor_check_idx
   on sites (next_monitor_check_at) where next_monitor_check_at is not null;
 -- The home page: a user's sites, newest first.
 create index sites_owner_idx on sites (owner_user_id, created_at desc);
+-- A user cannot have the same site twice. Another user can have the same URL.
+create unique index sites_owner_root_url_key on sites (owner_user_id, root_url);
+create unique index sites_owner_submitted_url_key on sites (owner_user_id, submitted_url);
 
 -- ---------------------------------------------------------------------------
 -- pipeline_runs

@@ -338,18 +338,6 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
       for (const path of ['/docs/intro', '/docs/setup', '/docs/upgrade']) expect(listedAgain).toContain(urlOf(submitted.site, path));
     });
 
-    it('a second submission of the same URL gets its own site and file', async () => {
-      const { submitted } = await submitEditableSite();
-      await harness.setOverride(submitted, '/pricing', { isExcluded: true });
-      const second = await harness.submit(submitted.site);
-      expect(second.siteId).not.toBe(submitted.siteId);
-      expect(second.firstRun.status).toBe('succeeded');
-      expect(listedUrls((await harness.publishedLlmsTxt(second))!)).toContain(urlOf(submitted.site, '/pricing'));
-      expect(await harness.checkNow(submitted)).toMatchObject({ status: 'succeeded' });
-      expect(listedUrls((await harness.publishedLlmsTxt(second))!)).toContain(urlOf(submitted.site, '/pricing'));
-      expect(listedUrls((await harness.publishedLlmsTxt(submitted))!)).not.toContain(urlOf(submitted.site, '/pricing'));
-    });
-
     it.todo('stable digest when fetch method would differ between checks');
   });
 });

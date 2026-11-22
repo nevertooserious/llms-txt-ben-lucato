@@ -338,19 +338,18 @@ describe('runPipeline', () => {
     expect((await versions(siteId))[0]?.llms_txt_content).toContain(`${resolvedRootUrl}/docs`);
   });
 
-  it('keeps a first crawl on its own site when another site has the resolved root', async () => {
+  it('fails a first crawl that redirects to a site its owner already has', async () => {
     const pages = [{ path: '/', title: 'Acme' }, { path: '/docs', title: 'Docs' }];
     const existing = await newSite();
     await run(existing.siteId, fakeCrawl(pages));
     const redirecting = await newSite();
 
     const outcome = await run(redirecting.siteId, fakeCrawl(pages), async () => existing.rootUrl);
-    expect(outcome.status).toBe('succeeded');
-    const roots = await databasePool.query<{ root_url: string }>('select root_url from sites where id = any($1)', [
-      [existing.siteId, redirecting.siteId],
-    ]);
-    expect(roots.rows).toEqual([{ root_url: existing.rootUrl }, { root_url: existing.rootUrl }]);
-    expect((await versions(redirecting.siteId))[0]?.llms_txt_content).toContain(`${existing.rootUrl}/docs`);
+    expect(outcome.status).toBe('failed');
+    expect(outcome.error_message).toBe(`This address redirects to ${existing.rootUrl}, which you already have a site for.`);
+    const roots = await databasePool.query<{ root_url: string }>('select root_url from sites where id = $1', [redirecting.siteId]);
+    expect(roots.rows).toEqual([{ root_url: redirecting.rootUrl }]);
+    expect(await versions(redirecting.siteId)).toHaveLength(0);
     expect(await versions(existing.siteId)).toHaveLength(1);
   });
 

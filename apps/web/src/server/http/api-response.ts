@@ -9,13 +9,20 @@ export type ApiErrorCode =
   | 'run_in_progress'
   | 'run_not_found'
   | 'run_produced_no_version'
+  | 'site_already_exists'
   | 'site_not_found'
   | 'unauthorized'
   | 'version_not_found';
 
 /** `error` is for front-end info; `code` is for business logic. */
-export function apiError(status: number, code: ApiErrorCode, message: string, headers?: Record<string, string>): Response {
-  return Response.json({ error: message, code }, { status, headers });
+export function apiError(
+  status: number,
+  code: ApiErrorCode,
+  message: string,
+  headers?: Record<string, string>,
+  details?: Record<string, string>,
+): Response {
+  return Response.json({ error: message, code, ...details }, { status, headers });
 }
 
 export const siteApiPath = (publicSlug: string) => `/api/sites/${encodeURIComponent(publicSlug)}`;

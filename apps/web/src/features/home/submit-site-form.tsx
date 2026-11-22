@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { goToLoginIfSignedOut } from '@/browser/login-redirect';
@@ -8,12 +9,15 @@ import { sitePath } from '@/shared/site-list';
 interface SubmitResponse {
   publicSlug?: string;
   error?: string;
+  code?: string;
 }
 
 export function SubmitSiteForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // The slug of the site the user already has for the URL they submitted.
+  const [existingSiteSlug, setExistingSiteSlug] = useState<string | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -23,6 +27,7 @@ export function SubmitSiteForm() {
     const url = /^[a-z][a-z0-9+.-]*:\/\//i.test(typed) ? typed : `https://${typed}`;
     setIsSubmitting(true);
     setErrorMessage(null);
+    setExistingSiteSlug(null);
     try {
       const response = await fetch('/api/sites', {
         method: 'POST',
@@ -31,6 +36,7 @@ export function SubmitSiteForm() {
       });
       goToLoginIfSignedOut(response);
       const body = (await response.json().catch(() => ({}))) as SubmitResponse;
+      if (body.code === 'site_already_exists' && body.publicSlug) setExistingSiteSlug(body.publicSlug);
       if (!response.ok || !body.publicSlug) {
         throw new Error(body.error ?? 'The site could not be submitted.');
       }
@@ -65,6 +71,12 @@ export function SubmitSiteForm() {
       {errorMessage && (
         <p className="form-error" role="alert">
           {errorMessage}
+          {existingSiteSlug && (
+            <>
+              {' '}
+              <Link href={sitePath(existingSiteSlug)}>Open it</Link>
+            </>
+          )}
         </p>
       )}
     </form>

@@ -105,10 +105,11 @@ begin
   on conflict (username) do nothing;
 
   insert into sites (
-    owner_user_id, root_url, public_slug, site_title, generated_summary,
+    owner_user_id, root_url, submitted_url, public_slug, site_title, generated_summary,
     last_monitor_check_at, created_at)
   values (
     (select id from users where username = 'user1'),
+    'https://docs.fernhill.example',
     'https://docs.fernhill.example',
     'demo',
     'Fernhill Cloud',

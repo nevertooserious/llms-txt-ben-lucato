@@ -1,4 +1,5 @@
 import type { PageOverride } from '@llms-txt/contracts';
+import { isUniqueViolation } from '../connection/database-errors';
 import type { Queryable, Transaction } from '../connection/transaction';
 
 export interface NewSite {
@@ -7,15 +8,38 @@ export interface NewSite {
   publicSlug: string;
 }
 
-/** A new, independent site: each submission of a URL gets its own. */
+/**
+ * A new site. A user has one site per URL, so this throws a unique violation
+ * (isUniqueViolation) if they already have this one: see loadOwnedSiteSlugByUrl.
+ */
 export async function createSite(database: Queryable, site: NewSite): Promise<string> {
   const result = await database.query<{ id: string }>(
-    `insert into sites (owner_user_id, root_url, public_slug)
-     values ($1, $2, $3)
+    `insert into sites (owner_user_id, root_url, submitted_url, public_slug)
+     values ($1, $2, $2, $3)
      returning id`,
     [site.ownerUserId, site.rootUrl, site.publicSlug],
   );
   return result.rows[0]!.id;
+}
+
+/**
+ * The slug of the user's site for this URL, or null: the site submitted as this URL, or
+ * the one whose homepage redirect led to it.
+ */
+export async function loadOwnedSiteSlugByUrl(
+  database: Queryable,
+  ownerUserId: string,
+  rootUrl: string,
+): Promise<string | null> {
+  const result = await database.query<{ public_slug: string }>(
+    `select public_slug
+       from sites
+      where owner_user_id = $1 and (root_url = $2 or submitted_url = $2)
+      order by created_at, id
+      limit 1`,
+    [ownerUserId, rootUrl],
+  );
+  return result.rows[0]?.public_slug ?? null;
 }
 
 /** The id of the site served at /w/{publicSlug}, or null. */
@@ -173,9 +197,19 @@ export async function claimDueMonitorChecks(transaction: Transaction, limit: num
   return result.rows.map((row) => row.id);
 }
 
-/** Records where a site really lives, once its first crawl has followed the homepage redirect. */
-export async function saveResolvedRootUrl(database: Queryable, siteId: string, resolvedRootUrl: string): Promise<void> {
-  await database.query('update sites set root_url = $2 where id = $1', [siteId, resolvedRootUrl]);
+/**
+ * Records where a site really lives, once its first crawl has followed the homepage
+ * redirect. False, with nothing saved, if its owner already has a site there. Not for use
+ * inside a transaction, which the refused write would abort.
+ */
+export async function saveResolvedRootUrl(database: Queryable, siteId: string, resolvedRootUrl: string): Promise<boolean> {
+  try {
+    await database.query('update sites set root_url = $2 where id = $1', [siteId, resolvedRootUrl]);
+    return true;
+  } catch (error) {
+    if (isUniqueViolation(error)) return false;
+    throw error;
+  }
 }
 
 /** How long a headless-rendering decision stands before a crawl makes it again. */
