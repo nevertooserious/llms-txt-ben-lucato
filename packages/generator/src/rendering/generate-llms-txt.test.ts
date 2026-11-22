@@ -339,6 +339,53 @@ describe('generateLlmsTxt', () => {
     expect(llmsTxt).toContain(`](${ORIGIN}/about/)`);
   });
 
+  describe('the homepage’s markdown file', () => {
+    const docs = page('/docs', { pageType: 'docs' });
+    const terms = page('/terms', { pageType: 'legal' });
+
+    it('is the first entry of the first section, titled by what the homepage’s title says besides the site’s name', () => {
+      const specification = page('/', {
+        title: 'The example file – Example',
+        description: 'A proposal for example files.',
+        markdownVariantUrl: `${ORIGIN}/index.md`,
+      });
+      const llmsTxt = generate({ pages: [specification, docs, terms], siteSummary: 'Example makes examples.' });
+      expect(llmsTxt).toContain(
+        `## Docs\n\n- [The example file](${ORIGIN}/index.md): A proposal for example files.\n- [Title of /docs](${ORIGIN}/docs)`,
+      );
+      expect(Object.keys(sections(llmsTxt))).toEqual(['Docs', 'Optional']);
+      expect(validateLlmsTxt(llmsTxt).isValid).toBe(true);
+    });
+
+    it('is called Home, and described as what it is, when the homepage says no more than the file already does', () => {
+      const llmsTxt = generate({ pages: [page('/', { title: 'Example', description: 'Example makes examples.', markdownVariantUrl: `${ORIGIN}/README.md` }), docs] });
+      expect(llmsTxt).toContain(`> Example makes examples.\n\n## Docs\n\n- [Home](${ORIGIN}/README.md): The homepage's text as markdown.\n`);
+    });
+
+    it('gets a section of its own before Optional when no other section is there', () => {
+      const llmsTxt = generate({ pages: [page('/', { title: 'Example', markdownVariantUrl: `${ORIGIN}/index.md` }), terms] });
+      expect(Object.keys(sections(llmsTxt))).toEqual(['Pages', 'Optional']);
+    });
+
+    it('keeps its title from another page, which takes the navigation’s label', () => {
+      const llmsTxt = generate({
+        pages: [
+          page('/', { title: 'Example', markdownVariantUrl: `${ORIGIN}/index.md` }),
+          page('/start', { title: 'Home', pageType: 'docs', navigationLabel: 'Start here' }),
+        ],
+      });
+      expect(llmsTxt).toContain(`- [Home](${ORIGIN}/index.md)`);
+      expect(llmsTxt).toContain(`- [Start here](${ORIGIN}/start)`);
+    });
+
+    it('is not listed without a markdown file, or when the user excluded the homepage', () => {
+      expect(generate({ pages: [homepage, docs] })).not.toContain('[Home]');
+      const withMarkdown = page('/', { title: 'Example', markdownVariantUrl: `${ORIGIN}/index.md` });
+      const overrides = [{ normalisedUrl: ORIGIN, descriptionOverride: null, isExcluded: true, isKept: false }];
+      expect(generate({ pages: [withMarkdown, docs], overrides })).not.toContain('index.md');
+    });
+  });
+
   it('leaves out pages with a noindex directive', () => {
     expect(generate({ pages: [homepage, page('/secret', { hasNoindexDirective: true })] })).not.toContain('/secret');
   });

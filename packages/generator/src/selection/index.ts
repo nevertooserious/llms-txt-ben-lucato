@@ -4,6 +4,6 @@
 export { excludePagesUnderUrlPrefixes } from './excluded-url-prefixes';
 export { listingCandidates } from './listing-candidates';
 export { homepageOf } from './page-kinds';
-export { OPTIONAL_SECTION_NAME, sectionNamesInOrder } from './sections';
+export { GENERAL_SECTION_NAME, OPTIONAL_SECTION_NAME, sectionNamesInOrder } from './sections';
 export { selectPages, type SelectedPage } from './select-pages';
 export { compareText, isPaginationUrl, titleCaseOf } from './url-paths';

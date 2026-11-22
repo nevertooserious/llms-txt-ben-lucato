@@ -617,7 +617,7 @@ class SiteCrawl {
         this.outboundLinksRead.set(entry.url, []);
       } else {
         this.followLinks(entry, signals);
-        markdownVariantUrl = await this.probeMarkdownVariant(page.finalUrl);
+        markdownVariantUrl = await this.probeMarkdownVariant(page.finalUrl, { isHomepage: entry.crawlDepth === 0 });
       }
     } else if (page.httpStatusCode === 304) {
       this.notModifiedUrls.add(entry.url);
@@ -850,24 +850,33 @@ class SiteCrawl {
    * The llms.txt site says that some site can/should serve .MD files adjacent to
    * their HTML files. If they're present, we should use them instead.
    */
-  private async probeMarkdownVariant(pageUrl: string): Promise<string | null> {
+  private async probeMarkdownVariant(pageUrl: string, { isHomepage = false } = {}): Promise<string | null> {
     if (!this.markdownVariantsFound && this.markdownProbeMisses >= MARKDOWN_PROBES_BEFORE_GIVING_UP) return null;
-    const markdownUrl = markdownVariantUrlFor(pageUrl);
-    if (markdownUrl === null || !this.isAllowedByRobots(markdownUrl)) return null;
-
-    const outcome = await this.politeFetch({
-      url: markdownUrl,
-      acceptedContentTypes: TEXT_TYPES,
-      isRedirectAllowed: this.isRedirectAllowed,
-    });
-    const found =
-      outcome.kind === 'response' &&
-      outcome.httpStatusCode === 200 &&
-      outcome.contentType !== null &&
-      isInScope(outcome.finalUrl, this.rootUrl);
-    if (found) this.markdownVariantsFound = true;
-    else this.markdownProbeMisses += 1;
-    return found ? outcome.finalUrl : null;
+    // The homepage's file goes by more names than any other page's, and the homepage is
+    // listed only when it has one, so each name is tried. Together they count as one miss.
+    const markdownUrls = isHomepage
+      ? homepageMarkdownVariantUrlsFor(pageUrl, { routesOnUrlFragment: this.routesOnUrlFragment })
+      : [markdownVariantUrlFor(pageUrl)];
+    let wasProbed = false;
+    for (const markdownUrl of markdownUrls) {
+      if (markdownUrl === null || !this.isAllowedByRobots(markdownUrl)) continue;
+      wasProbed = true;
+      const outcome = await this.politeFetch({
+        url: markdownUrl,
+        acceptedContentTypes: TEXT_TYPES,
+        isRedirectAllowed: this.isRedirectAllowed,
+      });
+      const found =
+        outcome.kind === 'response' &&
+        outcome.httpStatusCode === 200 &&
+        outcome.contentType !== null &&
+        isInScope(outcome.finalUrl, this.rootUrl);
+      if (!found) continue;
+      this.markdownVariantsFound = true;
+      return outcome.finalUrl;
+    }
+    if (wasProbed) this.markdownProbeMisses += 1;
+    return null;
   }
 
   /**
@@ -993,6 +1002,27 @@ export function markdownVariantUrlFor(pageUrl: string): string | null {
   const lastSegment = url.pathname.split('/').pop() ?? '';
   url.pathname = lastSegment === '' ? `${url.pathname.replace(/\/$/, '')}/index.html.md` : `${url.pathname}.md`;
   return url.href;
+}
+
+/**
+ * The names a homepage's markdown goes by, likeliest first: `index.html.md` as the
+ * llms.txt proposal has it, `index.md` as sites built from markdown serve it, and on a
+ * site that routes on the URL fragment `README.md`, the file its root route shows (Docsify).
+ */
+export function homepageMarkdownVariantUrlsFor(
+  homepageUrl: string,
+  { routesOnUrlFragment = false } = {},
+): string[] {
+  const url = new URL(homepageUrl);
+  if (url.search !== '' || url.pathname.endsWith('.md')) return [];
+  url.hash = '';
+  // The homepage is a directory (`/docs/`, `/docs`) or a file in one (`/docs/index.html`).
+  const directory = url.pathname.replace(/\/[^/]*\.[^/]*$/, '').replace(/\/+$/, '');
+  const fileNames = [...(routesOnUrlFragment ? ['README.md'] : []), 'index.html.md', 'index.md'];
+  return fileNames.map((fileName) => {
+    url.pathname = `${directory}/${fileName}`;
+    return url.href;
+  });
 }
 
 /** An llms.txt usually links .md variants; the page to crawl is the HTML they come from. */
