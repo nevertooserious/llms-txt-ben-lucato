@@ -45,11 +45,6 @@ export function VersionHistory({ view, onChanged }: VersionHistoryProps) {
           </div>
         )}
       </header>
-      <p className="hint">
-        {view.isPublishedVersionPinned
-          ? `Pinned to v${liveVersionNumber}. Checks keep recording new versions without making them live.`
-          : 'The newest version goes live automatically. Pin one to keep serving it.'}
-      </p>
       {errorMessage && (
         <p className="form-error" role="status">
           {errorMessage}

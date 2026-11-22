@@ -26,7 +26,6 @@ export type CheckSiteNowOutcome =
  * site is checked at most once per cooldown, counted from its last run of any kind, so
  * no one can keep a site under constant crawling.
  */
-// TODO blucato should probably only allow one refresh per day
 export async function checkSiteNow(
   siteId: string,
   dependencies: CheckSiteNowDependencies,

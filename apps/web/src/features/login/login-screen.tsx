@@ -16,32 +16,30 @@ export function LoginScreen({ signIn, nextPath }: LoginScreenProps) {
   return (
     <main className="login">
       <section className="login-pitch">
-        <span className="label">For any website · per llmstxt.org</span>
+        <span className="label">For any website</span>
         <h1 className="hero-title">
           An <em>llms.txt</em> for your site,
           <br />
           kept current.
         </h1>
         <p className="hero-lede">
-          Paste a URL. We crawl the site, read each page, and write an llms.txt you can host. Scheduled checks
-          rewrite it when the site changes.
+          Paste a URL and let us do the rest.
         </p>
         <ol className="login-points">
           <li>
-            <span className="label">01</span> Crawls the sitemap, navigation and links
+            <span className="label">01</span> Monitors your site for changes.
           </li>
           <li>
-            <span className="label">02</span> Writes sections by page type, checked against the spec
+            <span className="label">02</span> Hosts the file at a stable URL and keeps it up to date.
           </li>
           <li>
-            <span className="label">03</span> Hosts the file at a stable URL and keeps it up to date
+            <span className="label">03</span> Flexible input rules.
           </li>
         </ol>
       </section>
 
       <form className="login-card" action={submit}>
         <h2 className="cell-title">Sign in</h2>
-        <p className="hint">Use the username and password for this deployment.</p>
         <input type="hidden" name="next" value={nextPath} />
         <label className="login-field">
           <span className="label">Username</span>

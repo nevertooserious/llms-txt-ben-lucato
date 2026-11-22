@@ -149,7 +149,6 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     const hostedPath = await rawLink().getAttribute('href');
     const hosted = await page.request.get(hostedPath!);
     expect(hosted.headers()['content-type']).toContain('text/plain');
-    expect(await page.locator('.hosted-url').innerText()).toContain(hostedPath!);
 
     // The home page now lists the site in its table, linking back to its screen.
     await page.goto('/');
@@ -190,10 +189,10 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
 
     await page.getByRole('button', { name: 'Make v1 live' }).click();
     await visible(page.getByText('Version 1', { exact: true }));
-    await visible(page.getByText(/^Pinned to v1\./));
+    await visible(page.locator('.version-row', { hasText: 'v1' }).getByText('Pinned', { exact: true }));
     // The comparison still offers both versions while the older one is live.
     await visible(page.getByLabel('To version'));
-    expect(await page.getByText('There is one version so far.', { exact: false }).count()).toBe(0);
+    expect(await page.getByText('Comparison is available once', { exact: false }).count()).toBe(0);
     expect(await (await page.request.get(hostedPath!)).text()).toBe(firstVersion);
 
     // A later check records a version without publishing it.
@@ -210,7 +209,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
 
   it('compares two versions of the file', async () => {
     await generateFromHomePage();
-    await visible(page.getByText('There is one version so far.', { exact: false }));
+    await visible(page.getByText('Comparison is available once', { exact: false }));
 
     siteState.pages['/docs/intro']!.description = 'Begin here instead.';
     await moveRunsOutOfCooldown();

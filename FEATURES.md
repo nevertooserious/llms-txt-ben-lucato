@@ -40,3 +40,7 @@ Questions:
 - what would you build with more time?
 - how to handle resilience on crawl 5xx?
 - talk about reconciliation safety gate - we don't want to zero an llms.txt if the site is down
+- describe hack with users - they're not actually persisted in the DB. which means site info persisted in browser storage
+- talk about how we could implement rate-limiting for a user, or for processing of a site
+- talk about how site monitoring continues indefinitely, and what we could do about that
+- talk about how we should limit re-checks to a certain minimum interval, to prevent misuse
