@@ -96,8 +96,9 @@ function withoutLargeDeepFamilies(pages: readonly GeneratorPage[]): GeneratorPag
 const LOCALE_SEGMENT = /^[a-z]{2}(?:[-_][a-z]{2})?$/;
 
 /**
- * `/guide`, `/guide/`, `/guide.html`, `/guide.md` and `/guide/index.html` are one page when
- * their content is the same. Different content at such URLs stays separate.
+ * `/guide`, `/guide/`, `/guide.html`, `/guide.md`, `/guide/index.html` and `/guide?tab=2`
+ * are one page when their content is the same. Different content at such URLs stays
+ * separate, so a page the query string selects (`/article?id=7`) is still its own page.
  */
 function urlVariantKey(page: GeneratorPage): string {
   const url = new URL(page.record.normalisedUrl);
@@ -106,10 +107,10 @@ function urlVariantKey(page: GeneratorPage): string {
     .replace(/\.md$/i, '')
     .replace(/\.html?$/i, '')
     .replace(/\/index$/i, '');
-  return JSON.stringify([url.origin, path, url.search, page.record.contentDigest]);
+  return JSON.stringify([url.origin, path, page.record.contentDigest]);
 }
 
-/** The URL the page declares as canonical wins, then one with a markdown version. */
+/** The URL the page declares as canonical wins, then one without a query string, then one with a markdown version. */
 function keepOnePerUrlVariant(pages: readonly GeneratorPage[]): GeneratorPage[] {
   const byVariantKey = new Map<string, GeneratorPage>();
   for (const page of pages) {
@@ -124,6 +125,8 @@ function keepOnePerUrlVariant(pages: readonly GeneratorPage[]): GeneratorPage[] 
 function isBetterUrlVariant(candidate: GeneratorPage, current: GeneratorPage): boolean {
   const candidateIsCanonical = declaresItselfCanonical(candidate);
   if (candidateIsCanonical !== declaresItselfCanonical(current)) return candidateIsCanonical;
+  const candidateHasQuery = new URL(candidate.record.normalisedUrl).search !== '';
+  if (candidateHasQuery !== (new URL(current.record.normalisedUrl).search !== '')) return !candidateHasQuery;
   const candidateHasMarkdown = candidate.markdownVariantUrl !== null;
   if (candidateHasMarkdown !== (current.markdownVariantUrl !== null)) return candidateHasMarkdown;
   return compareText(candidate.record.normalisedUrl, current.record.normalisedUrl) < 0;

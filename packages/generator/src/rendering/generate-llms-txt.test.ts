@@ -361,6 +361,24 @@ describe('generateLlmsTxt', () => {
     expect(Object.values(sections(llmsTxt)).flat()).toEqual([`${ORIGIN}/guide.md`]);
   });
 
+  it('lists a page once when query strings serve the same content, at the URL without one', () => {
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/play?q=11', { contentDigest: 'play' }),
+        page('/play', { contentDigest: 'play' }),
+        page('/play?ts=next', { contentDigest: 'play' }),
+        page('/article?id=7', { contentDigest: 'seven' }),
+        page('/article?id=8', { contentDigest: 'eight' }),
+      ],
+    });
+    expect(Object.values(sections(llmsTxt)).flat().sort()).toEqual([
+      `${ORIGIN}/article?id=7`,
+      `${ORIGIN}/article?id=8`,
+      `${ORIGIN}/play`,
+    ]);
+  });
+
   it('keeps pages at similar URLs when their content differs', () => {
     const llmsTxt = generate({
       pages: [homepage, page('/guide', { contentDigest: 'one' }), page('/guide.html', { contentDigest: 'two' })],
