@@ -129,6 +129,19 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     expect(refused).toEqual({ status: 401, challenge: null });
   });
 
+  it('opens the API docs from the nav, only when signed in', async () => {
+    await page.getByRole('link', { name: 'API docs' }).click();
+    await page.waitForURL('/api-docs');
+    await visible(page.getByRole('heading', { name: /llms\.txt generator API/ }), 30_000);
+    await visible(page.locator('.opblock-summary-path', { hasText: '/api/sites/{publicSlug}/pages' }).first());
+
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.waitForURL('/login');
+    expect(await page.getByRole('link', { name: 'API docs' }).count()).toBe(0);
+    await page.goto('/api-docs');
+    await page.waitForURL('/login?next=%2Fapi-docs');
+  });
+
   it('generates an llms.txt for a new site', async () => {
     await generateFromHomePage();
 
