@@ -48,7 +48,7 @@ export {
   type SiteForRun,
   type SiteOverview,
 } from './repositories/sites';
-export { loadExcludedUrlPrefixes, replaceExcludedPages, replaceExcludedUrlPrefixes } from './repositories/page-exclusions';
+export { loadExcludedUrlPrefixes, replaceExcludedPages, replaceExcludedUrlPrefixes, replaceKeptPages } from './repositories/page-exclusions';
 export { scheduleSiteMonitoring } from './repositories/monitor-schedule';
 export {
   loadGeneratorPages,

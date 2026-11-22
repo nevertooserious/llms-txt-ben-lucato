@@ -1,34 +1,52 @@
 import {
   ASSESSED_PAGE_TYPES,
   PAGE_EXCLUSION_REASONS,
-  PAGE_LISTING_VALUES,
+  PAGE_SCOPES,
   type AssessedPageType,
   type PageAssessment,
   type PageExclusionReason,
   type PageListingValue,
+  type PageScope,
 } from '@llms-txt/contracts';
 import { normaliseForComparison } from '../text/normalise-text';
-import { LlmOutputRejectedError, MAXIMUM_SITE_NOTES, type GeneratedSiteSummary } from './llm-client';
+import {
+  ASSISTANT_VALUES,
+  LlmOutputRejectedError,
+  MAXIMUM_SITE_NOTES,
+  type AssistantValue,
+  type GeneratedSiteSummary,
+} from './llm-client';
 
 // What the generator accepts back from the LLM: every answer is checked against the
 // contract and forced to plain single lines before anything is stored or rendered.
 
+const LISTING_VALUE_BY_ASSISTANT_VALUE: Record<AssistantValue, PageListingValue> = {
+  high: 'primary',
+  some: 'optional',
+  none: 'exclude',
+};
+
+/** The model answers whether a page is useful and how broad it is; the listing follows from that here. */
 export function parsePageAssessment(responseText: string): PageAssessment {
   const parsed = parseJsonObject(responseText);
-  const listingValue = parsed.listing_value as PageListingValue;
+  const assistantValue = parsed.assistant_value as AssistantValue;
+  const scope = parsed.scope as PageScope;
   const pageType = parsed.page_type as AssessedPageType;
-  const exclusionReason = (parsed.exclusion_reason ?? null) as PageExclusionReason | null;
-  if (!PAGE_LISTING_VALUES.includes(listingValue)) throw new LlmOutputRejectedError('unknown listing_value');
+  const statedReason = (parsed.exclusion_reason ?? null) as PageExclusionReason | null;
+  if (!ASSISTANT_VALUES.includes(assistantValue)) throw new LlmOutputRejectedError('unknown assistant_value');
+  if (!PAGE_SCOPES.includes(scope)) throw new LlmOutputRejectedError('unknown scope');
   if (!ASSESSED_PAGE_TYPES.includes(pageType)) throw new LlmOutputRejectedError('unknown page_type');
-  if (exclusionReason !== null && !PAGE_EXCLUSION_REASONS.includes(exclusionReason)) {
+  if (statedReason !== null && !PAGE_EXCLUSION_REASONS.includes(statedReason)) {
     throw new LlmOutputRejectedError('unknown exclusion_reason');
   }
-  if ((listingValue === 'exclude') !== (exclusionReason !== null)) {
-    throw new LlmOutputRejectedError('exclusion_reason does not match listing_value');
+  if (statedReason !== null && assistantValue !== 'none') {
+    throw new LlmOutputRejectedError('exclusion_reason on a page with value');
   }
+  const listingValue = LISTING_VALUE_BY_ASSISTANT_VALUE[assistantValue];
+  const exclusionReason = listingValue === 'exclude' ? (statedReason ?? 'not_useful_to_assistant') : null;
   const description = cleanGeneratedLine(parsed.description);
   if (description === '' && listingValue !== 'exclude') throw new LlmOutputRejectedError('empty description');
-  return { description, listingValue, exclusionReason, pageType };
+  return { description, listingValue, exclusionReason, scope, pageType };
 }
 
 export function parseSiteSummary(responseText: string): GeneratedSiteSummary {

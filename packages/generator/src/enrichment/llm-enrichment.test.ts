@@ -49,7 +49,7 @@ const withAssessment = (target: GeneratorPage, sourceHash = pageAssessmentSource
   const assessment: StoredPageAssessment = {
     description: 'Written.',
     listingValue: 'primary',
-    exclusionReason: null,
+    exclusionReason: null, scope: 'broad',
     pageType: 'docs',
     sourceHash,
   };
@@ -88,23 +88,46 @@ describe('siteSummarySourceHash', () => {
 
 describe('parsePageAssessment', () => {
   const answer = (fields: object) =>
-    JSON.stringify({ description: 'Install guide.', listing_value: 'primary', exclusion_reason: null, page_type: 'guide', ...fields });
+    JSON.stringify({
+      description: 'Install guide.',
+      assistant_value: 'high',
+      scope: 'broad',
+      exclusion_reason: null,
+      page_type: 'guide',
+      ...fields,
+    });
 
   it('reads a valid answer', () => {
-    expect(parsePageAssessment(answer({}))).toEqual({
+    expect(parsePageAssessment(answer({ scope: 'narrow' }))).toEqual({
       description: 'Install guide.',
       listingValue: 'primary',
       exclusionReason: null,
+      scope: 'narrow',
       pageType: 'guide',
+    });
+  });
+
+  it('lists a page of some value as optional', () => {
+    expect(parsePageAssessment(answer({ assistant_value: 'some' })).listingValue).toBe('optional');
+  });
+
+  it('excludes a page of no value, with the reason given or else as not useful', () => {
+    expect(parsePageAssessment(answer({ assistant_value: 'none' }))).toMatchObject({
+      listingValue: 'exclude',
+      exclusionReason: 'not_useful_to_assistant',
+    });
+    expect(parsePageAssessment(answer({ assistant_value: 'none', exclusion_reason: 'thin' }))).toMatchObject({
+      listingValue: 'exclude',
+      exclusionReason: 'thin',
     });
   });
 
   it.each([
     ['not JSON', 'nope'],
-    ['an unknown listing value', answer({ listing_value: 'maybe' })],
+    ['an unknown assistant value', answer({ assistant_value: 'maybe' })],
+    ['an unknown scope', answer({ scope: 'medium' })],
     ['the homepage type', answer({ page_type: 'home' })],
-    ['an exclusion with no reason', answer({ listing_value: 'exclude' })],
-    ['a reason on a kept page', answer({ exclusion_reason: 'thin' })],
+    ['a reason on a page with value', answer({ exclusion_reason: 'thin' })],
     ['an empty description', answer({ description: '  ' })],
   ])('rejects %s', (_name, responseText) => {
     expect(() => parsePageAssessment(responseText)).toThrow(LlmOutputRejectedError);

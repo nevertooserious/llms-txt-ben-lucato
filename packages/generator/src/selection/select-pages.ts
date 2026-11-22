@@ -1,4 +1,5 @@
 import type { GeneratorPage, PageOverride } from '@llms-txt/contracts';
+import { hasPathAbove, pagesCoveredByBroaderPage, pathKeyOf } from './broader-pages';
 import { listingCandidates } from './listing-candidates';
 import { homepageOf, isDocumentationType } from './page-kinds';
 import { withoutReferenceFamilies } from './reference-families';
@@ -20,12 +21,14 @@ export interface SelectedPage {
 
 /**
  * Takes the listing candidates, minus pages not assessed yet, pages the user excluded and
- * pages an assessment judged not to belong, and minus the rest of a folder most of whose pages are reference entries; keeps one page per canonical URL; drops pages that score too low; then
- * fills the sections in score order within the limits. Pages that score the same keep
- * the order of the site's navigation, then the order the crawl first saw links to them,
- * then of their URLs. A page beyond a limit is left
- * out: Optional holds pages that are secondary by nature, not the overflow. An
- * assessment's page type replaces the extractor's.
+ * pages an assessment judged not to belong, minus the rest of a folder most of whose pages
+ * are reference entries, and minus narrow pages that a listed broader page stands for;
+ * keeps one page per canonical URL; drops pages that score too low; then fills the
+ * sections in score order within the limits. Pages that score the same keep the order of
+ * the site's navigation, then the order the crawl first saw links to them, then of their
+ * URLs. A page beyond a limit is left out: Optional holds pages that are secondary by
+ * nature, not the overflow. An assessment's page type replaces the extractor's. A page
+ * the user keeps passes every one of these rules; only their exclusion removes it.
  */
 export function selectPages(
   pages: readonly GeneratorPage[],
@@ -33,17 +36,34 @@ export function selectPages(
   limits: SelectionLimits = DEFAULT_SELECTION_LIMITS,
 ): SelectedPage[] {
   const overridesByUrl = new Map(overrides.map((override) => [override.normalisedUrl, override]));
+  const isKept = (page: GeneratorPage) => overridesByUrl.get(page.record.normalisedUrl)?.isKept === true;
 
-  const candidates = withoutReferenceFamilies(
-    listingCandidates(pages).filter(
-      (page) =>
-        page.assessment !== null &&
-        page.assessment.listingValue !== 'exclude' &&
-        overridesByUrl.get(page.record.normalisedUrl)?.isExcluded !== true,
-    ),
-    pages,
+  const assessedCandidates = listingCandidates(pages).filter(
+    (page) =>
+      page.assessment !== null &&
+      (page.assessment.listingValue !== 'exclude' || isKept(page)) &&
+      overridesByUrl.get(page.record.normalisedUrl)?.isExcluded !== true,
   );
+  const outsideReferenceFamilies = new Set(withoutReferenceFamilies(assessedCandidates, pages));
+  const candidates = assessedCandidates.filter((page) => outsideReferenceFamilies.has(page) || isKept(page));
 
+  const coveredPages = new Set(pagesCoveredByBroaderPage(candidates).filter((page) => !isKept(page)));
+  const selected = fillSections(candidates.filter((page) => !coveredPages.has(page)), pages, overridesByUrl, limits);
+  // A limit can cut the broader page itself, and then nothing stands for what it covered.
+  const listedPaths = new Set(selected.map((entry) => pathKeyOf(entry.page)));
+  const uncoveredPages = [...coveredPages].filter((page) => !hasPathAbove(page, listedPaths));
+  if (uncoveredPages.length === 0) return selected;
+  for (const page of uncoveredPages) coveredPages.delete(page);
+  return fillSections(candidates.filter((page) => !coveredPages.has(page)), pages, overridesByUrl, limits);
+}
+
+function fillSections(
+  candidates: readonly GeneratorPage[],
+  pages: readonly GeneratorPage[],
+  overridesByUrl: ReadonlyMap<string, PageOverride>,
+  limits: SelectionLimits,
+): SelectedPage[] {
+  const isKept = (page: GeneratorPage) => overridesByUrl.get(page.record.normalisedUrl)?.isKept === true;
   const ranked = keepOnePerCanonicalUrl(candidates)
     .map((page) => ({ page, score: scorePage(page) }))
     .sort(
@@ -58,6 +78,7 @@ export function selectPages(
     ({ page, score }, rank) =>
       rank < limits.entriesListedWhateverTheirScore ||
       score >= limits.minimumScore ||
+      isKept(page) ||
       isDocumentationType(page.assessment?.pageType ?? page.record.pageType),
   );
   const homepage = homepageOf(pages);
@@ -94,7 +115,9 @@ export function selectPages(
   }
 
   return eligible.flatMap(({ page, score }) => {
-    const sectionName = sectionNameByUrl.get(page.record.normalisedUrl);
+    // A kept page is listed even past a section's limit.
+    const sectionName =
+      sectionNameByUrl.get(page.record.normalisedUrl) ?? (isKept(page) ? sectionNameOf(page, areaSectionNames, homepage) : undefined);
     if (sectionName === undefined) return [];
     return [
       {

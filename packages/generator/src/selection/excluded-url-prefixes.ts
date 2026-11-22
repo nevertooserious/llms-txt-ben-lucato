@@ -18,6 +18,7 @@ export function excludePagesUnderUrlPrefixes(
       normalisedUrl: record.normalisedUrl,
       descriptionOverride: overridesByUrl.get(record.normalisedUrl)?.descriptionOverride ?? null,
       isExcluded: true,
+      isKept: overridesByUrl.get(record.normalisedUrl)?.isKept ?? false,
     });
   }
   return [...overridesByUrl.values()];

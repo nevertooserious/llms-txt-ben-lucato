@@ -34,6 +34,29 @@ export async function replaceExcludedPages(
   );
 }
 
+/**
+ * Makes `keptUrls` the site's whole set of pages listed whatever the generator would
+ * decide. As with exclusions, a removed page keeps its choice for if it comes back.
+ */
+export async function replaceKeptPages(transaction: Transaction, siteId: string, keptUrls: readonly string[]): Promise<void> {
+  await transaction.query(
+    `insert into page_overrides (page_id, is_kept)
+     select pages.id, true from pages where pages.site_id = $1 and pages.normalised_url = any($2::text[])
+     on conflict (page_id) do update set is_kept = true, updated_at = now()
+       where not page_overrides.is_kept`,
+    [siteId, keptUrls],
+  );
+  await transaction.query(
+    `update page_overrides overrides
+        set is_kept = false, updated_at = now()
+       from pages
+      where pages.id = overrides.page_id and pages.site_id = $1
+        and overrides.is_kept and pages.removed_at is null
+        and pages.normalised_url <> all($2::text[])`,
+    [siteId, keptUrls],
+  );
+}
+
 /** The URL prefixes whose pages the user keeps out of the site's file, in order. */
 export async function loadExcludedUrlPrefixes(database: Queryable, siteId: string): Promise<string[]> {
   const result = await database.query<{ url_prefix: string }>(

@@ -1,28 +1,33 @@
-import { ASSESSED_PAGE_TYPES, PAGE_EXCLUSION_REASONS, PAGE_LISTING_VALUES } from '@llms-txt/contracts';
-import { MAXIMUM_SITE_NOTES, type LlmPrompt, type PageAssessmentInput, type SiteSummaryInput } from './llm-client';
+import { ASSESSED_PAGE_TYPES, PAGE_EXCLUSION_REASONS, PAGE_SCOPES } from '@llms-txt/contracts';
+import { ASSISTANT_VALUES, MAXIMUM_SITE_NOTES, type LlmPrompt, type PageAssessmentInput, type SiteSummaryInput } from './llm-client';
 
 // Raise a version when its prompt changes, so cached results are made again.
-export const PAGE_ASSESSMENT_PROMPT_VERSION = 2;
+export const PAGE_ASSESSMENT_PROMPT_VERSION = 3;
 export const SITE_SUMMARY_PROMPT_VERSION = 3;
 
 /** Bounds what one page can cost on a public app. Enough to judge what a page is. */
 const MAXIMUM_ASSESSED_CONTENT_LENGTH = 24_000;
 const MAXIMUM_SUMMARY_HOMEPAGE_CONTENT_LENGTH = 12_000;
 
-const PAGE_ASSESSMENT_SYSTEM_PROMPT = `You assess one web page for a site's llms.txt: a short index that tells an AI assistant what the site is and how to use it. It lists durable, structural pages, not the site's stream of content.
+const PAGE_ASSESSMENT_SYSTEM_PROMPT = `You assess one web page for a site's llms.txt: a short index an AI assistant reads to understand a site and find what it needs to answer questions or do work with what the site offers. A page earns an entry only if it is both useful to that assistant and general enough to be worth one. Answer those two questions separately.
 
-Choose listing_value:
-- primary: explains what the product or organisation is or how to use it. Documentation, API references, guides, getting started, product and feature pages, pricing, about, and top-level indexes such as the main blog or changelog page.
-- optional: useful but secondary, such as partners, careers or community. Use this whenever you are unsure.
-- exclude: only when the page clearly does not belong. Give exclusion_reason:
-  - error_page: a "not found", error, maintenance or access-denied page, even if it loaded normally
-  - utility: login, sign-up, cart, checkout, account, search results, thank-you, unsubscribe
-  - thin: a placeholder, "coming soon", or almost no content
-  - archive: a tag, category, author or date listing
-  - individual_content: one blog post, news item, press release, case study, changelog entry, event or episode
-  - reference_entry: documentation for one small item of a larger reference: a single configuration option, command-line flag, setting, error code or lint rule, or one function, class or constant of an API listing, usually titled with just the item's identifier (\`testTimeout\`, \`--watch\`, \`E0308\`, \`mergeMap\`). The reference's index page stands for these. This applies even though the page is documentation: choose exclude for such a page, not optional. A page covering a whole module, API, command, feature or topic is not an entry.
-  - duplicate: a copy of another page, such as a print version, or the site's homepage served at another address
-Set exclusion_reason to null unless listing_value is exclude.
+assistant_value: would this page help an AI assistant understand or correctly use what the site offers?
+- high: it explains what the product, project or organisation is, or how to use it. Documentation and API indexes, getting started, installation instructions, core concepts, product and feature overviews, pricing, about.
+- some: useful background an assistant would rarely need, such as community, support channels, licensing or a top-level blog or changelog. Use this when unsure between high and some, or unsure whether a page has any value.
+- none: written for a human to act on, or about the organisation's internal running, so an assistant gains nothing from it. Download pages that mainly list files or installers, including those for one platform; grant, job, membership, donation, sponsorship and volunteer information and applications; strategy, governance, board, minutes, annual reports and staff lists. Also every page that fits an exclusion_reason below.
+
+scope: how much of the site does this page speak for?
+- broad: the entry point to a major area: a documentation or tutorial index, a reference index, an overview of a product or feature.
+- narrow: one part of a larger area: a single tutorial chapter, one how-to, one module's reference, one platform's variant, or a FAQ for one programme. Judge this by the page's place in the site, even when the page is good documentation.
+
+exclusion_reason: null unless assistant_value is none. When it is none, give the reason that fits, or null if none does:
+- error_page: a "not found", error, maintenance or access-denied page, even if it loaded normally
+- utility: login, sign-up, cart, checkout, account, search results, thank-you, unsubscribe
+- thin: a placeholder, "coming soon", or almost no content
+- archive: a tag, category, author or date listing
+- individual_content: one blog post, news item, press release, case study, changelog entry, event or episode
+- reference_entry: documentation for one small item of a larger reference: a single configuration option, command-line flag, setting, error code or lint rule, or one function, class or constant of an API listing, usually titled with just the item's identifier (\`testTimeout\`, \`--watch\`, \`E0308\`, \`mergeMap\`). The reference's index page stands for these. A page covering a whole module, API, command, feature or topic is not an entry: it is narrow, with its own assistant_value.
+- duplicate: a copy of another page, such as a print version, or the site's homepage served at another address
 
 Choose page_type for what the page actually is. A guide under /resources is a guide. product is for something the site sells or offers to use, and pricing only for the prices or plans of that. A page about donating, fundraising, membership, sponsorship or grants is about.
 
@@ -50,11 +55,18 @@ const PAGE_ASSESSMENT_SCHEMA: Record<string, unknown> = {
   type: 'object',
   properties: {
     description: { type: 'string' },
-    listing_value: { type: 'string', enum: [...PAGE_LISTING_VALUES] },
-    exclusion_reason: { anyOf: [{ type: 'string', enum: [...PAGE_EXCLUSION_REASONS] }, { type: 'null' }] },
+    assistant_value: { type: 'string', enum: [...ASSISTANT_VALUES] },
+    scope: { type: 'string', enum: [...PAGE_SCOPES] },
+    // not_useful_to_assistant is what code records for `none` with no other reason.
+    exclusion_reason: {
+      anyOf: [
+        { type: 'string', enum: PAGE_EXCLUSION_REASONS.filter((reason) => reason !== 'not_useful_to_assistant') },
+        { type: 'null' },
+      ],
+    },
     page_type: { type: 'string', enum: [...ASSESSED_PAGE_TYPES] },
   },
-  required: ['description', 'listing_value', 'exclusion_reason', 'page_type'],
+  required: ['description', 'assistant_value', 'scope', 'exclusion_reason', 'page_type'],
   additionalProperties: false,
 };
 

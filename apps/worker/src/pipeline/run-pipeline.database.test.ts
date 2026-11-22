@@ -145,12 +145,12 @@ function fakeLlmClient() {
       calls.assessPage += 1;
       if (behaviour.failWith !== null) throw behaviour.failWith;
       if (input.url.endsWith('/gone')) {
-        return { description: '', listingValue: 'exclude', exclusionReason: 'error_page', pageType: 'other' };
+        return { description: '', listingValue: 'exclude', exclusionReason: 'error_page', scope: 'broad', pageType: 'other' };
       }
       if (input.url.includes('/blog/')) {
-        return { description: 'One post.', listingValue: 'exclude', exclusionReason: 'individual_content', pageType: 'blog' };
+        return { description: 'One post.', listingValue: 'exclude', exclusionReason: 'individual_content', scope: 'broad', pageType: 'blog' };
       }
-      return { description: `Assessed ${input.title}.`, listingValue: 'primary', exclusionReason: null, pageType: 'docs' };
+      return { description: `Assessed ${input.title}.`, listingValue: 'primary', exclusionReason: null, scope: 'broad', pageType: 'docs' };
     },
     async writeSiteSummary() {
       calls.writeSiteSummary += 1;

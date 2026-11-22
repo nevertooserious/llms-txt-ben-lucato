@@ -80,9 +80,9 @@ describe('replaceExcludedPages', () => {
     );
 
     await withTransaction(pool, (transaction) => replaceExcludedPages(transaction, site.id, [url]));
-    expect(await loadPageOverrides(pool, site.id)).toEqual([{ normalisedUrl: url, descriptionOverride: 'Our own words.', isExcluded: true }]);
+    expect(await loadPageOverrides(pool, site.id)).toEqual([{ normalisedUrl: url, descriptionOverride: 'Our own words.', isExcluded: true, isKept: false }]);
     await withTransaction(pool, (transaction) => replaceExcludedPages(transaction, site.id, []));
-    expect(await loadPageOverrides(pool, site.id)).toEqual([{ normalisedUrl: url, descriptionOverride: 'Our own words.', isExcluded: false }]);
+    expect(await loadPageOverrides(pool, site.id)).toEqual([{ normalisedUrl: url, descriptionOverride: 'Our own words.', isExcluded: false, isKept: false }]);
   });
 
   it("leaves another site's exclusions alone, even for the same URL", async () => {

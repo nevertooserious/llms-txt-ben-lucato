@@ -8,6 +8,10 @@ export interface SitePageView {
   isHomepage: boolean;
   /** The user ignores this page by itself. A page can also be ignored by a path: see excludedUrlPrefixes. */
   isExcluded: boolean;
+  /** The user lists this page even if the generator would leave it out. */
+  isKept: boolean;
+  /** The generator assessed this page, so keeping it can list it. */
+  canBeKept: boolean;
   /** The section the page is listed under with the saved choices, or null if it is not listed. */
   listedInSection: string | null;
 }
@@ -27,6 +31,8 @@ export interface PageExclusions {
   /** Pages ignored one by one. */
   excludedUrls: string[];
   excludedUrlPrefixes: string[];
+  /** Pages listed whatever the generator would decide. Left as they are when absent. */
+  keptUrls?: string[];
 }
 
 /** What saving the ignored pages and paths did to the file. */
