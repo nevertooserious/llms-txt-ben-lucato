@@ -17,12 +17,13 @@ import { HttpFetcher, type FetchOutcome, type FetchRequest } from '../network/ht
 import { cleanUrlForFetch, isInScope, isOnRelatedHost, normaliseUrl } from '../discovery/normalise-url';
 import { parseSitemap } from '../discovery/parse-sitemap';
 import { computeLinkGraphSignals } from './link-graph';
-import { readPageSignals, type PageSignals } from '../page-signals/read-page-signals';
+import { readPageSignals, readVisibleTextBlocks, type PageSignals } from '../page-signals/read-page-signals';
 import {
+  fragmentRouteLinksOf,
   looksLikeJavaScriptShell,
   renderedPageIsBetter,
   renderingAddsContent,
-  routesOnUrlFragment,
+  showsAnotherPage,
 } from '../page-signals/render-decision';
 import {
   parseRobotsTxt,
@@ -114,6 +115,8 @@ const MARKDOWN_PROBES_BEFORE_GIVING_UP = 3;
 const MAX_RELATED_HOST_PAGES = 15;
 /** Most machine-readable files (llms-full.txt, a section's llms.txt, an OpenAPI description) requested per crawl. */
 const MAX_MACHINE_READABLE_RESOURCE_CHECKS = 20;
+/** Routes rendered to confirm that a homepage linking routes of itself is a hash-routed site. */
+const FRAGMENT_ROUTES_OPENED_TO_CONFIRM = 2;
 /** Enough to learn that such a file is there; its content is not read. */
 const MACHINE_READABLE_RESOURCE_BYTES_READ = 64 * 1024;
 
@@ -590,7 +593,7 @@ class SiteCrawl {
     if (isSuccess) {
       const signals = readPageSignals(page.html, page.finalUrl, page.headers);
       if (entry.crawlDepth === 0 && page.fetchMethod === 'headless_browser' && !this.routesOnUrlFragment) {
-        this.routesOnUrlFragment = routesOnUrlFragment(signals, this.rootUrl);
+        this.routesOnUrlFragment = await this.homepageRoutesOnUrlFragment(page, signals);
       }
       if (this.followMetaRefresh(entry, finalUrl, signals)) return;
       hasNoindexDirective = signals.isNoindex;
@@ -746,6 +749,23 @@ class SiteCrawl {
       html: outcome.html,
       fetchMethod: 'headless_browser',
     };
+  }
+
+  /**
+   * Whether the rendered homepage is a site that routes on the URL fragment: it links
+   * mostly routes of itself, and the first of them, opened, show other pages than it does.
+   */
+  private async homepageRoutesOnUrlFragment(homepage: FetchedPage, signals: PageSignals): Promise<boolean> {
+    const routeLinks = fragmentRouteLinksOf(signals, this.rootUrl).slice(0, FRAGMENT_ROUTES_OPENED_TO_CONFIRM);
+    if (routeLinks.length === 0) return false;
+    const homepageText = readVisibleTextBlocks(homepage.html);
+    for (const routeLink of routeLinks) {
+      const routeUrl = cleanUrlForFetch(routeLink, { keepRouteFragment: true });
+      if (routeUrl === null || !this.isAllowedByRobots(routeUrl)) return false;
+      const route = await this.renderPage(routeUrl, { recordFailure: false });
+      if (route === null || !showsAnotherPage(homepageText, readVisibleTextBlocks(route.html))) return false;
+    }
+    return true;
   }
 
   /**

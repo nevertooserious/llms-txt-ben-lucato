@@ -52,27 +52,64 @@ export function renderingAddsContent(
   return textGrew || linksGrew;
 }
 
-/** A site routes on the URL fragment when its homepage links at least this many routes of itself... */
+/** A site may route on the URL fragment when its homepage links at least this many routes of itself... */
 const MIN_FRAGMENT_ROUTES = 3;
 /** ...and at least this many of them for each other page of the site it links. */
 const FRAGMENT_ROUTES_PER_PATH_PAGE = 2;
+/** Two renders that share this much of their text, by length, show the same page. */
+const SAME_PAGE_SHARED_TEXT_SHARE = 0.9;
 
 /**
- * Whether the rendered homepage is a single page that shows a route named in the URL
- * fragment: most of what it links are routes of itself (`#/install`, `#!/guide`). Strict
- * on purpose. A site wrongly taken for one would have each such link crawled as a page;
- * one that is missed fails as it did before, with a message that says why.
+ * The routes of itself that a rendered homepage links (`#/install`, `#!/guide`), one URL
+ * for each, when they are most of what it links: the sign of a single page that shows a
+ * route named in the URL fragment. Empty otherwise.
+ *
+ * Only a sign. An API reference built with Swagger UI links `#/Pets/addPet` to open a
+ * section of the one page, so the crawl also opens a route or two and asks
+ * `showsAnotherPage`. Strict on purpose: a site wrongly taken for hash-routed would have
+ * each such link crawled as a page, while one that is missed fails as it did before, with
+ * a message that says why.
  */
-export function routesOnUrlFragment(renderedHomepage: PageSignals, rootUrl: string): boolean {
-  const routes = new Set<string>();
+export function fragmentRouteLinksOf(renderedHomepage: PageSignals, rootUrl: string): string[] {
+  const routeLinks = new Map<string, string>();
   const otherPages = new Set<string>();
   for (const linkUrl of renderedHomepage.linkUrls) {
     const url = normaliseUrl(linkUrl);
     if (url === null || !isInScope(url, rootUrl)) continue;
-    if (url !== rootUrl) otherPages.add(url);
-    else if (fragmentRoutePathOf(new URL(linkUrl)) !== '') routes.add(fragmentRoutePathOf(new URL(linkUrl)));
+    if (url !== rootUrl) {
+      otherPages.add(url);
+      continue;
+    }
+    const routePath = fragmentRoutePathOf(new URL(linkUrl));
+    if (routePath !== '' && !routeLinks.has(routePath)) routeLinks.set(routePath, linkUrl);
   }
-  return routes.size >= MIN_FRAGMENT_ROUTES && routes.size >= otherPages.size * FRAGMENT_ROUTES_PER_PATH_PAGE;
+  const isMostlyRoutes =
+    routeLinks.size >= MIN_FRAGMENT_ROUTES && routeLinks.size >= otherPages.size * FRAGMENT_ROUTES_PER_PATH_PAGE;
+  return isMostlyRoutes ? [...routeLinks.values()] : [];
+}
+
+/**
+ * Whether the same document, opened at a route, shows another page than its homepage:
+ * each holds text the other lacks. Opening a section of one long page (Swagger UI) adds
+ * a little to text that is otherwise all still there.
+ */
+export function showsAnotherPage(homepageTextBlocks: readonly string[], routeTextBlocks: readonly string[]): boolean {
+  return (
+    sharedTextShare(homepageTextBlocks, routeTextBlocks) < SAME_PAGE_SHARED_TEXT_SHARE &&
+    sharedTextShare(routeTextBlocks, homepageTextBlocks) < SAME_PAGE_SHARED_TEXT_SHARE
+  );
+}
+
+/** How much of `blocks`, by length, is also in `otherBlocks`. 1 for no text at all. */
+function sharedTextShare(blocks: readonly string[], otherBlocks: readonly string[]): number {
+  const others = new Set(otherBlocks);
+  let totalLength = 0;
+  let sharedLength = 0;
+  for (const block of blocks) {
+    totalLength += block.length;
+    if (others.has(block)) sharedLength += block.length;
+  }
+  return totalLength === 0 ? 1 : sharedLength / totalLength;
 }
 
 /** The distinct pages of the site a page links, by normalised URL. */

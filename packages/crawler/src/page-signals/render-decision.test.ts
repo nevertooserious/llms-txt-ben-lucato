@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { PageSignals } from './read-page-signals';
 import {
+  fragmentRouteLinksOf,
   looksLikeJavaScriptShell,
   renderedPageIsBetter,
   renderingAddsContent,
-  routesOnUrlFragment,
+  showsAnotherPage,
 } from './render-decision';
 
 const signals = (overrides: Partial<PageSignals>): PageSignals => ({
@@ -89,29 +90,55 @@ describe('renderedPageIsBetter', () => {
   });
 });
 
-describe('routesOnUrlFragment', () => {
+describe('fragmentRouteLinksOf', () => {
   const rootUrl = 'https://example.com';
   const routes = (...names: string[]) => names.map((name) => `https://example.com/#/${name}`);
 
-  it('is true when the homepage links mostly routes of itself', () => {
+  it('gives the routes when the homepage links mostly routes of itself', () => {
     const linkUrls = [...routes('install', 'configure', 'guide'), 'https://example.com/#/', 'https://github.com/example'];
-    expect(routesOnUrlFragment(signals({ linkUrls }), rootUrl)).toBe(true);
+    expect(fragmentRouteLinksOf(signals({ linkUrls }), rootUrl)).toEqual(routes('install', 'configure', 'guide'));
   });
 
   it('counts a route once, however it is written', () => {
     const linkUrls = ['https://example.com/#/install', 'https://example.com/#/install?id=usage', 'https://example.com/#!/install/'];
-    expect(routesOnUrlFragment(signals({ linkUrls }), rootUrl)).toBe(false);
+    expect(fragmentRouteLinksOf(signals({ linkUrls }), rootUrl)).toEqual([]);
   });
 
-  it('is false for a few route-like links on a site with pages of its own', () => {
+  it('gives none for a few route-like links on a site with pages of its own', () => {
     const linkUrls = [...routes('tab-1', 'tab-2', 'tab-3'), 'https://example.com/docs', 'https://example.com/pricing'];
-    expect(routesOnUrlFragment(signals({ linkUrls }), rootUrl)).toBe(false);
+    expect(fragmentRouteLinksOf(signals({ linkUrls }), rootUrl)).toEqual([]);
   });
 
-  it('is false for anchors, and for routes of another page', () => {
+  it('gives none for anchors, or for routes of another page', () => {
     const anchors = ['https://example.com/#install', 'https://example.com/#usage', 'https://example.com/#faq'];
-    expect(routesOnUrlFragment(signals({ linkUrls: anchors }), rootUrl)).toBe(false);
+    expect(fragmentRouteLinksOf(signals({ linkUrls: anchors }), rootUrl)).toEqual([]);
     const elsewhere = ['a', 'b', 'c'].map((name) => `https://example.com/app#/${name}`);
-    expect(routesOnUrlFragment(signals({ linkUrls: elsewhere }), rootUrl)).toBe(false);
+    expect(fragmentRouteLinksOf(signals({ linkUrls: elsewhere }), rootUrl)).toEqual([]);
+  });
+});
+
+describe('showsAnotherPage', () => {
+  const sidebar = ['Home', 'Install', 'Configure', 'Guide'];
+  const homepage = [...sidebar, 'Hashbang Docs', 'Documentation for a tool whose site routes on the URL fragment.'];
+
+  it('is true when the route replaces the content and keeps the menu', () => {
+    const route = [...sidebar, 'Install', 'Download the binary and put it on your path. Then run it once to write a config file.'];
+    expect(showsAnotherPage(homepage, route)).toBe(true);
+  });
+
+  it('is false when the route only opens a section of the same page, as Swagger UI does', () => {
+    const operations = Array.from({ length: 30 }, (_unused, index) => `GET /things/${index} Returns thing number ${index}`);
+    const opened = [...operations, 'Parameters', 'No parameters', 'Responses', '200'];
+    expect(showsAnotherPage(operations, opened)).toBe(false);
+    expect(showsAnotherPage(operations, operations)).toBe(false);
+  });
+
+  it('is false when the route shows only a part of what the homepage shows', () => {
+    expect(showsAnotherPage(homepage, homepage.slice(0, 5))).toBe(false);
+  });
+
+  it('is false when a render came back empty', () => {
+    expect(showsAnotherPage(homepage, [])).toBe(false);
+    expect(showsAnotherPage([], homepage)).toBe(false);
   });
 });

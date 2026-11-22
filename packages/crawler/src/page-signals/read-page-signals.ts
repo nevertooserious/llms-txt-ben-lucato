@@ -105,6 +105,26 @@ export function readPageSignals(html: string, pageUrl: string, headers: Record<s
   };
 }
 
+/**
+ * Each run of visible text in <body>, whitespace collapsed, in page order. Enough to
+ * tell whether two renders of one document show the same page.
+ */
+export function readVisibleTextBlocks(html: string): string[] {
+  const $ = load(html);
+  $('script, style, noscript, template').remove();
+  const blocks: string[] = [];
+  $('body')
+    .find('*')
+    .addBack()
+    .contents()
+    .each((_index, node) => {
+      if (node.type !== 'text') return;
+      const text = node.data.replace(/\s+/g, ' ').trim();
+      if (text !== '') blocks.push(text);
+    });
+  return blocks;
+}
+
 /** The target of the first `<meta http-equiv="refresh" content="0; url=/new">` that redirects. */
 function readMetaRefreshUrl(metaAttributes: Array<Record<string, string> | undefined>, baseUrl: string): string | null {
   for (const attributes of metaAttributes) {
