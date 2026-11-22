@@ -125,7 +125,7 @@ export class PipelineHarness {
   async submit(site: FixtureSite, rootPath = ''): Promise<SubmittedSite> {
     const publicSlug = randomUUID();
     const { siteId, pipelineRunId } = await withTransaction(this.databasePool, async (transaction) => {
-      const siteId = await createSite(transaction, { rootUrl: `${site.origin}${rootPath}`, publicSlug, creatorIpHash: null });
+      const siteId = await createSite(transaction, { rootUrl: `${site.origin}${rootPath}`, publicSlug });
       const run = await startPipelineRun(transaction, this.queue, { siteId, triggeredBy: 'submission' });
       if (run.kind !== 'started') throw new Error('the site already had an active run');
       return { siteId, pipelineRunId: run.pipelineRunId };

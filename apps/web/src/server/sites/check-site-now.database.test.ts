@@ -22,7 +22,6 @@ const newSite = () =>
   createSite(databasePool, {
     rootUrl: `https://${crypto.randomUUID()}.example`,
     publicSlug: crypto.randomUUID(),
-    creatorIpHash: null,
   });
 
 const finishRun = (pipelineRunId: string, ageSeconds: number) =>

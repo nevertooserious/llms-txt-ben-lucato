@@ -1,6 +1,5 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import {
-  countRecentSitesFromIp,
   createSite,
   enableSiteMonitoring,
   startPipelineRun,
@@ -14,12 +13,10 @@ import { normaliseSubmittedUrl } from './normalise-submitted-url';
 export interface SubmitSiteDependencies {
   databasePool: DatabasePool;
   queue: PipelineRunQueue;
-  submissionsPerIpPerHour: number;
 }
 
 export interface SubmitSiteRequest {
   submittedUrl: string;
-  clientIp: string | null;
 }
 
 export type SubmitSiteOutcome =
@@ -28,15 +25,12 @@ export type SubmitSiteOutcome =
       publicSlug: string;
       pipelineRunId: string;
     }
-  | { kind: 'invalid_url' }
-  | { kind: 'rate_limited' };
-
-const ONE_HOUR_SECONDS = 3600;
+  | { kind: 'invalid_url' };
 
 /**
- * A URL submission: rate-limit by IP, then in one transaction create a new site with
- * monitoring on and start its first run. Each submission is an independent site, even
- * for a URL submitted before by another user.
+ * A URL submission: in one transaction create a new site with monitoring on and start
+ * its first run. Each submission is an independent site, even for a URL submitted before
+ * by another user.
  */
 export async function submitSite(
   request: SubmitSiteRequest,
@@ -45,15 +39,9 @@ export async function submitSite(
   const rootUrl = normaliseSubmittedUrl(request.submittedUrl);
   if (rootUrl === null) return { kind: 'invalid_url' };
 
-  const creatorIpHash = request.clientIp === null ? null : createHash('sha256').update(request.clientIp).digest('hex');
-  if (creatorIpHash !== null) {
-    const recent = await countRecentSitesFromIp(dependencies.databasePool, creatorIpHash, ONE_HOUR_SECONDS);
-    if (recent >= dependencies.submissionsPerIpPerHour) return { kind: 'rate_limited' };
-  }
-
   const publicSlug = randomBytes(12).toString('base64url');
   return withTransaction(dependencies.databasePool, async (transaction) => {
-    const siteId = await createSite(transaction, { rootUrl, publicSlug, creatorIpHash });
+    const siteId = await createSite(transaction, { rootUrl, publicSlug });
     await enableSiteMonitoring(transaction, { siteId, durationSeconds: MONITORING_DURATION_SECONDS });
     const run = await startPipelineRun(transaction, dependencies.queue, { siteId, triggeredBy: 'submission' });
     // The site was created in this transaction, so nothing else can have a run on it.

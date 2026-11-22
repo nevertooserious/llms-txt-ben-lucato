@@ -23,7 +23,6 @@ async function dueMonitoredSite(): Promise<string> {
   const siteId = await createSite(databasePool, {
     rootUrl: `https://${randomUUID()}.example`,
     publicSlug: randomUUID(),
-    creatorIpHash: null,
   });
   await databasePool.query(
     `update sites

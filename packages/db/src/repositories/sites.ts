@@ -4,17 +4,15 @@ import type { Queryable, Transaction } from '../connection/transaction';
 export interface NewSite {
   rootUrl: string;
   publicSlug: string;
-  /** SHA-256 of the submitter's IP, for the per-IP rate limit. */
-  creatorIpHash: string | null;
 }
 
 /** A new, independent site: each submission of a URL gets its own. */
 export async function createSite(database: Queryable, site: NewSite): Promise<string> {
   const result = await database.query<{ id: string }>(
-    `insert into sites (root_url, public_slug, creator_ip_hash)
-     values ($1, $2, $3)
+    `insert into sites (root_url, public_slug)
+     values ($1, $2)
      returning id`,
-    [site.rootUrl, site.publicSlug, site.creatorIpHash],
+    [site.rootUrl, site.publicSlug],
   );
   return result.rows[0]!.id;
 }
@@ -32,20 +30,6 @@ export async function loadSiteIdBySlug(database: Queryable, publicSlug: string):
 export async function deleteSite(database: Queryable, siteId: string): Promise<boolean> {
   const deleted = await database.query('delete from sites where id = $1', [siteId]);
   return deleted.rowCount === 1;
-}
-
-/** Sites created from one IP in the last `withinSeconds`, for the submission rate limit. */
-export async function countRecentSitesFromIp(
-  database: Queryable,
-  creatorIpHash: string,
-  withinSeconds: number,
-): Promise<number> {
-  const result = await database.query<{ count: number }>(
-    `select count(*)::integer as count from sites
-      where creator_ip_hash = $1 and created_at > now() - make_interval(secs => $2)`,
-    [creatorIpHash, withinSeconds],
-  );
-  return result.rows[0]?.count ?? 0;
 }
 
 /** The published llms.txt served at /w/{publicSlug}/llms.txt, or null if there is none yet. */

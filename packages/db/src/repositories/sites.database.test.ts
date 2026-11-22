@@ -14,7 +14,6 @@ async function siteWithMonitoring(options: { nextCheck: string; monitoringUntil:
   const siteId = await createSite(pool, {
     rootUrl: `https://${randomUUID()}.example`,
     publicSlug: randomUUID(),
-    creatorIpHash: null,
   });
   await pool.query(
     `update sites
@@ -37,8 +36,8 @@ async function nextCheckIsInFuture(siteId: string): Promise<boolean | null> {
 describe('createSite', () => {
   it('makes an independent site for each submission of the same root URL', async () => {
     const rootUrl = `https://${randomUUID()}.example`;
-    const first = await createSite(pool, { rootUrl, publicSlug: randomUUID(), creatorIpHash: null });
-    const second = await createSite(pool, { rootUrl, publicSlug: randomUUID(), creatorIpHash: null });
+    const first = await createSite(pool, { rootUrl, publicSlug: randomUUID() });
+    const second = await createSite(pool, { rootUrl, publicSlug: randomUUID() });
     expect(second).not.toBe(first);
   });
 });

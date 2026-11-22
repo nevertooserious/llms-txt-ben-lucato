@@ -15,7 +15,7 @@ afterAll(() => pool.end());
 const DAY_MS = 24 * 3600 * 1000;
 
 const newSite = () =>
-  createSite(pool, { rootUrl: `https://${randomUUID()}.example`, publicSlug: randomUUID(), creatorIpHash: null });
+  createSite(pool, { rootUrl: `https://${randomUUID()}.example`, publicSlug: randomUUID() });
 const enable = (siteId: string, durationSeconds = 30 * 86400) =>
   withTransaction(pool, (transaction) => enableSiteMonitoring(transaction, { siteId, durationSeconds }));
 const publish = (siteId: string) =>

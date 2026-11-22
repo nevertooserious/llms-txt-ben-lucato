@@ -65,7 +65,7 @@ npm run dev:web                          # http://localhost:3000, login user1 / 
 npm run dev:worker
 ```
 
-Each process reads its configuration once at startup and stops with a message naming any missing or malformed variable. `DATABASE_URL` is required, and the worker needs `ANTHROPIC_API_KEY` unless `LLM_CLIENT=stub`; `LOG_LEVEL` (`debug`, `info`, `warn`, `error`), `PIPELINE_RUN_CONCURRENCY` and `CRAWL_PAGE_BUDGET` (worker) and `SUBMISSIONS_PER_IP_PER_HOUR`, `TRUSTED_PROXY_HOPS`, `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` (web) are optional. Logs are one JSON object per line; a run's lines carry its `pipelineRunId`.
+Each process reads its configuration once at startup and stops with a message naming any missing or malformed variable. `DATABASE_URL` is required, and the worker needs `ANTHROPIC_API_KEY` unless `LLM_CLIENT=stub`; `LOG_LEVEL` (`debug`, `info`, `warn`, `error`), `PIPELINE_RUN_CONCURRENCY` and `CRAWL_PAGE_BUDGET` (worker) and `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` (web) are optional. Logs are one JSON object per line; a run's lines carry its `pipelineRunId`.
 
 ## Serving llms.txt from your own domain
 
@@ -121,7 +121,7 @@ curl -s -u user1:pass1 localhost:3000/api/sites/<slug>/runs/<runId>
 
 A run's `status` is `queued`, `running`, `succeeded`, `unchanged` or `failed`. While it is active, the response has a `Retry-After` header. Re-triggering during a run returns that run, and re-triggering within five minutes of the last run answers 429 with `Retry-After`.
 
-Errors are JSON with a message and a stable code, such as `{"error": "This site has no such run.", "code": "run_not_found"}`. The codes are `unauthorized`, `invalid_request`, `invalid_url`, `invalid_version_number`, `site_not_found`, `run_not_found`, `version_not_found`, `run_in_progress`, `run_produced_no_version`, `rate_limited`, `cooldown_active` and `internal_error`.
+Errors are JSON with a message and a stable code, such as `{"error": "This site has no such run.", "code": "run_not_found"}`. The codes are `unauthorized`, `invalid_request`, `invalid_url`, `invalid_version_number`, `site_not_found`, `run_not_found`, `version_not_found`, `run_in_progress`, `run_produced_no_version`, `cooldown_active` and `internal_error`.
 
 ## Examples
 

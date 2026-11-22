@@ -1,5 +1,4 @@
 import { apiError, hostedLlmsTxtPath, runApiPath } from '@/server/http/api-response';
-import { clientIpFrom } from '@/server/http/client-ip';
 import { submitSite } from '@/server/sites/submit-site';
 import { webServices } from '@/server/composition/web-services';
 
@@ -15,18 +14,12 @@ export async function POST(request: Request): Promise<Response> {
   const services = webServices();
   try {
     const outcome = await submitSite(
-      { submittedUrl, clientIp: clientIpFrom(request.headers, services.config.trustedProxyHops) },
-      {
-        databasePool: services.databasePool,
-        queue: await services.queue(),
-        submissionsPerIpPerHour: services.config.submissionsPerIpPerHour,
-      },
+      { submittedUrl },
+      { databasePool: services.databasePool, queue: await services.queue() },
     );
     switch (outcome.kind) {
       case 'invalid_url':
         return apiError(400, 'invalid_url', 'That is not an http or https URL.');
-      case 'rate_limited':
-        return apiError(429, 'rate_limited', 'Too many submissions from this address. Try again later.');
       case 'submitted': {
         const runUrl = runApiPath(outcome.publicSlug, outcome.pipelineRunId);
         return Response.json(
