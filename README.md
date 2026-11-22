@@ -94,6 +94,8 @@ The last one is for Vercel, in `vercel.json`. Use a temporary redirect, so clien
 
 Every endpoint uses HTTP Basic auth except the live file, which stays public so sites can proxy to it. The web app uses the same login: a signed-out visitor lands on `/login`, and signing in there sets a cookie that lasts 30 days. The default is `user1` / `pass1`. Set `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` on any deployment, because the default is public.
 
+Signed in, "API docs" in the header opens Swagger UI at `/api-docs`, where every endpoint can be tried. The OpenAPI 3.1 description it reads is at `/api/openapi.json`, behind the same login.
+
 | Action | Request |
 |---|---|
 | Submit a site | `POST /api/sites` with `{"url": "https://example.com"}` |

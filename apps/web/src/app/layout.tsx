@@ -32,6 +32,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               <a href="https://llmstxt.org" target="_blank" rel="noreferrer">
                 Spec ↗
               </a>
+              {isSignedIn && <Link href="/api-docs">API docs</Link>}
               {isSignedIn && (
                 <form action={signOut}>
                   <button type="submit" className="link-button">
