@@ -1,15 +1,11 @@
 import type { GeneratorPage, PageOverride } from '@llms-txt/contracts';
-import { hasPathAbove, pagesCoveredByBroaderPage, pathKeyOf } from './broader-pages';
+import { pagesCoveredByBroaderPage } from './broader-pages';
 import { listingCandidates } from './listing-candidates';
-import { homepageOf, isDocumentationType } from './page-kinds';
+import { homepageOf } from './page-kinds';
 import { withoutReferenceFamilies } from './reference-families';
 import { scorePage } from './score-page';
-import { areaSectionNamesOf, isDocumentationSection, OPTIONAL_SECTION_NAME, orderSectionNames, sectionLimitOf, sectionNameOf } from './sections';
-import { DEFAULT_SELECTION_LIMITS, type SelectionLimits } from './selection-limits';
+import { areaSectionNamesOf, sectionNameOf } from './sections';
 import { canonicalKey, compareText } from './url-paths';
-
-/** Entries a documentation section takes for each one another section takes, when the file is full. */
-const DOCUMENTATION_SHARE_OF_A_FULL_FILE = 2;
 
 export interface SelectedPage {
   page: GeneratorPage;
@@ -20,21 +16,17 @@ export interface SelectedPage {
 }
 
 /**
- * Takes the listing candidates, minus pages not assessed yet, pages the user excluded and
- * pages an assessment judged not to belong, minus the rest of a folder most of whose pages
- * are reference entries, and minus narrow pages that a listed broader page stands for;
- * keeps one page per canonical URL; drops pages that score too low; then fills the
- * sections in score order within the limits. Pages that score the same keep the order of
- * the site's navigation, then the order the crawl first saw links to them, then of their
- * URLs. A page beyond a limit is left out: Optional holds pages that are secondary by
- * nature, not the overflow. An assessment's page type replaces the extractor's. A page
- * the user keeps passes every one of these rules; only their exclusion removes it.
+ * A page is listed because it was judged useful, not because of how it ranks: there is no
+ * limit on entries and no minimum score. Takes the listing candidates, minus pages not
+ * assessed yet, pages the user excluded and pages the assessment judged not useful, minus
+ * the rest of a folder most of whose pages are reference entries; keeps one page per
+ * canonical URL; and drops narrow pages that a listed broader page stands for. The score
+ * only orders the entries of a section. Pages that score the same keep the order of the
+ * site's navigation, then the order the crawl first saw links to them, then of their
+ * URLs. An assessment's page type replaces the extractor's. A page the user keeps passes
+ * every one of these rules; only their exclusion removes it.
  */
-export function selectPages(
-  pages: readonly GeneratorPage[],
-  overrides: readonly PageOverride[],
-  limits: SelectionLimits = DEFAULT_SELECTION_LIMITS,
-): SelectedPage[] {
+export function selectPages(pages: readonly GeneratorPage[], overrides: readonly PageOverride[]): SelectedPage[] {
   const overridesByUrl = new Map(overrides.map((override) => [override.normalisedUrl, override]));
   const isKept = (page: GeneratorPage) => overridesByUrl.get(page.record.normalisedUrl)?.isKept === true;
 
@@ -45,26 +37,13 @@ export function selectPages(
       overridesByUrl.get(page.record.normalisedUrl)?.isExcluded !== true,
   );
   const outsideReferenceFamilies = new Set(withoutReferenceFamilies(assessedCandidates, pages));
-  const candidates = assessedCandidates.filter((page) => outsideReferenceFamilies.has(page) || isKept(page));
-
+  const candidates = keepOnePerCanonicalUrl(
+    assessedCandidates.filter((page) => outsideReferenceFamilies.has(page) || isKept(page)),
+  );
   const coveredPages = new Set(pagesCoveredByBroaderPage(candidates).filter((page) => !isKept(page)));
-  const selected = fillSections(candidates.filter((page) => !coveredPages.has(page)), pages, overridesByUrl, limits);
-  // A limit can cut the broader page itself, and then nothing stands for what it covered.
-  const listedPaths = new Set(selected.map((entry) => pathKeyOf(entry.page)));
-  const uncoveredPages = [...coveredPages].filter((page) => !hasPathAbove(page, listedPaths));
-  if (uncoveredPages.length === 0) return selected;
-  for (const page of uncoveredPages) coveredPages.delete(page);
-  return fillSections(candidates.filter((page) => !coveredPages.has(page)), pages, overridesByUrl, limits);
-}
+  const listedPages = candidates.filter((page) => !coveredPages.has(page));
 
-function fillSections(
-  candidates: readonly GeneratorPage[],
-  pages: readonly GeneratorPage[],
-  overridesByUrl: ReadonlyMap<string, PageOverride>,
-  limits: SelectionLimits,
-): SelectedPage[] {
-  const isKept = (page: GeneratorPage) => overridesByUrl.get(page.record.normalisedUrl)?.isKept === true;
-  const ranked = keepOnePerCanonicalUrl(candidates)
+  const ranked = listedPages
     .map((page) => ({ page, score: scorePage(page) }))
     .sort(
       (a, b) =>
@@ -73,61 +52,14 @@ function fillSections(
         linkOrderOf(a.page) - linkOrderOf(b.page) ||
         compareText(a.page.record.normalisedUrl, b.page.record.normalisedUrl),
     );
-
-  const eligible = ranked.filter(
-    ({ page, score }, rank) =>
-      rank < limits.entriesListedWhateverTheirScore ||
-      score >= limits.minimumScore ||
-      isKept(page) ||
-      isDocumentationType(page.assessment?.pageType ?? page.record.pageType),
-  );
   const homepage = homepageOf(pages);
-  const areaSectionNames = areaSectionNamesOf(eligible.map((entry) => entry.page), candidates, homepage);
-
-  // Each section's pages in score order, within the section's limit.
-  const sectionEntries = new Map<string, Array<{ page: GeneratorPage; score: number }>>();
-  for (const entry of eligible) {
-    const sectionName = sectionNameOf(entry.page, areaSectionNames, homepage);
-    let entries = sectionEntries.get(sectionName);
-    if (entries === undefined) sectionEntries.set(sectionName, (entries = []));
-    if (entries.length < sectionLimitOf(sectionName, limits)) entries.push(entry);
-  }
-
-  // When the sections together hold more than the file may, they are filled a round at a
-  // time, so the limit cuts every section's tail and not whichever sections come last.
-  const primarySectionNames = orderSectionNames([...sectionEntries.keys()]).filter((name) => name !== OPTIONAL_SECTION_NAME);
-  const sectionNameByUrl = new Map<string, string>();
-  for (const { page } of sectionEntries.get(OPTIONAL_SECTION_NAME) ?? []) {
-    sectionNameByUrl.set(page.record.normalisedUrl, OPTIONAL_SECTION_NAME);
-  }
-  let primaryCount = 0;
-  for (let round = 0; primaryCount < limits.maxPrimaryEntries; round += 1) {
-    const countBeforeRound = primaryCount;
-    for (const sectionName of primarySectionNames) {
-      const share = isDocumentationSection(sectionName) ? DOCUMENTATION_SHARE_OF_A_FULL_FILE : 1;
-      const roundEntries = sectionEntries.get(sectionName)!.slice(round * share, (round + 1) * share);
-      for (const { page } of roundEntries.slice(0, limits.maxPrimaryEntries - primaryCount)) {
-        sectionNameByUrl.set(page.record.normalisedUrl, sectionName);
-        primaryCount += 1;
-      }
-    }
-    if (primaryCount === countBeforeRound) break;
-  }
-
-  return eligible.flatMap(({ page, score }) => {
-    // A kept page is listed even past a section's limit.
-    const sectionName =
-      sectionNameByUrl.get(page.record.normalisedUrl) ?? (isKept(page) ? sectionNameOf(page, areaSectionNames, homepage) : undefined);
-    if (sectionName === undefined) return [];
-    return [
-      {
-        page,
-        score,
-        sectionName,
-        descriptionOverride: overridesByUrl.get(page.record.normalisedUrl)?.descriptionOverride ?? null,
-      },
-    ];
-  });
+  const areaSectionNames = areaSectionNamesOf(ranked.map((entry) => entry.page), candidates, homepage);
+  return ranked.map(({ page, score }) => ({
+    page,
+    score,
+    sectionName: sectionNameOf(page, areaSectionNames, homepage),
+    descriptionOverride: overridesByUrl.get(page.record.normalisedUrl)?.descriptionOverride ?? null,
+  }));
 }
 
 /** Pages that score the same keep the order the site's navigation gives them; the rest follow. */

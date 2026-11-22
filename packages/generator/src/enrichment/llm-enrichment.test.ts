@@ -90,7 +90,7 @@ describe('parsePageAssessment', () => {
   const answer = (fields: object) =>
     JSON.stringify({
       description: 'Install guide.',
-      assistant_value: 'high',
+      useful_to_assistant: true,
       scope: 'broad',
       exclusion_reason: null,
       page_type: 'guide',
@@ -107,16 +107,12 @@ describe('parsePageAssessment', () => {
     });
   });
 
-  it('lists a page of some value as optional', () => {
-    expect(parsePageAssessment(answer({ assistant_value: 'some' })).listingValue).toBe('optional');
-  });
-
-  it('excludes a page of no value, with the reason given or else as not useful', () => {
-    expect(parsePageAssessment(answer({ assistant_value: 'none' }))).toMatchObject({
+  it('excludes a page of no use, with the reason given or else as not useful', () => {
+    expect(parsePageAssessment(answer({ useful_to_assistant: false }))).toMatchObject({
       listingValue: 'exclude',
       exclusionReason: 'not_useful_to_assistant',
     });
-    expect(parsePageAssessment(answer({ assistant_value: 'none', exclusion_reason: 'thin' }))).toMatchObject({
+    expect(parsePageAssessment(answer({ useful_to_assistant: false, exclusion_reason: 'thin' }))).toMatchObject({
       listingValue: 'exclude',
       exclusionReason: 'thin',
     });
@@ -124,10 +120,10 @@ describe('parsePageAssessment', () => {
 
   it.each([
     ['not JSON', 'nope'],
-    ['an unknown assistant value', answer({ assistant_value: 'maybe' })],
+    ['a usefulness that is not a boolean', answer({ useful_to_assistant: 'maybe' })],
     ['an unknown scope', answer({ scope: 'medium' })],
     ['the homepage type', answer({ page_type: 'home' })],
-    ['a reason on a page with value', answer({ exclusion_reason: 'thin' })],
+    ['a reason on a useful page', answer({ exclusion_reason: 'thin' })],
     ['an empty description', answer({ description: '  ' })],
   ])('rejects %s', (_name, responseText) => {
     expect(() => parsePageAssessment(responseText)).toThrow(LlmOutputRejectedError);

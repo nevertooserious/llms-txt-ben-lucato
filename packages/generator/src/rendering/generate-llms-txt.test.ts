@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { GeneratorPage, PageType, StoredPageAssessment } from '@llms-txt/contracts';
 import { listedEntries } from '../publication/decide-publication';
 import { generateLlmsTxt, type GenerateLlmsTxtInput } from './generate-llms-txt';
-import { compareText, DEFAULT_SELECTION_LIMITS, excludePagesUnderUrlPrefixes, isPaginationUrl, selectPages } from '../selection';
+import { compareText, excludePagesUnderUrlPrefixes, isPaginationUrl } from '../selection';
 import { validateLlmsTxt } from './validate-llms-txt';
 
 const ORIGIN = 'https://example.com';
@@ -155,21 +155,6 @@ describe('generateLlmsTxt with page assessments', () => {
     });
   });
 
-  it('brings a narrow page back when a limit cuts the broader page above it', () => {
-    const limits = { ...DEFAULT_SELECTION_LIMITS, maxDocumentationEntriesPerSection: 1 };
-    const selected = selectPages(
-      [
-        homepage,
-        page('/top', { pageType: 'docs', isInSiteNavigation: true, assessment: assessed({}) }),
-        page('/area', { pageType: 'about', assessment: assessed({ pageType: 'docs' }) }),
-        page('/area/detail', { pageType: 'about', assessment: assessed({ pageType: 'about', scope: 'narrow' }) }),
-      ],
-      [],
-      limits,
-    );
-    expect(selected.map((entry) => entry.page.record.normalisedUrl)).toEqual([`${ORIGIN}/top`, `${ORIGIN}/area/detail`]);
-  });
-
   it('lists a page the user keeps, whatever the assessment said, unless the user also excludes it', () => {
     const rejected = page('/psf/strategy', {
       pageType: 'about',
@@ -295,24 +280,16 @@ describe('generateLlmsTxt', () => {
     expect(sections(llmsTxt).Docs).toEqual([`${ORIGIN}/docs/nav`, `${ORIGIN}/docs/linked`, `${ORIGIN}/docs/deep`]);
   });
 
-  it('puts legal pages under an H2 named Optional, last, and leaves out pages beyond a section’s limit', () => {
-    const posts = Array.from({ length: 8 }, (_, index) => page(`/blog/post-${index}`, { pageType: 'blog' }));
-    const llmsTxt = generate({ pages: [homepage, page('/terms', { pageType: 'legal' }), ...posts] });
+  it('puts legal pages under an H2 named Optional, last', () => {
+    const llmsTxt = generate({ pages: [homepage, page('/terms', { pageType: 'legal' }), page('/docs', { pageType: 'docs' })] });
     const listed = sections(llmsTxt);
-    expect(Object.keys(listed)).toEqual(['Blog', 'Optional']);
-    expect(listed.Blog).toEqual([`${ORIGIN}/blog/post-0`, `${ORIGIN}/blog/post-1`, `${ORIGIN}/blog/post-2`]);
+    expect(Object.keys(listed)).toEqual(['Docs', 'Optional']);
     expect(listed.Optional).toEqual([`${ORIGIN}/terms`]);
   });
 
-  it('keeps a flood of blog posts from crowding out core pages', () => {
-    const posts = Array.from({ length: 200 }, (_, index) =>
-      page(`/blog/post-${index}`, { pageType: 'blog', isInSiteNavigation: true, inboundLinkCount: 20 }),
-    );
-    const llmsTxt = generate({ pages: [homepage, ...posts, page('/docs/intro', { pageType: 'docs', crawlDepth: 2 })] });
-    const listed = sections(llmsTxt);
-    expect(listed.Docs).toEqual([`${ORIGIN}/docs/intro`]);
-    expect(listed.Blog).toHaveLength(3);
-    expect(listed.Optional).toBeUndefined();
+  it('lists every useful page, with no limit on a section or the file', () => {
+    const docs = Array.from({ length: 60 }, (_, index) => page(`/docs/page-${index}`, { pageType: 'docs', crawlDepth: 3 }));
+    expect(sections(generate({ pages: [homepage, ...docs] })).Docs).toHaveLength(60);
   });
 
   it('applies description overrides and exclusions', () => {
@@ -513,13 +490,9 @@ describe('which pages are listed', () => {
     expect(listedUrls(pages)).toHaveLength(8);
   });
 
-  it('leaves out weakly linked pages of a large site, except documentation', () => {
+  it('lists a useful page however weakly the site links it', () => {
     const strong = Array.from({ length: 12 }, (_, index) => page(`/strong-${index}`, { isInSiteNavigation: true }));
-    const weak = page('/weak', { crawlDepth: 2, inboundLinkCount: 1 });
-    const weakDocs = page('/docs/weak', { pageType: 'docs', crawlDepth: 2, inboundLinkCount: 1 });
-    const listed = listedUrls([...strong, weak, weakDocs]);
-    expect(listed).not.toContain(`${ORIGIN}/weak`);
-    expect(listed).toContain(`${ORIGIN}/docs/weak`);
+    expect(listedUrls([...strong, page('/weak', { crawlDepth: 2, inboundLinkCount: 1 })])).toContain(`${ORIGIN}/weak`);
   });
 
   it('does not let a template that links a page from everywhere outrank the navigation', () => {
@@ -548,18 +521,6 @@ describe('which pages are listed', () => {
       page('/macos', { isInSiteNavigation: true, navigationPosition: 2 }),
     ];
     expect(listedUrls(pages)).toEqual([`${ORIGIN}/windows`, `${ORIGIN}/macos`, `${ORIGIN}/android`]);
-  });
-
-  it('fills the sections a round at a time when the file is full, documentation two at a time', () => {
-    const docs = Array.from({ length: 6 }, (_, index) => page(`/docs/page-${index}`, { pageType: 'docs', isInSiteNavigation: true }));
-    const about = Array.from({ length: 6 }, (_, index) => page(`/about/page-${index}`, { pageType: 'about', isInSiteNavigation: true }));
-    const product = Array.from({ length: 6 }, (_, index) => page(`/product/page-${index}`, { pageType: 'product', isInSiteNavigation: true }));
-    const llmsTxt = generate({
-      pages: [homepage, ...docs, ...about, ...product],
-      limits: { ...DEFAULT_SELECTION_LIMITS, maxPrimaryEntries: 8 },
-    });
-    const listed = sections(llmsTxt);
-    expect([listed.Docs!.length, listed.Product!.length, listed.About!.length]).toEqual([4, 2, 2]);
   });
 });
 
