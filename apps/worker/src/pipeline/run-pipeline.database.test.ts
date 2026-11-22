@@ -4,6 +4,7 @@ import type { CrawlSiteOptions } from '@llms-txt/crawler';
 import {
   createDatabasePool,
   createSite,
+  createUserIfAbsent,
   deleteSite,
   startPipelineRun,
   withTransaction,
@@ -12,6 +13,9 @@ import {
 import { generateLlmsTxt, LlmOutputRejectedError, type GenerateLlmsTxtInput, type LlmClient } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
 import { runPipeline } from './run-pipeline';
+
+/** Sites need an owner; these tests are not about who it is. */
+const TEST_OWNER = { username: 'test-owner', passwordHash: 'matches no password' };
 
 // Whole runs against the database, with a stand-in crawler and renderer: the crawler
 // and the generator have their own tests; this checks what the worker does between them.
@@ -93,7 +97,9 @@ const renderLlmsTxt = (input: GenerateLlmsTxtInput) =>
 
 async function newSite(): Promise<{ siteId: string; rootUrl: string }> {
   const rootUrl = `https://${crypto.randomUUID()}.example`;
-  const siteId = await createSite(databasePool, { rootUrl, publicSlug: crypto.randomUUID() });
+  const siteId = await createSite(databasePool, {
+    ownerUserId: (await createUserIfAbsent(databasePool, TEST_OWNER)).id,
+    rootUrl, publicSlug: crypto.randomUUID() });
   return { siteId, rootUrl };
 }
 

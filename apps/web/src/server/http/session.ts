@@ -1,36 +1,50 @@
 import { createHmac } from 'node:crypto';
-import { isSameText, type BasicAuthCredentials } from './basic-auth';
+import { isSameText } from './basic-auth';
 
 // The browser's login: the form on /login sets a cookie, and src/proxy.ts accepts it in
-// place of the Basic auth header. The cookie is an expiry time signed with the shared
-// login, so nothing is stored, and changing the username or password signs everyone out.
+// place of the Basic auth header. The cookie names the user and an expiry time, signed
+// with that user's stored password hash, so no session is stored, and changing a
+// password signs that user out everywhere.
 
 export const SESSION_COOKIE_NAME = 'llms_txt_session';
 export const SESSION_LIFETIME_SECONDS = 30 * 24 * 60 * 60;
 export const LOGIN_PATH = '/login';
 
-function signature(expiresAtSeconds: number, credentials: BasicAuthCredentials): string {
-  return createHmac('sha256', `${credentials.username}:${credentials.password}`)
-    .update(`llms-txt-session:${expiresAtSeconds}`)
-    .digest('hex');
+/**
+ * The request header in which src/proxy.ts tells the routes who is signed in. The proxy
+ * removes whatever a client sent under this name, so only it can set it.
+ */
+export const SIGNED_IN_USER_HEADER = 'x-llms-txt-user-id';
+
+/** What a session is issued for and checked against: a row of `users`. */
+export interface SessionUser {
+  id: string;
+  passwordHash: string;
 }
 
-export function createSessionToken(credentials: BasicAuthCredentials, now: Date = new Date()): string {
+const TOKEN_PATTERN = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.(\d{1,12})\.([0-9a-f]{64})$/;
+
+function signature(user: SessionUser, expiresAtSeconds: number): string {
+  return createHmac('sha256', user.passwordHash).update(`llms-txt-session:${user.id}:${expiresAtSeconds}`).digest('hex');
+}
+
+export function createSessionToken(user: SessionUser, now: Date = new Date()): string {
   const expiresAtSeconds = Math.floor(now.getTime() / 1000) + SESSION_LIFETIME_SECONDS;
-  return `${expiresAtSeconds}.${signature(expiresAtSeconds, credentials)}`;
+  return `${user.id}.${expiresAtSeconds}.${signature(user, expiresAtSeconds)}`;
 }
 
-/** Whether a session cookie was issued for these credentials and has not expired. */
-export function isValidSessionToken(
-  token: string | undefined,
-  credentials: BasicAuthCredentials,
-  now: Date = new Date(),
-): boolean {
-  const match = /^(\d{1,12})\.([0-9a-f]{64})$/.exec(token ?? '');
-  if (!match) return false;
-  const expiresAtSeconds = Number(match[1]);
+/** The user a session cookie claims to be for, to look up before isValidSessionToken. Null if it is not a token. */
+export function userIdOfSessionToken(token: string | undefined): string | null {
+  return TOKEN_PATTERN.exec(token ?? '')?.[1] ?? null;
+}
+
+/** Whether a session cookie was issued for this user, with their current password, and has not expired. */
+export function isValidSessionToken(token: string | undefined, user: SessionUser, now: Date = new Date()): boolean {
+  const match = TOKEN_PATTERN.exec(token ?? '');
+  if (!match || match[1] !== user.id) return false;
+  const expiresAtSeconds = Number(match[2]);
   if (expiresAtSeconds * 1000 <= now.getTime()) return false;
-  return isSameText(match[2]!, signature(expiresAtSeconds, credentials));
+  return isSameText(match[3]!, signature(user, expiresAtSeconds));
 }
 
 /**

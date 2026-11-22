@@ -1,10 +1,8 @@
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
 import { Geist_Mono } from 'next/font/google';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { readBasicAuthCredentials } from '@/server/composition/web-config';
-import { isValidSessionToken, SESSION_COOKIE_NAME } from '@/server/http/session';
+import { signedInUserId } from '@/server/http/signed-in-page-user';
 import { signOut } from './login/actions';
 import './globals.css';
 
@@ -18,8 +16,7 @@ export const metadata: Metadata = {
 export const viewport = { themeColor: '#f4f4f4' };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const sessionToken = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
-  const isSignedIn = isValidSessionToken(sessionToken, readBasicAuthCredentials());
+  const isSignedIn = (await signedInUserId()) !== null;
   return (
     <html lang="en" className={geistMono.variable}>
       <body>

@@ -6,13 +6,13 @@ import { webServices } from '@/server/composition/web-services';
 // Re-triggers the site ("check now"). Answers 202 with the run to poll, which may be one
 // already in progress, or 429 with Retry-After when the site was checked within the cooldown.
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ publicSlug: string }> },
 ): Promise<Response> {
   const services = webServices();
   const { publicSlug } = await params;
   try {
-    const { siteId, response } = await requestedSite(services.databasePool, publicSlug);
+    const { siteId, response } = await requestedSite(services.databasePool, publicSlug, request);
     if (response) return response;
     const outcome = await checkSiteNow(siteId, {
       databasePool: services.databasePool,

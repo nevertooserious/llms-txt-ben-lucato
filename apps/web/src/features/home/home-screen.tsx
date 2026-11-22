@@ -1,17 +1,6 @@
-'use client';
-
-import { useSyncExternalStore } from 'react';
-import { loadSavedSites, type SavedSite } from '@/browser/saved-sites';
+import type { SiteListEntry } from '@/shared/site-list';
 import { SitesTable } from './sites-table';
 import { SubmitSiteForm } from './submit-site-form';
-
-// Read once per mount; the list only changes when this browser submits a site, which
-// navigates away. Cached so useSyncExternalStore sees a stable snapshot.
-let cachedSnapshot: SavedSite[] | null = null;
-const readSnapshot = () => (cachedSnapshot ??= loadSavedSites());
-const subscribe = () => () => {
-  cachedSnapshot = null;
-};
 
 function DemoLink({ demoPath }: { demoPath: string | null }) {
   if (demoPath === null) return null;
@@ -22,12 +11,8 @@ function DemoLink({ demoPath }: { demoPath: string | null }) {
   );
 }
 
-/** The sites this browser has started, or an introduction if there are none yet. */
-export function HomeScreen({ demoPath }: { demoPath: string | null }) {
-  // The list is in localStorage, so the server renders neither view and the intro cannot flash.
-  const sites = useSyncExternalStore(subscribe, readSnapshot, () => null);
-  if (sites === null) return <main />;
-
+/** The signed-in user's sites, or an introduction if there are none yet. */
+export function HomeScreen({ sites, demoPath }: { sites: SiteListEntry[]; demoPath: string | null }) {
   if (sites.length > 0) {
     return (
       <main>

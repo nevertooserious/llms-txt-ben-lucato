@@ -11,7 +11,11 @@ import {
   recordPipelineRunHeartbeat,
 } from './pipeline-runs';
 import { createSite } from './sites';
+import { createUserIfAbsent } from './users';
 import { withTransaction } from '../connection/transaction';
+
+/** Sites need an owner; these tests are not about who it is. */
+const TEST_OWNER = { username: 'test-owner', passwordHash: 'matches no password' };
 
 // Runs against a database with db/schema.sql applied (the CI `schema` job), with a real
 // pg-boss, so the run row and its job are checked to commit and roll back together.
@@ -30,8 +34,10 @@ afterAll(async () => {
   await pool.end();
 });
 
-const newSite = () =>
-  createSite(pool, { rootUrl: `https://${randomUUID()}.example`, publicSlug: randomUUID() });
+const newSite = async () =>
+  createSite(pool, {
+    ownerUserId: (await createUserIfAbsent(pool, TEST_OWNER)).id,
+    rootUrl: `https://${randomUUID()}.example`, publicSlug: randomUUID() });
 const startSubmission = (siteId: string) =>
   withTransaction(pool, (transaction) =>
     startPipelineRun(transaction, queue, { siteId, triggeredBy: 'submission' }),

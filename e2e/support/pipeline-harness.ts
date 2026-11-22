@@ -5,6 +5,7 @@ import { crawlSite, HeadlessRenderer, resolveSiteRootUrl } from '@llms-txt/crawl
 import {
   createDatabasePool,
   createSite,
+  createUserIfAbsent,
   loadPublishedLlmsTxt,
   replaceExcludedUrlPrefixes,
   startPipelineRun,
@@ -17,6 +18,9 @@ import { startWorkerJobs } from '../../apps/worker/src/jobs/worker-jobs';
 import { createStubLlmClient } from '../../apps/worker/src/llm/stub-llm-client';
 import { startFixtureSite, type FixtureSite } from './fixture-site-server';
 import { allowLoopbackPorts } from './local-network-policy';
+
+/** Sites need an owner; these tests are not about who it is. */
+const TEST_OWNER = { username: 'test-owner', passwordHash: 'matches no password' };
 
 // The whole pipeline as it runs in production: a run is submitted through pg-boss, the
 // real worker claims it, crawls a fixture site through real HTTP and Chromium, extracts,
@@ -125,7 +129,9 @@ export class PipelineHarness {
   async submit(site: FixtureSite, rootPath = ''): Promise<SubmittedSite> {
     const publicSlug = randomUUID();
     const { siteId, pipelineRunId } = await withTransaction(this.databasePool, async (transaction) => {
-      const siteId = await createSite(transaction, { rootUrl: `${site.origin}${rootPath}`, publicSlug });
+      const siteId = await createSite(transaction, {
+    ownerUserId: (await createUserIfAbsent(transaction, TEST_OWNER)).id,
+    rootUrl: `${site.origin}${rootPath}`, publicSlug });
       const run = await startPipelineRun(transaction, this.queue, { siteId, triggeredBy: 'submission' });
       if (run.kind !== 'started') throw new Error('the site already had an active run');
       return { siteId, pipelineRunId: run.pipelineRunId };

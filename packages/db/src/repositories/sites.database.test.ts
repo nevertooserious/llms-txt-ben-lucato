@@ -2,7 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createDatabasePool } from '../connection/database-pool';
 import { claimDueMonitorChecks, createSite } from './sites';
+import { createUserIfAbsent } from './users';
 import { withTransaction } from '../connection/transaction';
+
+/** Sites need an owner; these tests are not about who it is. */
+const TEST_OWNER = { username: 'test-owner', passwordHash: 'matches no password' };
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL must point at a database with db/schema.sql applied');
@@ -12,6 +16,7 @@ afterAll(() => pool.end());
 
 async function siteWithNextCheck(nextCheck: string): Promise<string> {
   const siteId = await createSite(pool, {
+    ownerUserId: (await createUserIfAbsent(pool, TEST_OWNER)).id,
     rootUrl: `https://${randomUUID()}.example`,
     publicSlug: randomUUID(),
   });
@@ -30,8 +35,12 @@ async function nextCheckIsInFuture(siteId: string): Promise<boolean | null> {
 describe('createSite', () => {
   it('makes an independent site for each submission of the same root URL', async () => {
     const rootUrl = `https://${randomUUID()}.example`;
-    const first = await createSite(pool, { rootUrl, publicSlug: randomUUID() });
-    const second = await createSite(pool, { rootUrl, publicSlug: randomUUID() });
+    const first = await createSite(pool, {
+    ownerUserId: (await createUserIfAbsent(pool, TEST_OWNER)).id,
+    rootUrl, publicSlug: randomUUID() });
+    const second = await createSite(pool, {
+    ownerUserId: (await createUserIfAbsent(pool, TEST_OWNER)).id,
+    rootUrl, publicSlug: randomUUID() });
     expect(second).not.toBe(first);
   });
 });

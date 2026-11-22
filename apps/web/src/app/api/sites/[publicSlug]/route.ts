@@ -6,13 +6,13 @@ import { requestedSite } from '@/server/http/requested-site';
 
 // The site screen's state, polled while a run is active.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ publicSlug: string }> },
 ): Promise<Response> {
   const services = webServices();
   const { publicSlug } = await params;
   try {
-    const { siteId, response } = await requestedSite(services.databasePool, publicSlug);
+    const { siteId, response } = await requestedSite(services.databasePool, publicSlug, request);
     if (response) return response;
     const view = await loadSiteView(siteId, publicSlug, { databasePool: services.databasePool });
     if (view === null) return apiError(404, 'site_not_found', 'There is no site here.');
@@ -25,12 +25,12 @@ export async function GET(
 
 // Deletes the site: its file, hosted URL, crawl data, overrides and version history.
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ publicSlug: string }> },
 ): Promise<Response> {
   const services = webServices();
   try {
-    const { siteId, response } = await requestedSite(services.databasePool, (await params).publicSlug);
+    const { siteId, response } = await requestedSite(services.databasePool, (await params).publicSlug, request);
     if (response) return response;
     await deleteSite(services.databasePool, siteId);
     return new Response(null, { status: 204 });

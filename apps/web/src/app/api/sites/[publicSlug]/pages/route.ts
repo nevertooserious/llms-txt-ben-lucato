@@ -13,7 +13,7 @@ export async function GET(
 ): Promise<Response> {
   const services = webServices();
   try {
-    const { siteId, response } = await requestedSite(services.databasePool, (await params).publicSlug);
+    const { siteId, response } = await requestedSite(services.databasePool, (await params).publicSlug, request);
     if (response) return response;
     const view = await loadSitePagesView(siteId, { databasePool: services.databasePool });
     return Response.json(view, { headers: { 'cache-control': 'no-store' } });
@@ -29,7 +29,7 @@ export async function PUT(
 ): Promise<Response> {
   const services = webServices();
   try {
-    const { siteId, response } = await requestedSite(services.databasePool, (await params).publicSlug);
+    const { siteId, response } = await requestedSite(services.databasePool, (await params).publicSlug, request);
     if (response) return response;
     const exclusions = parsePageExclusions(await request.json().catch(() => null));
     if (exclusions === null) {

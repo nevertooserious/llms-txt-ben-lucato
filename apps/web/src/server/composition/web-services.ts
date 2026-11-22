@@ -1,7 +1,8 @@
 import { PgBoss } from 'pg-boss';
 import { createDatabasePool, createPipelineQueues, type DatabasePool } from '@llms-txt/db';
 import { createLogger, type Logger } from '@llms-txt/runtime';
-import { readWebConfig, type WebConfig } from './web-config';
+import { ensureConfiguredUser } from '../users/authentication';
+import { readBasicAuthCredentials, readWebConfig, type WebConfig } from './web-config';
 
 // The web app's long-lived dependencies, built once per server process. Kept on
 // globalThis so `next dev` reloading modules does not open a new pool each time.
@@ -12,6 +13,8 @@ export interface WebServices {
   databasePool: DatabasePool;
   /** Started on first use. */
   queue(): Promise<PgBoss>;
+  /** Resolves once the user for the configured login exists; done once per process. */
+  configuredUserIsReady(): Promise<void>;
 }
 
 const globalScope = globalThis as typeof globalThis & { llmsTxtWebServices?: WebServices };
@@ -34,7 +37,20 @@ function buildWebServices(): WebServices {
     return startedQueue;
   };
 
-  return { config, logger, databasePool: createDatabasePool(config.databaseUrl), queue };
+  const databasePool = createDatabasePool(config.databaseUrl);
+  let configuredUser: Promise<void> | null = null;
+  const configuredUserIsReady = (): Promise<void> => {
+    configuredUser ??= ensureConfiguredUser(databasePool, readBasicAuthCredentials()).then(
+      () => undefined,
+      (error: unknown) => {
+        configuredUser = null; // try again on the next request
+        throw error;
+      },
+    );
+    return configuredUser;
+  };
+
+  return { config, logger, databasePool, queue, configuredUserIsReady };
 }
 
 /** The web app only sends jobs; the worker runs maintenance and the cron schedule. */

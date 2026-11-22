@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { forgetSite, saveSite } from '@/browser/saved-sites';
 import { isActiveRunStatus, type SiteView } from '@/shared/site-view';
 import { DeleteSiteControl } from './delete-site-control';
 import { LlmsTxtResult } from './llms-txt-result';
@@ -18,7 +17,7 @@ const IDLE_POLL_INTERVAL_MS = 30_000;
 export function SiteScreen({ publicSlug }: { publicSlug: string }) {
   const [view, setView] = useState<SiteView | null>(null);
   const [loadError, setLoadError] = useState<SiteApiError | null>(null);
-  // Set on delete, so a poll already in flight cannot save the site back.
+  // Set on delete, so a poll already in flight cannot show the site again.
   const isDeleted = useRef(false);
   // A poll can overlap the refresh after a change (a pin, a save). Only the newest
   // request's answer is shown, so a poll sent before the change cannot undo it on screen.
@@ -33,7 +32,6 @@ export function SiteScreen({ publicSlug }: { publicSlug: string }) {
       if (isOutdated()) return;
       setView(loaded);
       setLoadError(null);
-      saveSite({ publicSlug, rootUrl: loaded.rootUrl, createdAt: new Date().toISOString() });
     } catch (error) {
       if (isOutdated()) return;
       setLoadError(error instanceof SiteApiError ? error : new SiteApiError('Could not reach the server.', 0));
@@ -42,7 +40,6 @@ export function SiteScreen({ publicSlug }: { publicSlug: string }) {
 
   const handleDeleted = useCallback(() => {
     isDeleted.current = true;
-    forgetSite(publicSlug);
     window.location.assign('/');
   }, [publicSlug]);
 

@@ -5,6 +5,10 @@ import { withTransaction } from '../connection/transaction';
 import { loadExcludedUrlPrefixes, replaceExcludedPages, replaceExcludedUrlPrefixes } from './page-exclusions';
 import { saveCrawledPage } from './pages';
 import { createSite, deleteSite, loadPageOverrides } from './sites';
+import { createUserIfAbsent } from './users';
+
+/** Sites need an owner; these tests are not about who it is. */
+const TEST_OWNER = { username: 'test-owner', passwordHash: 'matches no password' };
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL must point at a database with db/schema.sql applied');
@@ -15,7 +19,9 @@ afterAll(() => pool.end());
 /** A site with pages at `paths`. */
 async function siteWithPages(paths: string[]): Promise<{ id: string; origin: string }> {
   const origin = `https://${randomUUID()}.example`;
-  const id = await createSite(pool, { rootUrl: origin, publicSlug: randomUUID() });
+  const id = await createSite(pool, {
+    ownerUserId: (await createUserIfAbsent(pool, TEST_OWNER)).id,
+    rootUrl: origin, publicSlug: randomUUID() });
   const run = await pool.query<{ id: string }>(
     `insert into pipeline_runs (site_id, triggered_by, status, finished_at)
      values ($1, 'submission', 'succeeded', now()) returning id`,

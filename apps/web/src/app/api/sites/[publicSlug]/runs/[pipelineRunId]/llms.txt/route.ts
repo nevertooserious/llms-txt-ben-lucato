@@ -7,13 +7,13 @@ import { isActiveRunStatus } from '@/shared/site-view';
 // The file a run published, as text/plain. A run that changed nothing or failed published
 // none, and this says so instead of answering with some other run's file.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ publicSlug: string; pipelineRunId: string }> },
 ): Promise<Response> {
   const services = webServices();
   const { publicSlug, pipelineRunId } = await params;
   try {
-    const { siteId, response } = await requestedSite(services.databasePool, publicSlug);
+    const { siteId, response } = await requestedSite(services.databasePool, publicSlug, request);
     if (response) return response;
     const run = isPipelineRunId(pipelineRunId)
       ? await loadPipelineRunDetail(services.databasePool, siteId, pipelineRunId)

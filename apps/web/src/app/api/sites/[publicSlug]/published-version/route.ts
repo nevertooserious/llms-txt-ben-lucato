@@ -13,7 +13,7 @@ export async function PUT(
 ): Promise<Response> {
   const services = webServices();
   try {
-    const { siteId, response } = await requestedSite(services.databasePool, (await params).publicSlug);
+    const { siteId, response } = await requestedSite(services.databasePool, (await params).publicSlug, request);
     if (response) return response;
     const body = (await request.json().catch(() => null)) as { versionNumber?: unknown } | null;
     const versionNumber = body?.versionNumber;
@@ -37,7 +37,7 @@ export async function DELETE(
 ): Promise<Response> {
   const services = webServices();
   try {
-    const { siteId, response } = await requestedSite(services.databasePool, (await params).publicSlug);
+    const { siteId, response } = await requestedSite(services.databasePool, (await params).publicSlug, request);
     if (response) return response;
     const isUnpinned = await withTransaction(services.databasePool, (transaction) =>
       unpinPublishedVersion(transaction, siteId),

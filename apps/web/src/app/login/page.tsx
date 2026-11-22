@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { LoginScreen } from '@/features/login/login-screen';
-import { readBasicAuthCredentials } from '@/server/composition/web-config';
-import { isValidSessionToken, pathAfterLogin, SESSION_COOKIE_NAME } from '@/server/http/session';
+import { pathAfterLogin } from '@/server/http/session';
+import { signedInUserId } from '@/server/http/signed-in-page-user';
 import { signIn } from './actions';
 
 export const metadata: Metadata = { title: 'Sign in · llms.txt generator' };
@@ -13,7 +12,6 @@ export const metadata: Metadata = { title: 'Sign in · llms.txt generator' };
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string | string[] }> }) {
   const { next } = await searchParams;
   const nextPath = pathAfterLogin(typeof next === 'string' ? next : null);
-  const sessionToken = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
-  if (isValidSessionToken(sessionToken, readBasicAuthCredentials())) redirect(nextPath);
+  if ((await signedInUserId()) !== null) redirect(nextPath);
   return <LoginScreen signIn={signIn} nextPath={nextPath} />;
 }

@@ -2,7 +2,7 @@ import { PgBoss } from 'pg-boss';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { QUEUE_NAMES } from '@llms-txt/contracts';
 import { crawlSite, resolveSiteRootUrl } from '@llms-txt/crawler';
-import { createDatabasePool, createSite, type DatabasePool } from '@llms-txt/db';
+import { createDatabasePool, createSite, createUserIfAbsent, type DatabasePool } from '@llms-txt/db';
 import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
 import { readWorkerConfig } from '../../apps/worker/src/config/worker-config';
@@ -12,6 +12,9 @@ import { changingSite } from '../fixture-sites/changing-site/routes';
 import { startFixtureSite, type FixtureSite } from '../support/fixture-site-server';
 import { allowLoopbackPorts } from '../support/local-network-policy';
 import { createE2eDatabase } from '../support/web-app-stack';
+
+/** Sites need an owner; these tests are not about who it is. */
+const TEST_OWNER = { username: 'test-owner', passwordHash: 'matches no password' };
 
 // The real clock: pg-boss's scheduler, not a tick sent by hand, starts a check of a due
 // site. The worker registers its five-minute schedule, then the test narrows it to every
@@ -77,7 +80,8 @@ describe.skipIf(!databaseUrl)('the monitor schedule, on the real clock', () => {
 
   it('checks a due site with no tick sent by hand', async () => {
     const siteId = await createSite(databasePool, {
-      rootUrl: site.origin,
+    ownerUserId: (await createUserIfAbsent(databasePool, TEST_OWNER)).id,
+    rootUrl: site.origin,
       publicSlug: crypto.randomUUID(),
     });
     await databasePool.query(

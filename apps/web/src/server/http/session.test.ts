@@ -1,37 +1,55 @@
 import { describe, expect, it } from 'vitest';
-import { createSessionToken, isValidSessionToken, pathAfterLogin, SESSION_LIFETIME_SECONDS } from './session';
+import {
+  createSessionToken,
+  isValidSessionToken,
+  pathAfterLogin,
+  SESSION_LIFETIME_SECONDS,
+  userIdOfSessionToken,
+} from './session';
 
-const credentials = { username: 'user1', password: 'pass1' };
+const user = { id: '3f0c1a52-7f0e-4c1b-9a53-0d6f3f1f6c11', passwordHash: 'scrypt$salt$key' };
 const now = new Date('2026-01-01T00:00:00Z');
 const secondsLater = (seconds: number) => new Date(now.getTime() + seconds * 1000);
 
 describe('isValidSessionToken', () => {
-  const token = createSessionToken(credentials, now);
+  const token = createSessionToken(user, now);
 
   it('accepts a token until it expires', () => {
-    expect(isValidSessionToken(token, credentials, now)).toBe(true);
-    expect(isValidSessionToken(token, credentials, secondsLater(SESSION_LIFETIME_SECONDS - 1))).toBe(true);
-    expect(isValidSessionToken(token, credentials, secondsLater(SESSION_LIFETIME_SECONDS))).toBe(false);
+    expect(isValidSessionToken(token, user, now)).toBe(true);
+    expect(isValidSessionToken(token, user, secondsLater(SESSION_LIFETIME_SECONDS - 1))).toBe(true);
+    expect(isValidSessionToken(token, user, secondsLater(SESSION_LIFETIME_SECONDS))).toBe(false);
   });
 
-  it('refuses a token issued for another username or password', () => {
-    expect(isValidSessionToken(token, { ...credentials, password: 'changed' }, now)).toBe(false);
-    expect(isValidSessionToken(token, { ...credentials, username: 'changed' }, now)).toBe(false);
+  it('names the user it was issued for', () => {
+    expect(userIdOfSessionToken(token)).toBe(user.id);
+  });
+
+  it('refuses a token once the user has another password', () => {
+    expect(isValidSessionToken(token, { ...user, passwordHash: 'scrypt$salt$changed' }, now)).toBe(false);
+  });
+
+  it('refuses a token issued for another user, even one with the same password hash', () => {
+    const otherUser = { ...user, id: '9d2b7c64-1a3e-4f5b-8c7d-2e1f0a9b8c7d' };
+    expect(isValidSessionToken(token, otherUser, now)).toBe(false);
+    const renamed = token.replace(user.id, otherUser.id);
+    expect(isValidSessionToken(renamed, otherUser, now)).toBe(false);
   });
 
   it('refuses a token whose expiry was moved', () => {
-    const [expiresAt, signature] = token.split('.');
-    expect(isValidSessionToken(`${Number(expiresAt) + 1}.${signature}`, credentials, now)).toBe(false);
+    const [userId, expiresAt, signature] = token.split('.');
+    expect(isValidSessionToken(`${userId}.${Number(expiresAt) + 1}.${signature}`, user, now)).toBe(false);
   });
 
   it.each([
     ['no cookie', undefined],
     ['an empty cookie', ''],
-    ['no signature', '9999999999'],
-    ['a short signature', '9999999999.abc'],
-    ['a signature that is not hex', `9999999999.${'z'.repeat(64)}`],
+    ['no user', `9999999999.${'a'.repeat(64)}`],
+    ['no signature', `${user.id}.9999999999`],
+    ['a short signature', `${user.id}.9999999999.abc`],
+    ['a signature that is not hex', `${user.id}.9999999999.${'z'.repeat(64)}`],
   ])('refuses %s', (_name, value) => {
-    expect(isValidSessionToken(value, credentials, now)).toBe(false);
+    expect(isValidSessionToken(value, user, now)).toBe(false);
+    if (value !== `${user.id}.9999999999.${'z'.repeat(64)}`) expect(userIdOfSessionToken(value)).toBeNull();
   });
 });
 

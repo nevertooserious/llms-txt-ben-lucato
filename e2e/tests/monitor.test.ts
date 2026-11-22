@@ -2,7 +2,7 @@ import { PgBoss } from 'pg-boss';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { QUEUE_NAMES } from '@llms-txt/contracts';
 import { crawlSite, resolveSiteRootUrl } from '@llms-txt/crawler';
-import { createDatabasePool, type DatabasePool } from '@llms-txt/db';
+import { createDatabasePool, createUserIfAbsent, type DatabasePool } from '@llms-txt/db';
 import { generateLlmsTxt } from '@llms-txt/generator';
 import { createLogger } from '@llms-txt/runtime';
 import { readWorkerConfig } from '../../apps/worker/src/config/worker-config';
@@ -17,6 +17,7 @@ import { DELETE as unpinVersionRoute, PUT as pinVersionRoute } from '../../apps/
 import { DELETE as deleteSiteRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/route';
 import { GET as hostedLlmsTxtRoute } from '../../apps/web/src/app/w/[publicSlug]/llms.txt/route';
 import { webServices } from '../../apps/web/src/server/composition/web-services';
+import { SIGNED_IN_USER_HEADER } from '../../apps/web/src/server/http/session';
 import { changingSite } from '../fixture-sites/changing-site/routes';
 import { startFixtureSite, type FixtureSite } from '../support/fixture-site-server';
 import { allowLoopbackPorts } from '../support/local-network-policy';
@@ -43,11 +44,14 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
   // Set by the submission, used by every later step.
   let siteId: string;
   let publicSlug: string;
+  /** The user every request is made as, unless it says otherwise. */
+  let ownerUserId: string;
 
   beforeAll(async () => {
     changingSite.reset();
     site = await startFixtureSite('changing-site');
     databasePool = createDatabasePool(databaseUrl!);
+    ownerUserId = (await createUserIfAbsent(databasePool, { username: 'monitor-test-owner', passwordHash: 'matches no password' })).id;
     workerQueue = new PgBoss({ connectionString: databaseUrl!, schedule: false });
     await workerQueue.start();
     const networkPolicy = allowLoopbackPorts([site.port]);
@@ -80,10 +84,11 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
 
   const slugParams = () => ({ params: Promise.resolve({ publicSlug }) });
 
-  function apiRequest(method: string, body?: unknown): Request {
+  /** A request as src/proxy.ts passes it on: with the signed-in user's id in a header. */
+  function apiRequest(method: string, body?: unknown, userId: string = ownerUserId): Request {
     return new Request('http://app.test/api', {
       method,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', [SIGNED_IN_USER_HEADER]: userId },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   }
@@ -299,7 +304,7 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
 
   it('reports each run and serves the file it published', async () => {
     const runParams = (pipelineRunId: string) => ({ params: Promise.resolve({ publicSlug, pipelineRunId }) });
-    const fileRequest = () => new Request('http://app.test/llms.txt');
+    const fileRequest = () => apiRequest('GET');
     const runs = await databasePool.query<{ id: string; status: string; version_number: number | null }>(
       `select runs.id, runs.status, versions.version_number
          from pipeline_runs runs
@@ -350,6 +355,11 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
 
   it('a deleted site loses its file and its checks', async () => {
     expect((await hostedLlmsTxtRoute(new Request('http://app.test/llms.txt'), slugParams())).status).toBe(200);
+
+    // Another user cannot see or delete the site; to them it is not there.
+    const otherUser = await createUserIfAbsent(databasePool, { username: 'monitor-test-other', passwordHash: 'matches no password' });
+    expect((await deleteSiteRoute(apiRequest('DELETE', undefined, otherUser.id), slugParams())).status).toBe(404);
+    expect((await deleteSiteRoute(new Request('http://app.test/api', { method: 'DELETE' }), slugParams())).status).toBe(401);
 
     expect((await deleteSiteRoute(apiRequest('DELETE'), slugParams())).status).toBe(204);
     expect((await hostedLlmsTxtRoute(new Request('http://app.test/llms.txt'), slugParams())).status).toBe(404);

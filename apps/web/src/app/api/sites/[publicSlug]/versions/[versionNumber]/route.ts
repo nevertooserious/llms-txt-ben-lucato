@@ -6,13 +6,13 @@ import { parseVersionNumber } from '@/server/http/version-number';
 
 // The text of one version.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ publicSlug: string; versionNumber: string }> },
 ): Promise<Response> {
   const services = webServices();
   const { publicSlug, versionNumber: requestedVersion } = await params;
   try {
-    const { siteId, response } = await requestedSite(services.databasePool, publicSlug);
+    const { siteId, response } = await requestedSite(services.databasePool, publicSlug, request);
     if (response) return response;
     const versionNumber = parseVersionNumber(requestedVersion);
     const llmsTxtContent =

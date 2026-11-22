@@ -6,13 +6,13 @@ import { webServices } from '@/server/composition/web-services';
 
 // One version's file, as text/plain.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ publicSlug: string; versionNumber: string }> },
 ): Promise<Response> {
   const services = webServices();
   const { publicSlug, versionNumber: requestedVersion } = await params;
   try {
-    const { siteId, response } = await requestedSite(services.databasePool, publicSlug);
+    const { siteId, response } = await requestedSite(services.databasePool, publicSlug, request);
     if (response) return response;
     const versionNumber = parseVersionNumber(requestedVersion);
     const file = versionNumber === null ? null : await loadLlmsTxtVersionFile(services.databasePool, siteId, versionNumber);

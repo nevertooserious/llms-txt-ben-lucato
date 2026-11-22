@@ -9,13 +9,13 @@ const ACTIVE_RUN_POLL_SECONDS = 2;
 
 // The status of one run. While it is active, Retry-After says when to poll again.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ publicSlug: string; pipelineRunId: string }> },
 ): Promise<Response> {
   const services = webServices();
   const { publicSlug, pipelineRunId } = await params;
   try {
-    const { siteId, response } = await requestedSite(services.databasePool, publicSlug);
+    const { siteId, response } = await requestedSite(services.databasePool, publicSlug, request);
     if (response) return response;
     const run = isPipelineRunId(pipelineRunId)
       ? await loadPipelineRunDetail(services.databasePool, siteId, pipelineRunId)
