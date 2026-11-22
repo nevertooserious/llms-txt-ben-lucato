@@ -310,8 +310,12 @@ class SiteCrawl {
   }
 
   /**
-   * The robots.txt rules of another host of the site, fetched once per crawl. A host
-   * whose robots.txt cannot be reached is left alone; that is not a failure of the site.
+   * If crawling example.com, both docs.example.com and example.com count.
+   * 
+   * But if crawling docs.example.com, example.com does not count.
+   * 
+   * This is a design choice, influenced by results from real websites. An alternative choice
+   * would instead be to restrict to a single domain.
    */
   private async isAllowedOnRelatedHost(url: string): Promise<boolean> {
     const origin = new URL(url).origin;
@@ -358,7 +362,13 @@ class SiteCrawl {
     }
   }
 
-  /** The spec puts llms.txt at the root path, or optionally under a subpath. */
+  /** Use the llms.txt if the site already has one.
+   * 
+   * This is a bit awkward. We could probably just use the llms.txt verbatim, but
+   * for the purposes of the take-home exercise, it might make more sense to generate 
+   * something new.
+   * 
+   */
   private async seedFromExistingLlmsTxt(): Promise<void> {
     const candidates = [...new Set([`${this.rootUrl}/llms.txt`, new URL('/llms.txt', this.rootUrl).href])];
     for (const llmsTxtUrl of candidates) {
@@ -379,8 +389,9 @@ class SiteCrawl {
   }
 
   /**
-   * Notes a link to one of the site's machine-readable files; returns whether it was one.
-   * The llms.txt at the site's root is not: the generated file stands in for it.
+   * Special URLs that aren't normal HTML, but are still relevant for generation.
+   * 
+   * e.g. swagger
    */
   private addMachineReadableResourceCandidate(href: string, baseUrl?: string): boolean {
     let url: URL;
@@ -397,10 +408,9 @@ class SiteCrawl {
   }
 
   /**
-   * Requests each candidate and keeps those that are there: a 200 that is not an HTML
-   * page, since a site that answers every path with its app shell has no such file.
-   * Null when a candidate answered with an error or the time ran out, which says nothing
-   * about whether the file exists.
+   * Special URLs that aren't normal HTML, but are still relevant for generation.
+   * 
+   * e.g. swagger
    */
   private async findMachineReadableResources(): Promise<string[] | null> {
     const found: string[] = [];
@@ -432,8 +442,7 @@ class SiteCrawl {
   }
 
   /**
-   * Known pages go in after discovery, so a URL discovery found keeps the form the site
-   * links today. Scope and robots.txt apply to them as to any other URL.
+   * Pages from previous runs are included in crawling for re-checking.
    */
   private seedFromKnownPages(): void {
     for (const knownPage of this.knownPages.values()) {
@@ -456,11 +465,6 @@ class SiteCrawl {
     return this.robots.isAllowed(url);
   }
 
-  /**
-   * For redirect targets. Rules on this host are checked, and those of a related host
-   * whose robots.txt has been loaded. No other host's robots.txt is fetched, and a
-   * target off the site is out of scope and dropped after the fetch.
-   */
   private isRedirectAllowed = (url: string): boolean => {
     const target = new URL(url);
     if (target.host === new URL(this.rootUrl).host) return this.isAllowedByRobots(url);
@@ -468,9 +472,9 @@ class SiteCrawl {
   };
 
   /**
-   * Adds an in-scope, allowed URL; returns true if it was new. With `allowRelatedHost`,
-   * a URL on another host of the site is added too; its robots.txt is checked when it
-   * is fetched.
+   * Adds the URL to the in-memory queue if it's relevant to the crawl.
+   * 
+   * We check against things like robots.txt, URL domain.
    */
   private addToFrontier(
     rawUrl: string,
@@ -589,9 +593,9 @@ class SiteCrawl {
   }
 
   /**
-   * A known page whose sitemap <lastmod> is the same as last time, on a site whose
-   * lastmod has proved reliable. The homepage is always fetched: navigation comes from it.
-   * So is a page with no stored links, which has to be read once to have them.
+   * If the sitemap says the page is unchanged from last time.
+   * 
+   * Only trusted if the site's sitemap has proven trustworthy, like how other crawlers work.
    */
   private isUnchangedPerSitemap(entry: FrontierEntry): boolean {
     if (this.options.sitemapLastModifiedIsTrusted !== true || entry.crawlDepth === 0) return false;
@@ -604,8 +608,8 @@ class SiteCrawl {
   }
 
   /**
-   * Validators for a conditional GET of a known page. Not for the homepage, whose links
-   * discovery needs, or a page with no stored links; a 304 has no body to read them from.
+   * A similar way to isUnchangedPerSitemap of avoiding re-crawling. These are standard
+   * headers that will let us know if we already visited the latest version of the page.
    */
   private conditionalRequestHeaders(entry: FrontierEntry): Pick<FetchRequest, 'ifNoneMatch' | 'ifModifiedSince'> {
     const knownPage = this.knownPages.get(entry.url);
@@ -714,10 +718,7 @@ class SiteCrawl {
   }
 
   /**
-   * A page that only sends the reader on with `<meta http-equiv="refresh">` is a redirect
-   * written in HTML. Its target is queued in its place, keeping its depth and its place
-   * in the navigation, and the page itself is not passed on. Returns whether it was one.
-   * The homepage is never treated so: discovery starts from its links.
+   * Follow pages that are really a redirect written in HTML.
    */
   private followMetaRefresh(entry: FrontierEntry, finalUrl: string, signals: PageSignals): boolean {
     if (entry.crawlDepth === 0 || signals.metaRefreshUrl === null) return false;
@@ -780,8 +781,8 @@ class SiteCrawl {
   }
 
   /**
-   * The spec's clean markdown version: the URL with .md appended, or index.html.md for
-   * a URL without a file name. Probing stops after a few misses on a site with none.
+   * The llms.txt site says that some site can/should serve .MD files adjacent to
+   * their HTML files. If they're present, we should use them instead.
    */
   private async probeMarkdownVariant(pageUrl: string): Promise<string | null> {
     if (!this.markdownVariantsFound && this.markdownProbeMisses >= MARKDOWN_PROBES_BEFORE_GIVING_UP) return null;
@@ -854,9 +855,11 @@ class SiteCrawl {
   }
 
   /**
-   * The site's links as they stand: what this crawl read, and the stored links of every
-   * other known page. A page that was not reached or could not be fetched keeps its links;
-   * one that answered 404/410, is removed, or now only forwards contributes none.
+   * A map of all pages in the site's crawl, and the links each one contains.
+   * 
+   * Used for:
+   * - building inbound link count
+   * - calculating the first appearance of a page in a breadth-first walk
    */
   private currentLinksByPage(): Map<string, readonly string[]> {
     const linksByPage = new Map<string, readonly string[]>();
@@ -871,8 +874,7 @@ class SiteCrawl {
   }
 
   /**
-   * Navigation comes from the homepage, so without a read of it a page not fetched in this
-   * crawl is left out and keeps the signals it has.
+   * A mapping of each page to 'importance signals' for that page (e.g. inbound link count).
    */
   private finalLinkSignals(): Record<string, LinkSignals> {
     const graphSignals = computeLinkGraphSignals(this.rootUrl, this.currentLinksByPage(), this.metaRefreshTargets);

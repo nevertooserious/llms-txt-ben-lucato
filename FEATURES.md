@@ -10,10 +10,6 @@ Code Quality: The code should be well-structured, readable, and maintainable.
 
 
 Product Thinking & Creativity: We encourage candidates to go beyond the baseline requirements. Show us how you think about building a great product, not just a working solution.
-- have some form of evaluating our generated llms.txt ?
-    - maybe users can supply custom evals ?
-- maybe users can supply custom instructions ?
-- maybe users can flexibly ignore certain URL paths and re-try ?
 - audit log
 
 
@@ -41,6 +37,12 @@ Questions:
 - how to handle resilience on crawl 5xx?
 - talk about reconciliation safety gate - we don't want to zero an llms.txt if the site is down
 - describe hack with users - they're not actually persisted in the DB. which means site info persisted in browser storage
+    - api created jobs don't show up in theUI
 - talk about how we could implement rate-limiting for a user, or for processing of a site
 - talk about how site monitoring continues indefinitely, and what we could do about that
 - talk about how we should limit re-checks to a certain minimum interval, to prevent misuse
+- how to handle nefarious instructions from user? i.e. prompt injection
+- actual live hosting
+- "Same domain" means the site's host without a leading www., or any subdomain of it. So from www.example.com, both docs.example.com and example.com count.
+- if a site already has an llms.txt we use its knowledge, but this is a bit awkward
+- trusting sitemap after N successful times. conditionalRequestHeaders also for avoiding recrawling
