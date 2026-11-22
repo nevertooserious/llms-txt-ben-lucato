@@ -271,6 +271,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     await visible(pagesPanel.locator('.page-group-summary', { hasText: '/docs/' }).getByText('2 pages'));
     await visible(pageRow('/docs/intro').getByText('Docs', { exact: true }));
     expect(await pagesPanel.getByRole('checkbox', { name: '/', exact: true }).isDisabled()).toBe(true);
+    expect(await pagesPanel.getByRole('checkbox', { name: '/', exact: true }).isChecked()).toBe(true);
 
     // Nothing changes until it is saved; then one new version leaves the page and the path out.
     await pagesPanel.getByRole('checkbox', { name: '/pricing', exact: true }).uncheck();

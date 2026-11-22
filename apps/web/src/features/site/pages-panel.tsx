@@ -208,7 +208,7 @@ function PathTreeNode({ item, ...props }: TreeProps & { item: PathTreeItem }) {
       <label className="page-row-label">
         <input
           type="checkbox"
-          checked={!isPageIgnored && !page.isHomepage}
+          checked={!isPageIgnored}
           disabled={page.isHomepage || (isUnderIgnoredPath && !isOnlyRowOfIgnoredPath)}
           onChange={(event) =>
             isOnlyRowOfIgnoredPath ? props.onSetPathIgnored(ignoredPath, false) : props.onSetPageIgnored(page, !event.target.checked)
