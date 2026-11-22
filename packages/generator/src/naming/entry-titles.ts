@@ -1,8 +1,8 @@
 import { pagePathOf, type GeneratorPage } from '@llms-txt/contracts';
 import { titleCaseOf } from '../selection';
-import type { NamingContext } from './naming-context';
-import { singleLine } from '../text/normalise-text';
-import { TITLE_SEPARATORS } from './title-parts';
+import { areaNameOf, type NamingContext } from './naming-context';
+import { normaliseForComparison, singleLine } from '../text/normalise-text';
+import { withoutSiteNames, type OwnTitle } from './title-parts';
 
 /** A longer title is a headline or a sentence, not a name. */
 const MAXIMUM_TITLE_LENGTH = 80;
@@ -13,18 +13,20 @@ const MAXIMUM_TITLE_LENGTH = 80;
  * path segment.
  */
 export function entryTitle(page: GeneratorPage, siteTitle: string): string {
-  return ownTitleOf(page, { siteTitle, homepageTitle: '', titleSuffixes: siteTitle === '' ? [] : [siteTitle] }) ?? titleFromUrl(page);
+  const own = ownTitleOf(page, { siteTitle, homepageTitle: '', titleSuffixes: siteTitle === '' ? [] : [siteTitle] });
+  return own?.title ?? titleFromUrl(page);
 }
 
 /**
- * The entry's title: the page's own, without the names the site's titles end with. When
- * that is missing, or is a headline or a sentence rather than a name, the text of the
+ * The entry's title: the page's own, without the names the site's titles end with, except
+ * the name of its area where the title needs it (withAreaName). When the page's own title
+ * is missing, or is a headline or a sentence rather than a name, the text of the
  * navigation link to the page, then a title made from the URL.
  */
 export function entryTitleIn(page: GeneratorPage, context: NamingContext): string {
-  const ownTitle = ownTitleOf(page, context);
-  if (ownTitle !== null && !looksLikeSentence(ownTitle)) return ownTitle;
-  return alternativeTitlesOf(page)[0] ?? ownTitle ?? titleFromUrl(page);
+  const own = ownTitleOf(page, context);
+  if (own !== null && !looksLikeSentence(own.title)) return withAreaName(own, context);
+  return alternativeTitlesOf(page)[0] ?? own?.title ?? titleFromUrl(page);
 }
 
 /** What the homepage's entry is called when its title is only the site's name. */
@@ -36,8 +38,8 @@ const HOMEPAGE_ENTRY_TITLE = 'Home';
  * nothing, the site's name again, or a sentence.
  */
 export function homepageEntryTitleIn(homepage: GeneratorPage, context: NamingContext): string {
-  const ownTitle = ownTitleOf(homepage, { ...context, homepageTitle: '' });
-  return ownTitle !== null && !looksLikeSentence(ownTitle) ? ownTitle : HOMEPAGE_ENTRY_TITLE;
+  const own = ownTitleOf(homepage, { ...context, homepageTitle: '' });
+  return own !== null && !looksLikeSentence(own.title) ? own.title : HOMEPAGE_ENTRY_TITLE;
 }
 
 /** Other names for the page, best first, for when its title is unusable or already taken. */
@@ -53,25 +55,40 @@ export function alternativeTitlesOf(page: GeneratorPage): string[] {
 function ownTitleOf(
   page: GeneratorPage,
   context: Pick<NamingContext, 'siteTitle' | 'homepageTitle' | 'titleSuffixes'>,
-): string | null {
-  let title = singleLine(page.record.title ?? '');
+): OwnTitle | null {
+  const hostname = new URL(page.record.normalisedUrl).hostname;
   // A page on another host of the site may end its title with that host (`| docs.acme.com`).
-  const names = [...context.titleSuffixes, new URL(page.record.normalisedUrl).hostname];
-  // Twice, for `Page | Area | Site`.
-  for (let pass = 0; pass < 2; pass += 1) {
-    for (const separator of TITLE_SEPARATORS) {
-      for (const name of names) {
-        const suffix = `${separator}${name}`;
-        if (title.length > suffix.length && title.endsWith(suffix)) title = title.slice(0, -suffix.length).trim();
-      }
-      const prefix = `${context.siteTitle}${separator}`;
-      if (context.siteTitle !== '' && title.length > prefix.length && title.startsWith(prefix)) {
-        title = title.slice(prefix.length).trim();
-      }
-    }
-  }
-  const isOnlyTheSiteName = title === context.siteTitle || title === context.homepageTitle;
-  return title === '' || isOnlyTheSiteName ? null : title;
+  const own = withoutSiteNames(singleLine(page.record.title ?? ''), [...context.titleSuffixes, hostname], context.siteTitle);
+  const isOnlyTheSiteName = own.title === context.siteTitle || own.title === context.homepageTitle;
+  // A page titled with its own host has not been given a name.
+  const isOnlyTheHost = own.title.toLowerCase() === hostname;
+  return own.title === '' || isOnlyTheSiteName || isOnlyTheHost ? null : own;
+}
+
+/**
+ * Titles that say what kind of page this is, not what it is about. On a site with several
+ * sets of documentation each set has one, and only the set's name tells them apart.
+ */
+const GENERIC_TITLES = new Set([
+  'overview', 'introduction', 'intro', 'getting started', 'get started', 'quick start', 'quickstart',
+  'installation', 'install', 'setup', 'faq', 'faqs', 'frequently asked questions', 'glossary', 'reference',
+  'api reference', 'guide', 'guides', 'tutorial', 'tutorials', 'examples', 'changelog', 'release notes',
+  'configuration', 'usage', 'basics', 'concepts', 'troubleshooting', 'resources', 'additional resources',
+  'command line interface', 'cli', 'api', 'welcome', 'about', 'documentation', 'docs', 'migration guide',
+  'support', 'community', 'contributing',
+]);
+
+/**
+ * The title with the name of the page's area put back (`Overview • Svelte Docs`), where
+ * the site has several areas and the title alone would not say which one this page is of:
+ * it is a generic title, or pages of other areas have the same one.
+ */
+function withAreaName(own: OwnTitle, context: NamingContext): string {
+  const area = areaNameOf(own.removedEndings, context.areaNames);
+  if (area === null) return own.title;
+  const key = normaliseForComparison(own.title);
+  const needsArea = GENERIC_TITLES.has(key) || context.titlesSharedAcrossAreas.has(key);
+  return needsArea ? `${own.title}${area.separator}${area.name}` : own.title;
 }
 
 function looksLikeSentence(title: string): boolean {
