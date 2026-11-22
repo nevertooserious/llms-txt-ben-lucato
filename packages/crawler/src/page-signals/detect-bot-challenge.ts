@@ -1,8 +1,5 @@
 import { load } from 'cheerio/slim';
 
-// A bot-challenge or block page served with a 200. It is the protection vendor's page,
-// not the site's, so it must count as a failed fetch and never replace a stored page
-// (docs/design/README.md, section 5, "Safety gate").
 
 /** Headers the vendors set only on a response they challenged. */
 const CHALLENGE_HEADERS: Array<[name: string, value: RegExp]> = [
@@ -22,6 +19,7 @@ const CHALLENGE_TITLE =
 /** A real page may mention these words; a challenge page has little else to say. */
 const CHALLENGE_PAGE_MAX_TEXT_CHARACTERS = 1000;
 
+// pages protected from bots should not be considered in the final llms.txt
 export function looksLikeBotChallenge(html: string, headers: Record<string, string> = {}): boolean {
   if (CHALLENGE_HEADERS.some(([name, value]) => value.test(headers[name] ?? ''))) return true;
 

@@ -3,13 +3,11 @@ import type { LinkSignals } from '@llms-txt/contracts';
 export type LinkGraphSignals = Pick<LinkSignals, 'inboundLinkCount' | 'firstLinkPosition'>;
 
 /**
- * Inbound counts and link order, computed from every page's links as they stand. Pure, so
- * a check that re-read few pages gets the same answer as one that re-read them all.
+ * Inbound counts and link order, computed from every page's links as they stand.
  *
  * The walk is breadth-first from the homepage, reading each page's links in order and
  * numbering each URL the first time it appears. Pages the homepage does not lead to (found
- * through the sitemap) are walked after it, in URL order. `redirects` maps a page that only
- * forwards with a meta refresh to its target, so links to it count toward the target.
+ * through the sitemap) are walked after it, in URL order.
  */
 export function computeLinkGraphSignals(
   rootUrl: string,

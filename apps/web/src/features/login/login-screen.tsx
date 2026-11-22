@@ -35,6 +35,9 @@ export function LoginScreen({ signIn, nextPath }: LoginScreenProps) {
           <li>
             <span className="label">03</span> Flexible input rules.
           </li>
+          <li>
+            <span className="label">04</span> REST API available.
+          </li>
         </ol>
       </section>
 
