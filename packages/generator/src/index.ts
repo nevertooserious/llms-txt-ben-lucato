@@ -24,12 +24,10 @@ export {
   type SiteSummaryInput,
 } from './enrichment';
 export {
-  DEFAULT_SELECTION_LIMITS,
   excludePagesUnderUrlPrefixes,
   listingCandidates,
   selectPages,
   type SelectedPage,
-  type SelectionLimits,
 } from './selection';
 export { validateLlmsTxt, type LlmsTxtValidationResult } from './rendering/validate-llms-txt';
 export { decidePublication, listedEntries, NOTHING_TO_LIST_REASON, type PageChanges, type PublicationDecision } from './publication/decide-publication';

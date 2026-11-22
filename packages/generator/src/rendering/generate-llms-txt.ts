@@ -13,13 +13,11 @@ import {
 } from '../naming';
 import { normaliseForComparison, singleLine, truncate } from '../text/normalise-text';
 import {
-  DEFAULT_SELECTION_LIMITS,
   homepageOf,
   OPTIONAL_SECTION_NAME,
   sectionNamesInOrder,
   selectPages,
   type SelectedPage,
-  type SelectionLimits,
 } from '../selection';
 import { validateLlmsTxt } from './validate-llms-txt';
 
@@ -33,7 +31,6 @@ export interface GenerateLlmsTxtInput {
   machineReadableResourceUrls?: readonly string[];
   pages: GeneratorPage[];
   overrides: PageOverride[];
-  limits?: SelectionLimits;
 }
 
 /**
@@ -62,7 +59,7 @@ export interface GenerateLlmsTxtInput {
 export function generateLlmsTxt(input: GenerateLlmsTxtInput): string {
   const siteTitle = singleLine(input.siteTitle);
   const summary = truncate(singleLine(input.siteSummary ?? homepageOf(input.pages)?.record.description ?? ''));
-  const selected = selectPages(input.pages, input.overrides, input.limits ?? DEFAULT_SELECTION_LIMITS);
+  const selected = selectPages(input.pages, input.overrides);
   const context = buildNamingContext(siteTitle, input.pages);
   const titles = entryTitlesOf(selected, context);
 

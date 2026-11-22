@@ -173,11 +173,12 @@ describe.skipIf(databaseUrl === null)('the pipeline', () => {
   });
 
   describe('site shapes', () => {
-    it('blog-heavy site: posts are capped, and the overflow is left out', async () => {
+    it('blog-heavy site: every post the stub keeps is listed, in the site\'s order', async () => {
       const { llmsTxt } = await generate('large-sitemap-site');
       const listed = sections(llmsTxt);
       expect(Object.keys(listed)).toEqual(['Blog']);
-      expect(listed.Blog).toHaveLength(3);
+      // No entry limit: it is the assessment that leaves single posts out, and the stub keeps all.
+      expect(listed.Blog!.length).toBeGreaterThan(3);
       // The post the navigation links comes first. Numbered URLs sort as numbers when
       // nothing else tells them apart.
       expect(listed.Blog![0]).toMatch(/\/posts\/90$/);

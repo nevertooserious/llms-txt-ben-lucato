@@ -13,7 +13,7 @@ export function pagesCoveredByBroaderPage(candidates: readonly GeneratorPage[]):
 }
 
 /** Whether one of the given page paths is strictly above this page, the site's root aside. */
-export function hasPathAbove(page: GeneratorPage, pathKeys: ReadonlySet<string>): boolean {
+function hasPathAbove(page: GeneratorPage, pathKeys: ReadonlySet<string>): boolean {
   const url = page.record.normalisedUrl;
   const segments = pagePathSegmentsOf(url);
   for (let length = segments.length - 1; length > 0; length -= 1) {

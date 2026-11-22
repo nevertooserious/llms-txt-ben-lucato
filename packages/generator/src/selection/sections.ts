@@ -1,5 +1,4 @@
 import type { GeneratorPage, PageType } from '@llms-txt/contracts';
-import type { SelectionLimits } from './selection-limits';
 import { pathSegmentsOf, titleCaseOf } from './url-paths';
 
 type SectionedPageType = Exclude<PageType, 'home' | 'legal' | 'other'>;
@@ -54,16 +53,6 @@ export function sectionNameOf(
   if (pageType !== 'other') return SECTION_NAMES[pageType];
   const firstSegment = segmentsUnderSiteRoot(page, homepage)?.[0];
   return (firstSegment === undefined ? undefined : areaSectionNames.get(firstSegment)) ?? GENERAL_SECTION_NAME;
-}
-
-export function sectionLimitOf(sectionName: string, limits: SelectionLimits): number {
-  if (sectionName === OPTIONAL_SECTION_NAME) return limits.maxOptionalEntries;
-  if (sectionName === SECTION_NAMES.blog) return limits.maxBlogEntries;
-  return isDocumentationSection(sectionName) ? limits.maxDocumentationEntriesPerSection : limits.maxEntriesPerSection;
-}
-
-export function isDocumentationSection(sectionName: string): boolean {
-  return [SECTION_NAMES.docs, SECTION_NAMES.api, SECTION_NAMES.guide].includes(sectionName);
 }
 
 /**

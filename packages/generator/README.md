@@ -4,7 +4,7 @@ Generates llms.txt files for a crawled & extracted site
 
 There are several phases:
 - Discard pages that aren't relevant, based on signals from the extraction phase (e.g. page type)
-- Claude Haiku assesses each page to decide each page's inclusion status (primary/optional/exclude), as well as a page type and a short description
+- Claude Haiku assesses each page to decide whether each page is useful to an assistant and how broad it is, as well as a page type and a short description
 - Claude Opus writes the high-level summary for the site, as well as notes if they are required
 - The llms.txt is built deterministically from the surviving pages
 

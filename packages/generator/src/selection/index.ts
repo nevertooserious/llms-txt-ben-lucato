@@ -6,5 +6,4 @@ export { listingCandidates } from './listing-candidates';
 export { homepageOf } from './page-kinds';
 export { OPTIONAL_SECTION_NAME, sectionNamesInOrder } from './sections';
 export { selectPages, type SelectedPage } from './select-pages';
-export { DEFAULT_SELECTION_LIMITS, type SelectionLimits } from './selection-limits';
 export { compareText, isPaginationUrl, titleCaseOf } from './url-paths';
