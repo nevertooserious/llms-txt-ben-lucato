@@ -30,6 +30,7 @@ function innerPage(title: string | null, path = '/page'): GeneratorPage {
       firstLinkPosition: null,
     },
     markdownVariantUrl: null,
+    outboundLinkUrls: [],
   };
 }
 
