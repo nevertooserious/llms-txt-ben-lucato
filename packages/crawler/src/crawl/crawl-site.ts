@@ -409,6 +409,19 @@ class SiteCrawl {
    * 
    * e.g. swagger
    */
+  /**
+   * Whether the directory a file is in has pages of the site under it. An `llms.txt` is
+   * the index of a section (`/docs/llms.txt` of `/docs/...`). Sites also publish one beside
+   * every page as that page's text (`/docs/intro/llms.txt`), which indexes nothing and
+   * would fill the list with as many of them as the crawl happened to see.
+   */
+  private hasPagesUnder(fileUrl: string): boolean {
+    const directoryUrl = fileUrl.slice(0, fileUrl.lastIndexOf('/') + 1);
+    for (const pageUrl of this.frontier.keys()) if (pageUrl.startsWith(directoryUrl)) return true;
+    for (const pageUrl of this.knownPages.keys()) if (pageUrl.startsWith(directoryUrl)) return true;
+    return false;
+  }
+
   private addMachineReadableResourceCandidate(href: string, baseUrl?: string): boolean {
     let url: URL;
     try {
@@ -430,7 +443,9 @@ class SiteCrawl {
    */
   private async findMachineReadableResources(): Promise<string[] | null> {
     const found: string[] = [];
-    const candidates = [...this.machineReadableResourceCandidateUrls].slice(0, MAX_MACHINE_READABLE_RESOURCE_CHECKS);
+    const candidates = [...this.machineReadableResourceCandidateUrls]
+      .filter((url) => machineReadableResourceKindOf(url) !== 'llms_txt_index' || this.hasPagesUnder(url))
+      .slice(0, MAX_MACHINE_READABLE_RESOURCE_CHECKS);
     for (const url of candidates) {
       if (!this.isAllowedByRobots(url)) continue;
       let outcome: FetchOutcome;
