@@ -198,11 +198,11 @@ describe('loadSitePagesView', () => {
     const view = await loadSitePagesView(site.siteId, dependencies);
     expect(view.excludedUrlPrefixes).toEqual([site.url('/docs')]);
     expect(view.pages).toEqual([
-      { normalisedUrl: site.url('/'), title: 'Title of /', isHomepage: true, isExcluded: false, isKept: false, canBeKept: false, listedInSection: null },
-      { normalisedUrl: site.url('/blog/hello'), title: 'Title of /blog/hello', isHomepage: false, isExcluded: false, isKept: false, canBeKept: true, listedInSection: 'Pages' },
-      { normalisedUrl: site.url('/docs/intro'), title: 'Title of /docs/intro', isHomepage: false, isExcluded: false, isKept: false, canBeKept: true, listedInSection: null },
-      { normalisedUrl: site.url('/docs/setup'), title: 'Title of /docs/setup', isHomepage: false, isExcluded: false, isKept: false, canBeKept: true, listedInSection: null },
-      { normalisedUrl: site.url('/pricing'), title: 'Title of /pricing', isHomepage: false, isExcluded: true, isKept: false, canBeKept: true, listedInSection: null },
+      { normalisedUrl: site.url('/'), title: 'Title of /', isHomepage: true, isExcluded: false, isKept: false, canBeKept: false, isChosenByGenerator: false, listedInSection: null },
+      { normalisedUrl: site.url('/blog/hello'), title: 'Title of /blog/hello', isHomepage: false, isExcluded: false, isKept: false, canBeKept: true, isChosenByGenerator: true, listedInSection: 'Pages' },
+      { normalisedUrl: site.url('/docs/intro'), title: 'Title of /docs/intro', isHomepage: false, isExcluded: false, isKept: false, canBeKept: true, isChosenByGenerator: true, listedInSection: null },
+      { normalisedUrl: site.url('/docs/setup'), title: 'Title of /docs/setup', isHomepage: false, isExcluded: false, isKept: false, canBeKept: true, isChosenByGenerator: true, listedInSection: null },
+      { normalisedUrl: site.url('/pricing'), title: 'Title of /pricing', isHomepage: false, isExcluded: true, isKept: false, canBeKept: true, isChosenByGenerator: true, listedInSection: null },
     ]);
   });
 

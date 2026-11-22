@@ -927,9 +927,8 @@ details[open] > .page-group-summary::before {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.page-row.is-ignored .page-path {
+.page-row.is-excluded .page-path {
   color: var(--color-text-muted);
-  text-decoration: line-through;
 }
 .page-row.is-changed {
   box-shadow: inset 2px 0 0 var(--color-accent);
@@ -947,7 +946,7 @@ details[open] > .page-group-summary::before {
   border-color: var(--color-rule);
   color: var(--color-text-muted);
 }
-.badge-ignored {
+.badge-excluded {
   border-color: var(--color-rule-strong);
   background: var(--color-surface-muted);
   color: var(--color-text-secondary);

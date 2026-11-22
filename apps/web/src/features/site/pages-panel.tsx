@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { isUrlUnderPrefix } from '@llms-txt/contracts';
 import {
   groupPagesByPath,
   type PathTreeGroup,
@@ -12,17 +11,20 @@ import {
 } from '@/shared/site-pages';
 import type { SiteView } from '@/shared/site-view';
 import { fetchSitePages, savePageExclusions, SiteApiError } from '@/browser/site-api';
+import {
+  canBeIncluded,
+  excludedPathOver,
+  isExcludedByUser,
+  isIncluded,
+  pathGroupState,
+  withPageIncluded,
+  withPathExcluded,
+  withPathToggled,
+  type PageChoices,
+} from './page-choices';
 
 /** A top-level group with more pages than this starts closed, so a large site opens as a list of its areas. */
 const MAX_PAGES_IN_GROUP_OPEN_AT_FIRST = 12;
-
-/** What the user ignores: pages one by one, and whole paths as URL prefixes. */
-interface Exclusions {
-  urls: ReadonlySet<string>;
-  urlPrefixes: ReadonlySet<string>;
-  /** Pages listed even if the generator would leave them out. */
-  keptUrls: ReadonlySet<string>;
-}
 
 interface PagesPanelProps {
   view: SiteView;
@@ -30,14 +32,15 @@ interface PagesPanelProps {
 }
 
 /**
- * The site's crawled pages, grouped by path. Unticking a page ignores that page;
- * unticking a path ignores everything under it, including pages a later crawl finds.
+ * The site's crawled pages, grouped by path. A ticked page is an entry of the file: the
+ * generator's choice to begin with, which the user changes by ticking and unticking.
+ * Unticking a path leaves out everything under it, including pages a later crawl finds.
  * Changes are collected and saved together, so one save is one new version.
  */
 export function PagesPanel({ view, onChanged }: PagesPanelProps) {
   const [loaded, setLoaded] = useState<SitePagesView | null>(null);
-  /** The exclusions as edited; null while they are as saved. */
-  const [draft, setDraft] = useState<Exclusions | null>(null);
+  /** The choices as edited; null while they are as saved. */
+  const [draft, setDraft] = useState<PageChoices | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
@@ -60,10 +63,10 @@ export function PagesPanel({ view, onChanged }: PagesPanelProps) {
   }, [load, newestVersionNumber, latestRunStatus]);
 
   const pages = useMemo(() => loaded?.pages ?? [], [loaded]);
-  const saved = useMemo<Exclusions>(
+  const saved = useMemo<PageChoices>(
     () => ({
-      urls: new Set(pages.filter((page) => page.isExcluded).map((page) => page.normalisedUrl)),
-      urlPrefixes: new Set(loaded?.excludedUrlPrefixes ?? []),
+      excludedUrls: new Set(pages.filter((page) => page.isExcluded).map((page) => page.normalisedUrl)),
+      excludedUrlPrefixes: new Set(loaded?.excludedUrlPrefixes ?? []),
       keptUrls: new Set(pages.filter((page) => page.isKept).map((page) => page.normalisedUrl)),
     }),
     [pages, loaded],
@@ -71,53 +74,44 @@ export function PagesPanel({ view, onChanged }: PagesPanelProps) {
   const current = draft ?? saved;
   const tree = useMemo(() => groupPagesByPath(pages, rootUrl), [pages, rootUrl]);
   const unsavedChangeCount =
-    differenceCount(saved.urls, current.urls) +
-    differenceCount(saved.urlPrefixes, current.urlPrefixes) +
+    differenceCount(saved.excludedUrls, current.excludedUrls) +
+    differenceCount(saved.excludedUrlPrefixes, current.excludedUrlPrefixes) +
     differenceCount(saved.keptUrls, current.keptUrls);
 
-  function edit(change: (exclusions: { urls: Set<string>; urlPrefixes: Set<string>; keptUrls: Set<string> }) => void) {
-    const next = { urls: new Set(current.urls), urlPrefixes: new Set(current.urlPrefixes), keptUrls: new Set(current.keptUrls) };
-    change(next);
+  function edit(next: PageChoices) {
     setDraft(next);
     setSavedMessage(null);
   }
-  const setPageIgnored = (page: SitePageView, isIgnored: boolean) =>
-    edit(({ urls }) => (isIgnored ? urls.add(page.normalisedUrl) : urls.delete(page.normalisedUrl)));
-  const setPathIgnored = (urlPrefix: string, isIgnored: boolean) =>
-    edit(({ urlPrefixes }) => (isIgnored ? urlPrefixes.add(urlPrefix) : urlPrefixes.delete(urlPrefix)));
-
-  const setPageKept = (page: SitePageView, isKept: boolean) =>
-    edit(({ keptUrls }) => (isKept ? keptUrls.add(page.normalisedUrl) : keptUrls.delete(page.normalisedUrl)));
 
   async function save() {
     setIsSaving(true);
     setErrorMessage(null);
     try {
       const result = await savePageExclusions(publicSlug, {
-        excludedUrls: [...current.urls],
-        excludedUrlPrefixes: [...current.urlPrefixes],
+        excludedUrls: [...current.excludedUrls],
+        excludedUrlPrefixes: [...current.excludedUrlPrefixes],
         keptUrls: [...current.keptUrls],
       });
       await Promise.all([load(), onChanged()]);
       setDraft(null);
       setSavedMessage(savedMessageFor(result));
     } catch (error) {
-      setErrorMessage(error instanceof SiteApiError ? error.message : 'The ignored pages could not be saved.');
+      setErrorMessage(error instanceof SiteApiError ? error.message : 'The changes could not be saved.');
     } finally {
       setIsSaving(false);
     }
   }
 
   const listedCount = pages.filter((page) => page.listedInSection !== null).length;
-  const ignoredCount = pages.filter((page) => isIgnored(page, saved)).length;
+  const excludedCount = pages.filter((page) => !page.isHomepage && page.listedInSection === null).length;
   const groupUrlPrefixes = useMemo(() => new Set(groupUrlPrefixesOf(tree)), [tree]);
-  const treeProps = { saved, current, groupUrlPrefixes, onSetPageIgnored: setPageIgnored, onSetPathIgnored: setPathIgnored, onSetPageKept: setPageKept };
+  const treeProps = { saved, current, groupUrlPrefixes, onEdit: edit };
   return (
     <details className="pages-panel">
       <summary className="pages-panel-summary">
         <h2 className="cell-title">Pages</h2>
         <span className="pages-panel-counts">
-          {loaded === null ? 'Loading…' : `${pages.length} crawled · ${listedCount} listed · ${ignoredCount} ignored`}
+          {loaded === null ? 'Loading…' : `${pages.length} crawled · ${listedCount} listed · ${excludedCount} excluded`}
         </span>
         {/* In the summary so they stay in reach with the tree scrolled; a button does not toggle the section. */}
         {(unsavedChangeCount > 0 || savedMessage) && (
@@ -140,7 +134,10 @@ export function PagesPanel({ view, onChanged }: PagesPanelProps) {
           </span>
         )}
       </summary>
-      <p className="hint">Untick a page(s) to tune what is included in your llms.txt.</p>
+      <p className="hint">
+        A ticked page is listed in your llms.txt. Tick or untick pages to change that; unticking a path also leaves out pages
+        found under it later.
+      </p>
       {errorMessage && (
         <p className="form-error" role="status">
           {errorMessage}
@@ -176,67 +173,49 @@ function differenceCount(a: ReadonlySet<string>, b: ReadonlySet<string>): number
   return [...a].filter((value) => !b.has(value)).length + [...b].filter((value) => !a.has(value)).length;
 }
 
-/** The ignored path a URL is at or under, if any. */
-function ignoredPathOver(url: string, exclusions: Exclusions): string | null {
-  for (const urlPrefix of exclusions.urlPrefixes) {
-    if (isUrlUnderPrefix(url, urlPrefix)) return urlPrefix;
-  }
-  return null;
-}
-
 /** The URL prefix of every group in the tree, at any depth. */
 function groupUrlPrefixesOf(items: readonly PathTreeItem[]): string[] {
   return items.flatMap((item) => (item.kind === 'group' ? [item.urlPrefix, ...groupUrlPrefixesOf(item.items)] : []));
 }
 
-function isIgnored(page: SitePageView, exclusions: Exclusions): boolean {
-  return !page.isHomepage && (exclusions.urls.has(page.normalisedUrl) || ignoredPathOver(page.normalisedUrl, exclusions) !== null);
-}
-
 interface TreeProps {
   depth: number;
-  saved: Exclusions;
-  current: Exclusions;
-  /** The paths that have a row of their own in the tree, where an ignored one is included again. */
+  saved: PageChoices;
+  current: PageChoices;
+  /** The paths that have a row of their own in the tree, where an excluded one is included again. */
   groupUrlPrefixes: ReadonlySet<string>;
-  onSetPageIgnored: (page: SitePageView, isIgnored: boolean) => void;
-  onSetPathIgnored: (urlPrefix: string, isIgnored: boolean) => void;
-  onSetPageKept: (page: SitePageView, isKept: boolean) => void;
+  onEdit: (next: PageChoices) => void;
 }
 
 function PathTreeNode({ item, ...props }: TreeProps & { item: PathTreeItem }) {
   if (item.kind === 'group') return <PathGroup group={item} {...props} />;
   const { page, label } = item;
   const { saved, current } = props;
-  const ignoredPath = page.isHomepage ? null : ignoredPathOver(page.normalisedUrl, current);
-  const isUnderIgnoredPath = ignoredPath !== null;
-  // An ignored path can lose its row, when all but one of its pages go. Its last page then includes it again.
-  const isOnlyRowOfIgnoredPath = ignoredPath !== null && !props.groupUrlPrefixes.has(ignoredPath);
-  const isPageIgnored = isIgnored(page, current);
-  const isKept = current.keptUrls.has(page.normalisedUrl);
-  const isChanged = isPageIgnored !== isIgnored(page, saved) || isKept !== saved.keptUrls.has(page.normalisedUrl);
-  // Offered on a page the generator left out, and on one the user already keeps.
-  const showsKeepButton = !isPageIgnored && page.canBeKept && (isKept || page.listedInSection === null);
+  const excludedPath = page.isHomepage ? null : excludedPathOver(page.normalisedUrl, current);
+  // An excluded path can lose its row, when all but one of its pages go. Its last page then includes it again.
+  const isOnlyRowOfExcludedPath = excludedPath !== null && !props.groupUrlPrefixes.has(excludedPath);
+  const isPageIncluded = isIncluded(page, current);
+  const isChanged = isPageIncluded !== isIncluded(page, saved);
+  const isLocked = page.isHomepage || !canBeIncluded(page) || (excludedPath !== null && !isOnlyRowOfExcludedPath);
   return (
-    <li className={`page-row${isPageIgnored ? ' is-ignored' : ''}${isChanged ? ' is-changed' : ''}`}>
+    <li className={`page-row${isPageIncluded || page.isHomepage ? '' : ' is-excluded'}${isChanged ? ' is-changed' : ''}`}>
       <label className="page-row-label">
         <input
           type="checkbox"
-          checked={!isPageIgnored}
-          disabled={page.isHomepage || (isUnderIgnoredPath && !isOnlyRowOfIgnoredPath)}
+          checked={isPageIncluded || page.isHomepage}
+          disabled={isLocked}
           onChange={(event) =>
-            isOnlyRowOfIgnoredPath ? props.onSetPathIgnored(ignoredPath, false) : props.onSetPageIgnored(page, !event.target.checked)
+            props.onEdit(
+              isOnlyRowOfExcludedPath
+                ? withPathExcluded(current, excludedPath, false)
+                : withPageIncluded(current, page, event.target.checked),
+            )
           }
         />
         <span className="page-path">{label}</span>
       </label>
       <span className="page-title">{page.title}</span>
-      <PageStatus page={page} isPageIgnored={isPageIgnored} isUnderIgnoredPath={isUnderIgnoredPath} wasIgnored={isIgnored(page, saved)} />
-      {showsKeepButton && (
-        <button type="button" className="button" aria-pressed={isKept} onClick={() => props.onSetPageKept(page, !isKept)}>
-          {isKept ? 'Kept' : 'Keep'}
-        </button>
-      )}
+      <PageStatus page={page} current={current} isChanged={isChanged} />
       <a className="page-open" href={page.normalisedUrl} target="_blank" rel="noreferrer noopener" aria-label={`Open ${label}`}>
         ↗
       </a>
@@ -246,11 +225,10 @@ function PathTreeNode({ item, ...props }: TreeProps & { item: PathTreeItem }) {
 
 function PathGroup({ group, depth, ...props }: TreeProps & { group: PathTreeGroup }) {
   const { saved, current } = props;
-  const isPathIgnored = current.urlPrefixes.has(group.urlPrefix);
-  // A path above this one is ignored, which covers this one: that is where to change it.
-  const isUnderIgnoredPath = !isPathIgnored && ignoredPathOver(group.urlPrefix, current) !== null;
-  const ignoredPageCount = group.pages.filter((page) => isIgnored(page, current)).length;
-  const isChanged = isPathIgnored !== saved.urlPrefixes.has(group.urlPrefix);
+  const state = pathGroupState(group, current);
+  const isPathExcluded = state === 'path_excluded' || state === 'under_excluded_path';
+  const excludedPageCount = group.pages.filter((page) => !page.isHomepage && !isIncluded(page, current)).length;
+  const isChanged = state !== pathGroupState(group, saved);
   return (
     <li className="page-group">
       <details open={depth > 0 || group.pages.length <= MAX_PAGES_IN_GROUP_OPEN_AT_FIRST}>
@@ -258,17 +236,17 @@ function PathGroup({ group, depth, ...props }: TreeProps & { group: PathTreeGrou
           <input
             type="checkbox"
             aria-label={`Include the path ${group.label}`}
-            checked={!isPathIgnored && !isUnderIgnoredPath}
-            disabled={isUnderIgnoredPath}
+            checked={state === 'all_included'}
+            disabled={state === 'under_excluded_path'}
             ref={(input) => {
-              if (input) input.indeterminate = !isPathIgnored && !isUnderIgnoredPath && ignoredPageCount > 0;
+              if (input) input.indeterminate = state === 'some_included';
             }}
-            onChange={() => props.onSetPathIgnored(group.urlPrefix, !isPathIgnored)}
+            onChange={() => props.onEdit(withPathToggled(current, group))}
           />
           <span className="page-path">{group.label}</span>
           <span className="page-group-counts">
             {group.pages.length} pages
-            {isPathIgnored || isUnderIgnoredPath ? ' · path ignored' : ignoredPageCount > 0 && ` · ${ignoredPageCount} ignored`}
+            {isPathExcluded ? ' · path excluded' : excludedPageCount > 0 && ` · ${excludedPageCount} excluded`}
           </span>
         </summary>
         <ul className="page-tree">
@@ -283,16 +261,20 @@ function PathGroup({ group, depth, ...props }: TreeProps & { group: PathTreeGrou
 
 interface PageStatusProps {
   page: SitePageView;
-  isPageIgnored: boolean;
-  isUnderIgnoredPath: boolean;
-  wasIgnored: boolean;
+  current: PageChoices;
+  /** Ticked or unticked since the last save. */
+  isChanged: boolean;
 }
 
-function PageStatus({ page, isPageIgnored, isUnderIgnoredPath, wasIgnored }: PageStatusProps) {
+function PageStatus({ page, current, isChanged }: PageStatusProps) {
   if (page.isHomepage) return <span className="badge badge-quiet">Homepage</span>;
-  if (isPageIgnored) return <span className="badge badge-ignored">{isUnderIgnoredPath ? 'Path ignored' : 'Ignored'}</span>;
-  if (page.listedInSection !== null) return <span className="badge badge-valid">{page.listedInSection}</span>;
-  // Included again and not saved yet: whether it is listed is the generator's call on save.
-  if (wasIgnored) return <span className="badge badge-quiet">Included on save</span>;
-  return <span className="badge badge-quiet">Not listed</span>;
+  if (isIncluded(page, current)) {
+    // Ticked and not saved yet: the section is the generator's call on save.
+    if (isChanged || page.listedInSection === null) return <span className="badge badge-quiet">Included on save</span>;
+    return <span className="badge badge-valid">{page.listedInSection}</span>;
+  }
+  if (excludedPathOver(page.normalisedUrl, current) !== null) return <span className="badge badge-excluded">Path excluded</span>;
+  if (isExcludedByUser(page, current)) return <span className="badge badge-excluded">Excluded by you</span>;
+  if (!canBeIncluded(page)) return <span className="badge badge-quiet">Cannot be listed</span>;
+  return <span className="badge badge-quiet">Excluded</span>;
 }

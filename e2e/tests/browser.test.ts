@@ -270,7 +270,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
 
     // The panel opens to the crawled pages, grouped by path, each with the section it is listed under.
     await pagesPanel.getByRole('heading', { name: 'Pages' }).click();
-    await visible(pagesPanel.getByText('6 crawled · 5 listed · 0 ignored'));
+    await visible(pagesPanel.getByText('6 crawled · 5 listed · 0 excluded'));
     await visible(pagesPanel.locator('.page-group-summary', { hasText: '/docs/' }).getByText('2 pages'));
     await visible(pageRow('/docs/intro').getByText('Docs', { exact: true }));
     expect(await pagesPanel.getByRole('checkbox', { name: '/', exact: true }).isDisabled()).toBe(true);
@@ -280,13 +280,13 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     await pagesPanel.getByRole('checkbox', { name: '/pricing', exact: true }).uncheck();
     await pagesPanel.getByRole('checkbox', { name: 'Include the path /docs/' }).uncheck();
     await visible(pagesPanel.getByText('2 unsaved changes'));
-    await visible(pageRow('/docs/setup').getByText('Path ignored'));
+    await visible(pageRow('/docs/setup').getByText('Path excluded'));
     expect(await rawLlmsTxt()).toContain(`${site.origin}/docs/intro`);
 
     await pagesPanel.getByRole('button', { name: 'Save and regenerate' }).click();
     await visible(pagesPanel.getByText('Saved. v2 is live.'));
     await visible(page.getByText('Version 2', { exact: true }));
-    await visible(pagesPanel.getByText('6 crawled · 2 listed · 3 ignored'));
+    await visible(pagesPanel.getByText('6 crawled · 2 listed · 3 excluded'));
     const afterSave = await rawLlmsTxt();
     expect(afterSave).not.toContain(`${site.origin}/docs/`);
     expect(afterSave).not.toContain(`${site.origin}/pricing`);
@@ -299,7 +299,7 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     await moveRunsOutOfCooldown();
     await page.getByRole('button', { name: /check now/i }).click();
     await visible(page.getByText('Version 3', { exact: true }), RUN_TIMEOUT_MS);
-    await visible(pageRow('/docs/upgrade').getByText('Path ignored'));
+    await visible(pageRow('/docs/upgrade').getByText('Path excluded'));
     const afterCheck = await rawLlmsTxt();
     expect(afterCheck).toContain(`${site.origin}/changelog`);
     expect(afterCheck).not.toContain(`${site.origin}/docs/`);
