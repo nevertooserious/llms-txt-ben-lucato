@@ -512,6 +512,24 @@ describe('generateLlmsTxt', () => {
     });
   });
 
+  it('takes both names off a title that ends with two, as gnu.org writes them', () => {
+    const llmsTxt = generate({
+      siteTitle: 'GNU',
+      pages: [
+        homepage,
+        page('/philosophy/free-sw.html', { title: 'What is Free Software? - GNU Project - Free Software Foundation' }),
+        page('/licenses/gpl-faq.html', { title: 'GPL FAQ - GNU Project - Free Software Foundation' }),
+        page('/gnu/gnu.html', { title: 'About GNU - Free Software Foundation' }),
+        // One page ending with a name of its own does not make that a site name.
+        page('/gnu/manifesto.html', { title: 'The Manifesto - First Edition - Free Software Foundation' }),
+      ],
+    });
+    expect(llmsTxt).toContain('- [What is Free Software?](');
+    expect(llmsTxt).toContain('- [GPL FAQ](');
+    expect(llmsTxt).toContain('- [About GNU](');
+    expect(llmsTxt).toContain('- [The Manifesto - First Edition](');
+  });
+
   it('keeps pages at similar URLs when their content differs', () => {
     const llmsTxt = generate({
       pages: [homepage, page('/guide', { contentDigest: 'one' }), page('/guide.html', { contentDigest: 'two' })],

@@ -1,7 +1,7 @@
 // How a page title divides into the page's name and the site's (`Docs | Acme`).
 
 /** What sites put between a page's name and the site's name in a title. */
-export const TITLE_SEPARATORS = [' | ', ' - ', ' – ', ' — ', ' · ', ' :: '];
+export const TITLE_SEPARATORS = [' | ', ' - ', ' – ', ' — ', ' · ', ' • ', ' » ', ' :: '];
 /** One other page sharing part of a title could be chance; two look like a template. */
 export const MINIMUM_PAGES_SHARING_SITE_NAME = 2;
 

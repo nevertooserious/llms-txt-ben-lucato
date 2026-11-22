@@ -91,6 +91,13 @@ describe('extractPage rules', () => {
       expect(extract(page('', '<p>No title anywhere.</p>')).title).toBeNull();
     });
 
+    it('takes markup written inside <title> out of the title', () => {
+      // A DocBook file served as HTML: gnu.org's gpl.dbk.
+      const titleTag = '<title><acronym>GNU</acronym> General Public License</title>';
+      expect(extract(page(titleTag, '')).title).toBe('GNU General Public License');
+      expect(extract(page('<title>a < b and b > c</title>', '')).title).toBe('a < b and b > c');
+    });
+
     it('uses the <h1>, then <title>, when an inner page has the site name as its og:title', () => {
       const openGraph = '<meta property="og:title" content="Acme">';
       const inner = { normalisedUrl: 'https://acme.test/changes', finalUrl: 'https://acme.test/changes', isHomepage: false };
