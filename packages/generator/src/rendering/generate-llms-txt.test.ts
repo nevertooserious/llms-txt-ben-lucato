@@ -168,6 +168,56 @@ describe('generateLlmsTxt with page assessments', () => {
     expect(sections(generate({ pages: [homepage, rejected], overrides: [{ ...keep, isExcluded: true }] }))).toEqual({});
   });
 
+  describe('single posts, which the assessment leaves out', () => {
+    const postAssessment = (pageType: StoredPageAssessment['pageType'] = 'blog') =>
+      assessed({ listingValue: 'exclude', exclusionReason: 'individual_content', scope: 'narrow', pageType });
+    const post = (path: string, pageType?: StoredPageAssessment['pageType']) =>
+      page(path, { pageType: 'other', assessment: postAssessment(pageType) });
+    // In the order of their URLs, which is the order of entries that nothing else orders.
+    const postPaths = ['/a-post', '/b-post', '/c-post', '/d-post', '/e-post'];
+    const standingPaths = ['/about', '/docs', '/pricing', '/product', '/support'];
+
+    it('are listed under Blog when the homepage is mostly a list of them, as on a blog', () => {
+      const blogHomepage = page('/', { title: 'Example', linksTo: [...postPaths, '/about'] });
+      const llmsTxt = generate({
+        pages: [
+          blogHomepage,
+          ...postPaths.slice(0, 4).map((path) => post(path)),
+          // The model called this post a guide. It is still a post.
+          post('/e-post', 'guide'),
+          page('/about', { pageType: 'about' }),
+          // A post the homepage does not link was not chosen by the site.
+          post('/old-post'),
+        ],
+      });
+      expect(sections(llmsTxt)).toEqual({ About: [`${ORIGIN}/about`], Blog: postPaths.map((path) => `${ORIGIN}${path}`) });
+    });
+
+    it('stay out when the homepage links more of the site than posts', () => {
+      const companyHomepage = page('/', { title: 'Example', linksTo: [...standingPaths, ...postPaths] });
+      const llmsTxt = generate({
+        pages: [companyHomepage, ...standingPaths.map((path) => page(path)), ...postPaths.map((path) => post(path))],
+      });
+      expect(sections(llmsTxt)).toEqual({ Pages: standingPaths.map((path) => `${ORIGIN}${path}`) });
+    });
+
+    it('stay out when the homepage links only a few, which are a site’s latest news', () => {
+      const fewPosts = postPaths.slice(0, 4);
+      const llmsTxt = generate({
+        pages: [page('/', { title: 'Example', linksTo: fewPosts }), ...fewPosts.map((path) => post(path))],
+      });
+      expect(sections(llmsTxt)).toEqual({});
+    });
+
+    it('stay out on a blog when the user excludes them', () => {
+      const llmsTxt = generate({
+        pages: [page('/', { title: 'Example', linksTo: postPaths }), ...postPaths.map((path) => post(path))],
+        overrides: [{ normalisedUrl: `${ORIGIN}/a-post`, descriptionOverride: null, isExcluded: true, isKept: false }],
+      });
+      expect(sections(llmsTxt).Blog).toEqual(postPaths.slice(1).map((path) => `${ORIGIN}${path}`));
+    });
+  });
+
   it('uses the assessed description and page type, and puts optional pages under Optional', () => {
     const llmsTxt = generate({
       pages: [
