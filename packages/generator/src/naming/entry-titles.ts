@@ -27,6 +27,19 @@ export function entryTitleIn(page: GeneratorPage, context: NamingContext): strin
   return alternativeTitlesOf(page)[0] ?? ownTitle ?? titleFromUrl(page);
 }
 
+/** What the homepage's entry is called when its title is only the site's name. */
+const HOMEPAGE_ENTRY_TITLE = 'Home';
+
+/**
+ * The title of the homepage's own entry: what its title says besides the site's name
+ * (`The /llms.txt file` in `The /llms.txt file – llms-txt`), and `Home` when that is
+ * nothing, the site's name again, or a sentence.
+ */
+export function homepageEntryTitleIn(homepage: GeneratorPage, context: NamingContext): string {
+  const ownTitle = ownTitleOf(homepage, { ...context, homepageTitle: '' });
+  return ownTitle !== null && !looksLikeSentence(ownTitle) ? ownTitle : HOMEPAGE_ENTRY_TITLE;
+}
+
 /** Other names for the page, best first, for when its title is unusable or already taken. */
 export function alternativeTitlesOf(page: GeneratorPage): string[] {
   const navigationLabel = singleLine(page.crawlSignals.navigationLabel ?? '');

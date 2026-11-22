@@ -343,7 +343,8 @@ describe('discovery', () => {
     const probesBefore = requestsFor(site, /\.md$/).length;
     const result = await crawl('static-site');
     expect(result.pages.every((page) => page.markdownVariantUrl === null)).toBe(true);
-    expect(requestsFor(site, /\.md$/).length - probesBefore).toBe(3);
+    // The homepage is tried under both its names, which count as one miss.
+    expect(requestsFor(site, /\.md$/).length - probesBefore).toBe(4);
   });
 
   it('stays under a subpath root_url', async () => {

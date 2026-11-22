@@ -3,5 +3,5 @@
 // title, and what a page shares with the rest of the site says nothing about that page.
 // So these functions look at all the pages together. Pure and deterministic.
 export { buildNamingContext, type NamingContext } from './naming-context';
-export { alternativeTitlesOf, entryTitle, entryTitleIn } from './entry-titles';
+export { alternativeTitlesOf, entryTitle, entryTitleIn, homepageEntryTitleIn } from './entry-titles';
 export { siteNameFrom } from './site-name';
