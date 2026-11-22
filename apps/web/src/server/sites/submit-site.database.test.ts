@@ -26,7 +26,7 @@ describe('submitSite', () => {
     );
     if (outcome.kind !== 'submitted') throw new Error(`expected a submission, got ${outcome.kind}`);
     const stored = await databasePool.query<{ root_url: string; is_monitored: boolean; status: string }>(
-      `select sites.root_url, sites.monitoring_enabled_until > now() as is_monitored, runs.status
+      `select sites.root_url, sites.next_monitor_check_at > now() as is_monitored, runs.status
          from sites
          join pipeline_runs runs on runs.site_id = sites.id and runs.id = $2
         where sites.public_slug = $1`,

@@ -13,7 +13,7 @@ import type { PipelineRunView, SiteView } from '@/shared/site-view';
 export async function loadSiteView(
   siteId: string,
   publicSlug: string,
-  dependencies: { databasePool: DatabasePool; now?: Date },
+  dependencies: { databasePool: DatabasePool },
 ): Promise<SiteView | null> {
   const [overview, latestRun, versions] = await Promise.all([
     loadSiteOverview(dependencies.databasePool, siteId),
@@ -21,18 +21,14 @@ export async function loadSiteView(
     listLlmsTxtVersions(dependencies.databasePool, siteId),
   ]);
   if (overview === null) return null;
-  const now = dependencies.now ?? new Date();
   const version = overview.publishedVersion;
-  const isMonitoringEnabled = overview.monitoringEnabledUntil !== null && overview.monitoringEnabledUntil > now;
   return {
     publicSlug,
     rootUrl: overview.rootUrl,
     siteTitle: overview.siteTitle,
     hostedLlmsTxtPath: hostedLlmsTxtPath(publicSlug),
     monitoring: {
-      isEnabled: isMonitoringEnabled,
-      enabledUntil: isMonitoringEnabled ? overview.monitoringEnabledUntil!.toISOString() : null,
-      nextCheckAt: isMonitoringEnabled ? (overview.nextMonitorCheckAt?.toISOString() ?? null) : null,
+      nextCheckAt: overview.nextMonitorCheckAt?.toISOString() ?? null,
     },
     latestRun: latestRun === null ? null : pipelineRunView(latestRun),
     publishedVersion:

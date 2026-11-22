@@ -1,13 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import {
   createSite,
-  enableSiteMonitoring,
+  scheduleSiteMonitoring,
   startPipelineRun,
   withTransaction,
   type DatabasePool,
   type PipelineRunQueue,
 } from '@llms-txt/db';
-import { MONITORING_DURATION_SECONDS } from './monitoring-duration';
 import { normaliseSubmittedUrl } from './normalise-submitted-url';
 
 export interface SubmitSiteDependencies {
@@ -42,7 +41,7 @@ export async function submitSite(
   const publicSlug = randomBytes(12).toString('base64url');
   return withTransaction(dependencies.databasePool, async (transaction) => {
     const siteId = await createSite(transaction, { rootUrl, publicSlug });
-    await enableSiteMonitoring(transaction, { siteId, durationSeconds: MONITORING_DURATION_SECONDS });
+    await scheduleSiteMonitoring(transaction, siteId);
     const run = await startPipelineRun(transaction, dependencies.queue, { siteId, triggeredBy: 'submission' });
     // The site was created in this transaction, so nothing else can have a run on it.
     if (run.kind !== 'started') throw new Error(`new site ${siteId} already had an active run`);

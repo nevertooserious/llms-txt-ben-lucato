@@ -33,8 +33,6 @@ export interface SiteView {
   /** Path of the hosted file, relative to the web app's origin. */
   hostedLlmsTxtPath: string;
   monitoring: {
-    isEnabled: boolean;
-    enabledUntil: string | null;
     nextCheckAt: string | null;
   };
   latestRun: PipelineRunView | null;

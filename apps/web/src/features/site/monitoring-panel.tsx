@@ -37,19 +37,10 @@ export function MonitoringPanel({ view, onChanged }: MonitoringPanelProps) {
           {isStartingCheck ? 'Starting…' : isRunActive ? 'Run in progress' : '↻ Check now'}
         </button>
       </header>
-      {view.monitoring.isEnabled ? (
-        <dl className="facts">
-          <dt>Next check:</dt>
-          <dd>{formatDate(view.monitoring.nextCheckAt)}</dd>
-          <dt>On until:</dt>
-          <dd>{formatDate(view.monitoring.enabledUntil)}</dd>
-        </dl>
-      ) : (
-        <>
-          <p className="monitoring-state">Monitoring has lapsed</p>
-          <p className="hint">Check now to resume it for 30 days.</p>
-        </>
-      )}
+      <dl className="facts">
+        <dt>Next check:</dt>
+        <dd>{formatDate(view.monitoring.nextCheckAt)}</dd>
+      </dl>
       {message && (
         <p className={message.isError ? 'form-error' : 'hint'} role="status">
           {message.text}

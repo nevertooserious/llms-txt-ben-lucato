@@ -26,7 +26,7 @@
   </defs>
 
   <!-- sites -->
-  <rect class="b" x="20" y="40" width="280" height="318" rx="6"/>
+  <rect class="b" x="20" y="40" width="280" height="300" rx="6"/>
   <text class="t" x="34" y="62">sites</text>
   <text class="n" x="286" y="62" text-anchor="end">one per submission</text>
   <line class="sep" x1="20" y1="72" x2="300" y2="72"/>
@@ -36,15 +36,14 @@
   <text class="f" x="34" y="146">generated_summary, generated_notes</text>
   <text class="f" x="34" y="164">generated_summary_source_hash</text>
   <text class="f" x="34" y="182">monitor_check_interval</text>
-  <text class="f" x="34" y="200">monitoring_enabled_until</text>
-  <text class="f" x="34" y="218">next_monitor_check_at</text>
-  <text class="f" x="34" y="236">last_monitor_check_at</text>
-  <text class="f" x="34" y="254">sitemap_lastmod_is_trusted</text>
-  <text class="f" x="34" y="272">requires_headless_rendering</text>
-  <text class="f" x="34" y="290">headless_rendering_decided_at</text>
-  <text class="f" x="34" y="308">machine_readable_resource_urls</text>
-  <text class="f" x="34" y="326">published_version_id</text>
-  <text class="f" x="34" y="344">is_published_version_pinned</text>
+  <text class="f" x="34" y="200">next_monitor_check_at</text>
+  <text class="f" x="34" y="218">last_monitor_check_at</text>
+  <text class="f" x="34" y="236">sitemap_lastmod_is_trusted</text>
+  <text class="f" x="34" y="254">requires_headless_rendering</text>
+  <text class="f" x="34" y="272">headless_rendering_decided_at</text>
+  <text class="f" x="34" y="290">machine_readable_resource_urls</text>
+  <text class="f" x="34" y="308">published_version_id</text>
+  <text class="f" x="34" y="326">is_published_version_pinned</text>
 
   <!-- pages -->
   <rect class="b" x="380" y="40" width="360" height="494" rx="6"/>

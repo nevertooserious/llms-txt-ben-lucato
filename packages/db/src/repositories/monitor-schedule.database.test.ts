@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createDatabasePool } from '../connection/database-pool';
 import { publishLlmsTxtVersion } from './llms-txt-versions';
-import { enableSiteMonitoring } from './monitor-schedule';
+import { scheduleSiteMonitoring } from './monitor-schedule';
 import { createSite, deleteSite } from './sites';
 import { withTransaction } from '../connection/transaction';
 
@@ -16,8 +16,8 @@ const DAY_MS = 24 * 3600 * 1000;
 
 const newSite = () =>
   createSite(pool, { rootUrl: `https://${randomUUID()}.example`, publicSlug: randomUUID() });
-const enable = (siteId: string, durationSeconds = 30 * 86400) =>
-  withTransaction(pool, (transaction) => enableSiteMonitoring(transaction, { siteId, durationSeconds }));
+const schedule = (siteId: string) =>
+  withTransaction(pool, (transaction) => scheduleSiteMonitoring(transaction, siteId));
 const publish = (siteId: string) =>
   withTransaction(pool, (transaction) =>
     publishLlmsTxtVersion(transaction, {
@@ -31,34 +31,32 @@ const publish = (siteId: string) =>
     }),
   );
 
-describe('enableSiteMonitoring', () => {
-  it('turns monitoring on and schedules the site a full interval out', async () => {
-    const schedule = await enable(await newSite(), 30 * 86400);
-    expect(schedule.monitoringEnabledUntil.getTime() - Date.now()).toBeGreaterThan(29 * DAY_MS);
+describe('scheduleSiteMonitoring', () => {
+  it('schedules a site a full interval out', async () => {
+    const nextCheckAt = await schedule(await newSite());
     // monitor_check_interval defaults to 7 days.
-    expect(schedule.nextMonitorCheckAt.getTime() - Date.now()).toBeGreaterThan(6.9 * DAY_MS);
-    expect(schedule.nextMonitorCheckAt.getTime() - Date.now()).toBeLessThan(7.1 * DAY_MS);
+    expect(nextCheckAt.getTime() - Date.now()).toBeGreaterThan(6.9 * DAY_MS);
+    expect(nextCheckAt.getTime() - Date.now()).toBeLessThan(7.1 * DAY_MS);
   });
 
-  it('leaves a check that is already scheduled where it is, and renews the expiry', async () => {
+  it('leaves a check that is already scheduled where it is', async () => {
     const siteId = await newSite();
     await pool.query(`update sites set next_monitor_check_at = now() + interval '1 hour' where id = $1`, [siteId]);
-    const first = await enable(siteId, 3600);
-    const renewed = await enable(siteId, 2 * 3600);
-    expect(renewed.nextMonitorCheckAt.getTime()).toBe(first.nextMonitorCheckAt.getTime());
-    expect(renewed.nextMonitorCheckAt.getTime() - Date.now()).toBeLessThan(3600 * 1000);
-    expect(renewed.monitoringEnabledUntil.getTime()).toBeGreaterThan(first.monitoringEnabledUntil.getTime());
+    const first = await schedule(siteId);
+    const second = await schedule(siteId);
+    expect(second.getTime()).toBe(first.getTime());
+    expect(second.getTime() - Date.now()).toBeLessThan(3600 * 1000);
   });
 
   it('refuses a site that does not exist', async () => {
-    await expect(enable(randomUUID())).rejects.toThrow(/no site/);
+    await expect(schedule(randomUUID())).rejects.toThrow(/no site/);
   });
 });
 
 describe('deleteSite', () => {
   it('deletes the site, and says so only once', async () => {
     const siteId = await newSite();
-    await enable(siteId);
+    await schedule(siteId);
     expect(await deleteSite(pool, siteId)).toBe(true);
     expect((await pool.query('select 1 from sites where id = $1', [siteId])).rowCount).toBe(0);
     expect(await deleteSite(pool, siteId)).toBe(false);
