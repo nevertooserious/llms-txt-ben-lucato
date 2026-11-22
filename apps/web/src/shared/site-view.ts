@@ -62,17 +62,23 @@ export interface LlmsTxtVersionSummaryView {
   createdAt: string;
 }
 
+const RUNNING_STAGE_LABELS: Record<NonNullable<PipelineRunView['currentStage']>, string> = {
+  crawl: 'Crawling',
+  extract: 'Extracting',
+  generate: 'Generating',
+};
+
 export function isActiveRunStatus(status: PipelineRunStatus): boolean {
   return status === 'queued' || status === 'running';
 }
 
-/** Where the site is in the process. Extraction happens during the crawl, so it is done once generating starts. */
+/** What the run is doing now, or how it ended. Pages are extracted as they are crawled, so the worker reports no 'extract' stage of its own. */
 export function runStatusLabel(run: Pick<PipelineRunView, 'status' | 'currentStage'>): string {
   switch (run.status) {
     case 'queued':
       return 'Queued';
     case 'running':
-      return run.currentStage === 'generate' ? 'Extracted' : 'Crawling';
+      return RUNNING_STAGE_LABELS[run.currentStage ?? 'crawl'];
     case 'succeeded':
       return 'Generated';
     case 'unchanged':
