@@ -2,7 +2,7 @@ import { ASSESSED_PAGE_TYPES, PAGE_EXCLUSION_REASONS, PAGE_SCOPES } from '@llms-
 import { MAXIMUM_SITE_NOTES, type LlmPrompt, type PageAssessmentInput, type SiteSummaryInput } from './llm-client';
 
 // Raise a version when its prompt changes, so cached results are made again.
-export const PAGE_ASSESSMENT_PROMPT_VERSION = 4;
+export const PAGE_ASSESSMENT_PROMPT_VERSION = 5;
 export const SITE_SUMMARY_PROMPT_VERSION = 3;
 
 /** Bounds what one page can cost on a public app. Enough to judge what a page is. */
@@ -12,8 +12,8 @@ const MAXIMUM_SUMMARY_HOMEPAGE_CONTENT_LENGTH = 12_000;
 const PAGE_ASSESSMENT_SYSTEM_PROMPT = `You assess one web page for a site's llms.txt: a short index an AI assistant reads to understand a site and find what it needs to answer questions or do work with what the site offers. A page earns an entry only if it is both useful to that assistant and general enough to be worth one. Answer those two questions separately.
 
 useful_to_assistant: true only if an assistant helping someone understand or use what the site offers would plausibly need to open this page to answer a question or do a task. If you would not expect that, or are unsure, answer false.
-- true: what the product, project or organisation is; how to install, learn or use it; documentation and API indexes; core concepts; product and feature overviews; pricing; release notes; licence terms; how to get support or report a problem.
-- false: pages that promote, or that a human browses or acts on. Testimonials, success stories and case studies, including their index pages; blogs, news, newsletters, events and calendars, including their index pages; community directories, awards and logos; download pages that mainly list files or installers; grant, job, membership, donation, sponsorship and volunteer information; strategy, governance, board, minutes, annual reports and staff lists. Also every page that fits an exclusion_reason below.
+- true: what the product, project or organisation is, and who is behind it (an about page); how to install, learn or use it; documentation and API indexes; core concepts; product and feature overviews; pricing; release notes; licence terms; how to get support or report a problem.
+- false: pages that promote, or that a human browses or acts on. Testimonials, success stories and case studies, including their index pages; blogs, news, newsletters, events and calendars, including their index pages; a single post of a blog or online magazine, even a thorough tutorial or one titled as a guide, unless you are told the site's main navigation links it; community directories, awards and logos; download pages that mainly list files or installers; grant, job, membership, donation, sponsorship and volunteer information; strategy, governance, board, minutes, annual reports and staff lists. Also every page that fits an exclusion_reason below.
 
 scope: how much of the site does this page speak for?
 - broad: the entry point to a major area: a documentation or tutorial index, a reference index, an overview of a product or feature.
@@ -84,6 +84,9 @@ export function buildPageAssessmentPrompt(input: PageAssessmentInput): LlmPrompt
       `Title: ${input.title ?? '(none)'}`,
       `Meta description: ${input.metaDescription ?? '(none)'}`,
       `Page type guessed from the URL: ${input.urlBasedPageType}`,
+      // Said only when true. Told "no" of every other page, the model took it as a sign the
+      // page was a small part of something and called far more documentation narrow.
+      ...(input.isInSiteNavigation ? ["The site's main navigation links this page."] : []),
       untrustedBlock('page_content', input.contentMarkdown.slice(0, MAXIMUM_ASSESSED_CONTENT_LENGTH)),
     ].join('\n'),
     outputSchema: PAGE_ASSESSMENT_SCHEMA,
