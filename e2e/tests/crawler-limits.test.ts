@@ -82,11 +82,12 @@ describe('crawler limits', () => {
       const oneBundle = await headlessRenderer.render(rootUrl);
       expect(oneBundle).toMatchObject({ kind: 'rendered', html: expect.stringContaining('From the bundle') });
 
-      // Together the two bundles pass what one render may download, so the second is dropped.
+      // Together the two bundles pass what one render may download, so they cannot both
+      // arrive. Which is cut short depends on how the browser interleaves the downloads.
       const twoBundles = await headlessRenderer.render(`${rootUrl}/two-bundles`);
       if (twoBundles.kind !== 'rendered') throw new Error(`expected a rendered page, got ${twoBundles.reason}`);
-      expect(twoBundles.html).toContain('From the bundle');
-      expect(twoBundles.html).not.toContain('From a second bundle');
+      const arrived = ['From the bundle', 'From a second bundle'].filter((text) => twoBundles.html.includes(text));
+      expect(arrived.length).toBeLessThan(2);
     } finally {
       await headlessRenderer.close();
     }

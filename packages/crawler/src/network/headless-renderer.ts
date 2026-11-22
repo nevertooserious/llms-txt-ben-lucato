@@ -348,8 +348,7 @@ export class HeadlessRenderer {
         }
 
         const maxBytes = browserRequest.resourceType() === 'script' ? this.maxScriptBytes : this.maxResponseBytes;
-        const responseBody = await readCapped(response.body, Math.min(maxBytes, navigation.remainingBytes));
-        navigation.remainingBytes -= responseBody.length;
+        const responseBody = await readCapped(countedAgainstRender(response.body, navigation), maxBytes);
         await route.fulfill({
           status: response.statusCode,
           headers: forwardableResponseHeaders(response.headers),
@@ -366,6 +365,30 @@ export class HeadlessRenderer {
       await route.abort(error instanceof ResponseTooLargeError ? 'failed' : 'connectionfailed').catch(() => undefined);
     }
   }
+}
+
+/**
+ * The body, with each chunk taken from the render's download allowance as it arrives.
+ * Counted while reading, not once read: a page's scripts download side by side, and each
+ * would otherwise see the whole allowance.
+ */
+function countedAgainstRender(
+  body: AsyncIterable<Buffer> & { destroy(): void },
+  navigation: NavigationState,
+): AsyncIterable<Buffer> & { destroy(): void } {
+  return {
+    destroy: () => body.destroy(),
+    async *[Symbol.asyncIterator]() {
+      for await (const chunk of body) {
+        navigation.remainingBytes -= chunk.length;
+        if (navigation.remainingBytes < 0) {
+          body.destroy();
+          throw new ResponseTooLargeError(0);
+        }
+        yield chunk;
+      }
+    },
+  };
 }
 
 /** A missing Content-Type counts as HTML, as it does for the plain HTTP fetcher. */
