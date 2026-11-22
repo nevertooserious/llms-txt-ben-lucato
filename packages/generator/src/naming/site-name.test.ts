@@ -40,6 +40,11 @@ describe('siteNameFrom', () => {
     expect(siteNameFrom('The guide, v2 – Acme', pages)).toBe('Acme');
   });
 
+  it('reads a title divided by a bullet, as svelte.dev writes them', () => {
+    const pages = [innerPage('Docs • Svelte'), innerPage('Packages • Svelte'), innerPage('Routing • SvelteKit Docs')];
+    expect(siteNameFrom('Svelte • Web development for the rest of us', pages)).toBe('Svelte');
+  });
+
   it('takes the part that other pages start with', () => {
     const pages = [innerPage('Acme | Changes'), innerPage('Acme | Setup')];
     expect(siteNameFrom('Acme | Build faster', pages)).toBe('Acme');

@@ -20,7 +20,7 @@ const MINIMUM_PARAGRAPH_DESCRIPTION_LENGTH = 50;
 /** First-paragraph descriptions are cut to this length at a word boundary. */
 const MAXIMUM_PARAGRAPH_DESCRIPTION_LENGTH = 300;
 /** What sites put between a page's name and the site's name in <title>. */
-const TITLE_SEPARATORS = [' | ', ' - ', ' – ', ' — ', ' · ', ' :: '];
+const TITLE_SEPARATORS = [' | ', ' - ', ' – ', ' — ', ' · ', ' • ', ' » ', ' :: '];
 
 /** A declared site name longer than this is a tagline or a mistake, not a name. */
 const MAXIMUM_SITE_NAME_LENGTH = 60;
@@ -44,7 +44,9 @@ export function extractPage(input: ExtractPageInput): PageRecord {
   const { heading, headingWithAnchor } = firstHeading($);
   const openGraphTitle = withoutHeadingAnchor(metaContent($, 'meta[property="og:title"]'), heading, headingWithAnchor);
   // An inline <svg>'s <title> names an icon, not the page.
-  const titleTag = withoutHeadingAnchor(nonEmptyText($('title').not('svg title').first().text()), heading, headingWithAnchor);
+  // <title> holds text only, so markup written inside it arrives as text and is taken out.
+  const titleText = $('title').not('svg title').first().text().replace(/<\/?[a-z][^>]*>/gi, '');
+  const titleTag = withoutHeadingAnchor(nonEmptyText(titleText), heading, headingWithAnchor);
   const declaredSiteName = siteNameOrNull(
     metaContent($, 'meta[property="og:site_name"]') ??
       structuredDataWebSiteName($) ??
