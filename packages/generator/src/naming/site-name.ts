@@ -1,6 +1,6 @@
 import type { GeneratorPage } from '@llms-txt/contracts';
 import { homepageOf } from '../selection';
-import { singleLine } from './text';
+import { singleLine } from '../text/normalise-text';
 import { firstTitlePartOf, lastTitlePartOf, MINIMUM_PAGES_SHARING_SITE_NAME, titlePartsOf } from './title-parts';
 
 /**
