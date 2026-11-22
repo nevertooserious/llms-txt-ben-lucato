@@ -58,6 +58,9 @@ describe.skipIf(!databaseUrl)('the monitor schedule, on the real clock', () => {
   }, 30_000);
 
   afterAll(async () => {
+    // Dropping the database ends any connection the queue is still closing. Without a
+    // listener, that expected error would be thrown as an uncaught exception.
+    workerQueue?.on('error', () => {});
     await workerQueue?.stop({ graceful: false });
     await databasePool?.end();
     await dropDatabase?.();
