@@ -83,6 +83,45 @@ describe('crawler limits', () => {
       const paths = pathsOf(await crawl(rootUrl, port, { pageBudget: 16 }), rootUrl);
       expect(paths).toEqual(['', ...numbered('/docs').slice(0, 15)]);
     });
+
+    it('is fetched an area at a time when it is documentation, so a budget reaches every area', async () => {
+      // A sitemap lists documentation by path: all of one area before the next begins.
+      const area = (name: string) => [`/docs/${name}`, ...Array.from({ length: 10 }, (_, index) => `/docs/${name}/${index + 1}`)];
+      const { rootUrl, port } = await serveSiteLinking([...area('access'), ...area('billing'), ...area('install'), '/docs/quickstart']);
+      const paths = pathsOf(await crawl(rootUrl, port, { pageBudget: 11 }), rootUrl);
+      expect(paths).toEqual([
+        '',
+        // Each area's own page first, in the site's order...
+        '/docs/access', '/docs/billing', '/docs/install', '/docs/quickstart',
+        // ...then a page of each area in turn.
+        '/docs/access/1', '/docs/billing/1', '/docs/install/1',
+        '/docs/access/2', '/docs/billing/2', '/docs/install/2',
+      ]);
+    });
+
+    it('is all fetched, whatever the order, when the budget covers it', async () => {
+      const paths = ['/docs/access', '/docs/access/1', '/docs/access/2', '/docs/billing', '/docs/billing/1'];
+      const { rootUrl, port } = await serveSiteLinking(paths);
+      const fetched = pathsOf(await crawl(rootUrl, port, { pageBudget: 10 }), rootUrl);
+      expect([...fetched].sort()).toEqual(['', ...paths].sort());
+    });
+  });
+
+  it('keeps the URLs nearest the root of a sitemap larger than it can hold', async () => {
+    // Four URLs are kept per page of budget, so 12 of these 13. A sitemap lists a site by
+    // path: one area's deep pages fill it before the next area begins.
+    const sitemapPaths = [...Array.from({ length: 12 }, (_, index) => `/docs/access/keys/${index + 1}`), '/docs/billing/plans'];
+    const { rootUrl, port } = await serve((request, response) => {
+      if (request.url === '/sitemap.xml') {
+        const urls = sitemapPaths.map((path) => `<url><loc>http://${request.headers.host}${path}</loc></url>`).join('');
+        response.writeHead(200, { 'content-type': 'application/xml' }).end(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);
+      } else if (request.url === '/' || sitemapPaths.includes(request.url!)) {
+        response.writeHead(200, { 'content-type': 'text/html' }).end(html(`Page ${request.url}`));
+      } else response.writeHead(404).end();
+    });
+    const result = await crawl(rootUrl, port, { pageBudget: 3 });
+    // The last URL is kept and the deepest of the others is not, so the second area is reached.
+    expect(result.pages.map((page) => page.normalisedUrl.slice(rootUrl.length))).toEqual(['', '/docs/access/keys/1', '/docs/billing/plans']);
   });
 
   it('does not follow navigation links from a nofollow homepage, but still records them', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pageFamilyKeyOf } from './page-family';
+import { documentationAreaKeyOf, pageFamilyKeyOf } from './page-family';
 
 const ROOT = 'https://example.com';
 const familyOf = (path: string, rootUrl = ROOT) => pageFamilyKeyOf(`https://example.com${path}`, rootUrl);
@@ -43,5 +43,36 @@ describe('pageFamilyKeyOf', () => {
   it('has no family for the root page or a page on another host', () => {
     expect(familyOf('/')).toBeNull();
     expect(pageFamilyKeyOf('https://shop.example.com/items/one', ROOT)).toBeNull();
+  });
+});
+
+describe('documentationAreaKeyOf', () => {
+  const areaOf = (path: string, rootUrl = ROOT) => documentationAreaKeyOf(`https://example.com${path}`, rootUrl);
+
+  it('is the documentation’s directory and the first name below it', () => {
+    expect(areaOf('/docs/features/ssh')).toBe('docs/features');
+    expect(areaOf('/docs/features/ssh/keys')).toBe('docs/features');
+    expect(areaOf('/en/Guide/setup/linux')).toBe('en/guide/setup');
+  });
+
+  it('puts an area’s own page with the pages below it, and a page with none in an area of its own', () => {
+    expect(areaOf('/docs/features')).toBe(areaOf('/docs/features/ssh'));
+    expect(areaOf('/docs/install')).toBe('docs/install');
+  });
+
+  it('is the first name below the root on a site that is all documentation', () => {
+    const docsHost = (path: string, root = '') => documentationAreaKeyOf(`https://docs.example.com${path}`, `https://docs.example.com${root}`);
+    expect(docsHost('/topics/http/urls')).toBe('topics');
+    expect(docsHost('/topics')).toBe('topics');
+    expect(docsHost('/latest/topics/http', '/latest')).toBe('latest/topics');
+    expect(areaOf('/docs/kit/routing', `${ROOT}/docs`)).toBe('docs/kit');
+  });
+
+  it('is null for a page that is not documentation, the root page and a page on another host', () => {
+    expect(areaOf('/blog/a-post')).toBeNull();
+    expect(areaOf('/docs')).toBeNull();
+    expect(areaOf('/tags/api')).toBeNull();
+    expect(documentationAreaKeyOf('https://docs.example.com/', 'https://docs.example.com')).toBeNull();
+    expect(documentationAreaKeyOf('https://docs.example.com/topics/one', ROOT)).toBeNull();
   });
 });

@@ -38,3 +38,31 @@ export function pageFamilyKeyOf(pageUrl: string, rootUrl: string): string | null
 function segmentsOf(url: URL): string[] {
   return pagePathOf(url).split('/').filter(Boolean);
 }
+
+/**
+ * The area of a site's documentation a page is in: the documentation's own directory and
+ * the first name below it, so `/docs/features/ssh` and `/docs/features` are both of
+ * `docs/features`, and `/docs/install` is of `docs/install`. On a site that is all
+ * documentation (a `docs.` host, or a root under `/docs`) it is the first name below the
+ * root. A crawl takes pages from each area in turn (see `takeNextFromFrontier`).
+ *
+ * A page at the top of the documentation is an area of one page until its children are
+ * found, so every area's first page comes before any area's second.
+ *
+ * Null for a page that is not documentation, and for the root page.
+ */
+export function documentationAreaKeyOf(pageUrl: string, rootUrl: string): string | null {
+  const page = new URL(pageUrl);
+  const root = new URL(rootUrl);
+  if (page.host !== root.host) return null;
+
+  const segments = segmentsOf(page).map((segment) => segment.toLowerCase());
+  const documentationIndex = segments.slice(0, -1).findIndex((segment) => DOCUMENTATION_SEGMENT.test(segment));
+  if (documentationIndex !== -1) return segments.slice(0, documentationIndex + 2).join('/');
+  if (!DOCUMENTATION_SEGMENT.test(root.hostname.split('.')[0]!)) return null;
+
+  const rootSegmentCount = segmentsOf(root).length;
+  const isUnderRoot = segmentsOf(root).every((segment, index) => segments[index] === segment.toLowerCase());
+  const areaLength = isUnderRoot ? rootSegmentCount + 1 : 1;
+  return segments.length < areaLength ? null : segments.slice(0, areaLength).join('/');
+}
