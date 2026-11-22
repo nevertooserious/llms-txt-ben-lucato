@@ -8,6 +8,7 @@ import {
   publishLlmsTxtVersion,
   replaceExcludedPages,
   replaceExcludedUrlPrefixes,
+  replaceKeptPages,
   withTransaction,
   type DatabasePool,
 } from '@llms-txt/db';
@@ -15,6 +16,7 @@ import {
   decidePublication,
   excludePagesUnderUrlPrefixes,
   generateLlmsTxt,
+  listingCandidates,
   selectPages,
   siteNameFrom,
 } from '@llms-txt/generator';
@@ -32,13 +34,22 @@ const MAX_URL_LENGTH = 2_048;
  */
 export function parsePageExclusions(body: unknown): PageExclusions | null {
   if (typeof body !== 'object' || body === null) return null;
-  const { excludedUrls, excludedUrlPrefixes } = body as { excludedUrls?: unknown; excludedUrlPrefixes?: unknown };
+  const { excludedUrls, excludedUrlPrefixes, keptUrls } = body as {
+    excludedUrls?: unknown;
+    excludedUrlPrefixes?: unknown;
+    keptUrls?: unknown;
+  };
   if (!isListOfUrls(excludedUrls, MAX_EXCLUDED_URLS) || !isListOfUrls(excludedUrlPrefixes, MAX_EXCLUDED_URL_PREFIXES)) {
     return null;
   }
+  if (keptUrls !== undefined && !isListOfUrls(keptUrls, MAX_EXCLUDED_URLS)) return null;
   const normalisedPrefixes = excludedUrlPrefixes.map(normaliseUrlPrefix);
   if (normalisedPrefixes.some((urlPrefix) => urlPrefix === null)) return null;
-  return { excludedUrls, excludedUrlPrefixes: [...new Set(normalisedPrefixes as string[])] };
+  return {
+    excludedUrls,
+    excludedUrlPrefixes: [...new Set(normalisedPrefixes as string[])],
+    ...(keptUrls !== undefined && { keptUrls }),
+  };
 }
 
 function isListOfUrls(value: unknown, maximumLength: number): value is string[] {
@@ -73,6 +84,12 @@ export async function loadSitePagesView(
     loadExcludedUrlPrefixes(dependencies.databasePool, siteId),
   ]);
   const excludedUrls = new Set(overrides.filter((override) => override.isExcluded).map((override) => override.normalisedUrl));
+  const keptUrls = new Set(overrides.filter((override) => override.isKept).map((override) => override.normalisedUrl));
+  const keepableUrls = new Set(
+    listingCandidates(loadedPages)
+      .filter((page) => page.assessment !== null)
+      .map((page) => page.record.normalisedUrl),
+  );
   const sectionNameByUrl = new Map(
     selectPages(loadedPages, excludePagesUnderUrlPrefixes(overrides, excludedUrlPrefixes, loadedPages)).map((selected) => [selected.page.record.normalisedUrl, selected.sectionName]),
   );
@@ -82,6 +99,8 @@ export async function loadSitePagesView(
       title: page.record.title,
       isHomepage: page.crawlSignals.crawlDepth === 0,
       isExcluded: excludedUrls.has(page.record.normalisedUrl),
+      isKept: keptUrls.has(page.record.normalisedUrl),
+      canBeKept: keepableUrls.has(page.record.normalisedUrl),
       listedInSection: sectionNameByUrl.get(page.record.normalisedUrl) ?? null,
     })),
     excludedUrlPrefixes,
@@ -103,6 +122,7 @@ export async function savePageExclusions(
   await withTransaction(databasePool, async (transaction) => {
     await replaceExcludedPages(transaction, siteId, exclusions.excludedUrls);
     await replaceExcludedUrlPrefixes(transaction, siteId, exclusions.excludedUrlPrefixes);
+    if (exclusions.keptUrls !== undefined) await replaceKeptPages(transaction, siteId, exclusions.keptUrls);
   });
 
   const [latestRun, newestVersion] = await Promise.all([

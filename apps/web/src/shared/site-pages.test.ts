@@ -8,6 +8,8 @@ const page = (path: string): SitePageView => ({
   title: null,
   isHomepage: path === '/',
   isExcluded: false,
+  isKept: false,
+  canBeKept: false,
   listedInSection: null,
 });
 

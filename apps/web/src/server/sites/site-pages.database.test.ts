@@ -51,7 +51,7 @@ async function crawledSite(options: { isPublished?: boolean; isAssessed?: boolea
       await savePageAssessment(databasePool, siteId, url(path), {
         description: `What ${path} is about.`,
         listingValue: 'primary',
-        exclusionReason: null,
+        exclusionReason: null, scope: 'broad',
         pageType: 'other',
         sourceHash: `source of ${path}`,
       });
@@ -192,11 +192,11 @@ describe('loadSitePagesView', () => {
     const view = await loadSitePagesView(site.siteId, dependencies);
     expect(view.excludedUrlPrefixes).toEqual([site.url('/docs')]);
     expect(view.pages).toEqual([
-      { normalisedUrl: site.url('/'), title: 'Title of /', isHomepage: true, isExcluded: false, listedInSection: null },
-      { normalisedUrl: site.url('/blog/hello'), title: 'Title of /blog/hello', isHomepage: false, isExcluded: false, listedInSection: 'Pages' },
-      { normalisedUrl: site.url('/docs/intro'), title: 'Title of /docs/intro', isHomepage: false, isExcluded: false, listedInSection: null },
-      { normalisedUrl: site.url('/docs/setup'), title: 'Title of /docs/setup', isHomepage: false, isExcluded: false, listedInSection: null },
-      { normalisedUrl: site.url('/pricing'), title: 'Title of /pricing', isHomepage: false, isExcluded: true, listedInSection: null },
+      { normalisedUrl: site.url('/'), title: 'Title of /', isHomepage: true, isExcluded: false, isKept: false, canBeKept: false, listedInSection: null },
+      { normalisedUrl: site.url('/blog/hello'), title: 'Title of /blog/hello', isHomepage: false, isExcluded: false, isKept: false, canBeKept: true, listedInSection: 'Pages' },
+      { normalisedUrl: site.url('/docs/intro'), title: 'Title of /docs/intro', isHomepage: false, isExcluded: false, isKept: false, canBeKept: true, listedInSection: null },
+      { normalisedUrl: site.url('/docs/setup'), title: 'Title of /docs/setup', isHomepage: false, isExcluded: false, isKept: false, canBeKept: true, listedInSection: null },
+      { normalisedUrl: site.url('/pricing'), title: 'Title of /pricing', isHomepage: false, isExcluded: true, isKept: false, canBeKept: true, listedInSection: null },
     ]);
   });
 

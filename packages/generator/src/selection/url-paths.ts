@@ -14,6 +14,12 @@ export function pathSegmentsOf(url: string): string[] {
     });
 }
 
+/** The path a page stands at: `/guide/index.html` is the page of `/guide`. */
+export function pagePathSegmentsOf(url: string): string[] {
+  const segments = pathSegmentsOf(url);
+  return /^index(?:\.html?|\.md)?$/.test(segments.at(-1) ?? '') ? segments.slice(0, -1) : segments;
+}
+
 /** `success-stories` -> `Success Stories`. */
 export function titleCaseOf(slug: string): string {
   return slug

@@ -8,7 +8,7 @@ describe('createStubLlmClient', () => {
     expect(await createStubLlmClient().assessPage({ ...input, urlBasedPageType: 'docs' })).toEqual({
       description: 'The docs.',
       listingValue: 'primary',
-      exclusionReason: null,
+      exclusionReason: null, scope: 'broad',
       pageType: 'docs',
     });
   });

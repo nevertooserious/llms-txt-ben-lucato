@@ -222,7 +222,11 @@ create table pages (
   -- Set exactly when listing_value is 'exclude'.
   exclusion_reason                     text check (exclusion_reason in
                                          ('error_page', 'utility', 'thin', 'archive',
-                                          'individual_content', 'reference_entry', 'duplicate')),
+                                          'individual_content', 'reference_entry', 'duplicate',
+                                          'not_useful_to_assistant')),
+  -- How much of the site the page speaks for. A narrow page is left out when a broader
+  -- page above it is listed. Null on an assessment made before this was asked.
+  assessed_page_scope                  text check (assessed_page_scope in ('broad', 'narrow')),
   -- SHA-256 of the model, prompt version and page inputs the assessment was made from.
   assessment_source_hash               text,
 
@@ -258,6 +262,8 @@ create table page_overrides (
 
   description_override  text,
   is_excluded           boolean not null default false,
+  -- Listed even if the assessment or a selection rule would leave it out.
+  is_kept               boolean not null default false,
   updated_at            timestamptz not null default now()
 );
 

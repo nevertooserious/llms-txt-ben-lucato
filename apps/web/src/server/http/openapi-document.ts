@@ -161,6 +161,8 @@ const schemas: Record<string, JsonSchema> = {
     title: nullable('string'),
     isHomepage: { type: 'boolean', description: "The crawl root: the file's H1, so it cannot be ignored." },
     isExcluded: { type: 'boolean', description: 'The user ignores this page by itself.' },
+    isKept: { type: 'boolean', description: 'The user lists this page even if the generator would leave it out.' },
+    canBeKept: { type: 'boolean', description: 'The generator assessed this page, so keeping it can list it.' },
     listedInSection: nullable('string', { description: 'The section the page is listed under, if any.' }),
   }),
   SitePages: objectOf({
@@ -174,6 +176,7 @@ const schemas: Record<string, JsonSchema> = {
       description: 'Every page at or under these is left out, including pages found by later crawls.',
       examples: [['https://example.com/blog']],
     },
+    keptUrls: { ...urlList, description: 'Pages listed whatever the generator would decide. Left as they are when absent.' },
   }),
   SaveExclusionsResult: {
     oneOf: [

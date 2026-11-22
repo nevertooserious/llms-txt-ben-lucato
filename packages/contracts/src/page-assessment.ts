@@ -22,8 +22,17 @@ export const PAGE_EXCLUSION_REASONS = [
   'reference_entry',
   /** A copy of another page, such as a print version. */
   'duplicate',
+  /** Real content, but no help to an AI assistant: file lists, applications, internal governance. */
+  'not_useful_to_assistant',
 ] as const;
 export type PageExclusionReason = (typeof PAGE_EXCLUSION_REASONS)[number];
+
+/**
+ * How much of the site a page speaks for. A `narrow` page is one part of a larger area,
+ * and is left out when a broader page above it is listed.
+ */
+export const PAGE_SCOPES = ['broad', 'narrow'] as const;
+export type PageScope = (typeof PAGE_SCOPES)[number];
 
 /** The page types an assessment can choose. Only the crawl root is the homepage. */
 export type AssessedPageType = Exclude<PageType, 'home'>;
@@ -36,6 +45,7 @@ export interface PageAssessment {
   listingValue: PageListingValue;
   /** Set exactly when listingValue is `exclude`. */
   exclusionReason: PageExclusionReason | null;
+  scope: PageScope;
   /** Corrects the extractor's URL-based page type. */
   pageType: AssessedPageType;
 }

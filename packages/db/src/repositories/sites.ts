@@ -46,8 +46,8 @@ export async function loadPublishedLlmsTxt(database: Queryable, publicSlug: stri
 
 /** The user's edits to a site's pages, applied as inputs on every render. */
 export async function loadPageOverrides(database: Queryable, siteId: string): Promise<PageOverride[]> {
-  const result = await database.query<{ normalised_url: string; description_override: string | null; is_excluded: boolean }>(
-    `select pages.normalised_url, overrides.description_override, overrides.is_excluded
+  const result = await database.query<{ normalised_url: string; description_override: string | null; is_excluded: boolean; is_kept: boolean }>(
+    `select pages.normalised_url, overrides.description_override, overrides.is_excluded, overrides.is_kept
        from page_overrides overrides
        join pages on pages.id = overrides.page_id
       where pages.site_id = $1
@@ -58,6 +58,7 @@ export async function loadPageOverrides(database: Queryable, siteId: string): Pr
     normalisedUrl: row.normalised_url,
     descriptionOverride: row.description_override,
     isExcluded: row.is_excluded,
+    isKept: row.is_kept,
   }));
 }
 

@@ -20,6 +20,8 @@ export interface PageOverride {
   normalisedUrl: string;
   descriptionOverride: string | null;
   isExcluded: boolean;
+  /** Listed even if the assessment or a selection rule would leave it out. An exclusion still wins. */
+  isKept: boolean;
 }
 
 /**

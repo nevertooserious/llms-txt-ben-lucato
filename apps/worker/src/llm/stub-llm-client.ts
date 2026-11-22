@@ -13,6 +13,7 @@ export function createStubLlmClient(): LlmClient {
         description: input.metaDescription ?? '',
         listingValue: 'primary',
         exclusionReason: null,
+        scope: 'broad',
         pageType: ASSESSED_PAGE_TYPES.find((pageType) => pageType === input.urlBasedPageType) ?? 'other',
       };
     },

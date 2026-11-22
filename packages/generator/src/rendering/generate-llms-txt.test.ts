@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { GeneratorPage, PageType, StoredPageAssessment } from '@llms-txt/contracts';
 import { listedEntries } from '../publication/decide-publication';
 import { generateLlmsTxt, type GenerateLlmsTxtInput } from './generate-llms-txt';
-import { compareText, DEFAULT_SELECTION_LIMITS, excludePagesUnderUrlPrefixes, isPaginationUrl } from '../selection';
+import { compareText, DEFAULT_SELECTION_LIMITS, excludePagesUnderUrlPrefixes, isPaginationUrl, selectPages } from '../selection';
 import { validateLlmsTxt } from './validate-llms-txt';
 
 const ORIGIN = 'https://example.com';
@@ -36,7 +36,7 @@ function page(path: string, options: PageOptions = {}): GeneratorPage {
   const defaultAssessment: StoredPageAssessment | null =
     pageType === 'home'
       ? null
-      : { description: description ?? '', listingValue: 'primary', exclusionReason: null, pageType, sourceHash: 'source' };
+      : { description: description ?? '', listingValue: 'primary', exclusionReason: null, scope: 'broad', pageType, sourceHash: 'source' };
   return {
     record: {
       normalisedUrl,
@@ -86,7 +86,7 @@ describe('generateLlmsTxt with page assessments', () => {
   const assessed = (overrides: Partial<StoredPageAssessment>): StoredPageAssessment => ({
     description: 'Written from the content.',
     listingValue: 'primary',
-    exclusionReason: null,
+    exclusionReason: null, scope: 'broad',
     pageType: 'docs',
     sourceHash: 'source',
     ...overrides,
@@ -100,7 +100,7 @@ describe('generateLlmsTxt with page assessments', () => {
         page('/gone', { assessment: assessed({ listingValue: 'exclude', exclusionReason: 'error_page' }) }),
         page('/blog/launch', {
           pageType: 'blog',
-          assessment: assessed({ listingValue: 'exclude', exclusionReason: 'individual_content', pageType: 'blog' }),
+          assessment: assessed({ listingValue: 'exclude', exclusionReason: 'individual_content', scope: 'broad', pageType: 'blog' }),
         }),
       ],
     });
@@ -125,6 +125,61 @@ describe('generateLlmsTxt with page assessments', () => {
     expect(sections(llmsTxt)).toEqual({ Docs: [`${ORIGIN}/config/pinned`, `${ORIGIN}/config`, `${ORIGIN}/guide/setup`] });
   });
 
+  it('keeps a reference folder whose index page is not there to stand for it', () => {
+    const referenceEntry = assessed({ listingValue: 'exclude', exclusionReason: 'reference_entry' });
+    const entries = ['a', 'b', 'c', 'd', 'e'].map((name) => page(`/config/${name}`, { pageType: 'docs', assessment: referenceEntry }));
+    const llmsTxt = generate({ pages: [homepage, ...entries, page('/config/guide', { pageType: 'docs', assessment: assessed({}) })] });
+    expect(sections(llmsTxt)).toEqual({ Docs: [`${ORIGIN}/config/guide`] });
+  });
+
+  it('does not count a folder index.html as one of the pages it stands for', () => {
+    const referenceEntry = assessed({ listingValue: 'exclude', exclusionReason: 'reference_entry' });
+    const entries = ['a', 'b', 'c', 'd', 'e'].map((name) => page(`/config/${name}`, { pageType: 'docs', assessment: referenceEntry }));
+    const llmsTxt = generate({ pages: [homepage, page('/config/index.html', { pageType: 'docs', assessment: assessed({}) }), ...entries] });
+    expect(sections(llmsTxt)).toEqual({ Docs: [`${ORIGIN}/config/index.html`] });
+  });
+
+  it('leaves out a narrow page when a broader page above it is listed', () => {
+    const narrow = assessed({ scope: 'narrow' });
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/3/tutorial/index.html', { pageType: 'docs', assessment: assessed({}) }),
+        page('/3/tutorial/controlflow.html', { pageType: 'docs', assessment: narrow }),
+        page('/3/tutorial/classes.html', { pageType: 'docs', isInSiteNavigation: true, assessment: narrow }),
+        page('/guides/only-guide', { pageType: 'docs', assessment: narrow }),
+      ],
+    });
+    expect(sections(llmsTxt)).toEqual({
+      Docs: [`${ORIGIN}/guides/only-guide`, `${ORIGIN}/3/tutorial/index.html`],
+    });
+  });
+
+  it('brings a narrow page back when a limit cuts the broader page above it', () => {
+    const limits = { ...DEFAULT_SELECTION_LIMITS, maxDocumentationEntriesPerSection: 1 };
+    const selected = selectPages(
+      [
+        homepage,
+        page('/top', { pageType: 'docs', isInSiteNavigation: true, assessment: assessed({}) }),
+        page('/area', { pageType: 'about', assessment: assessed({ pageType: 'docs' }) }),
+        page('/area/detail', { pageType: 'about', assessment: assessed({ pageType: 'about', scope: 'narrow' }) }),
+      ],
+      [],
+      limits,
+    );
+    expect(selected.map((entry) => entry.page.record.normalisedUrl)).toEqual([`${ORIGIN}/top`, `${ORIGIN}/area/detail`]);
+  });
+
+  it('lists a page the user keeps, whatever the assessment said, unless the user also excludes it', () => {
+    const rejected = page('/psf/strategy', {
+      pageType: 'about',
+      assessment: assessed({ listingValue: 'exclude', exclusionReason: 'not_useful_to_assistant', pageType: 'about' }),
+    });
+    const keep = { normalisedUrl: rejected.record.normalisedUrl, descriptionOverride: null, isExcluded: false, isKept: true };
+    expect(sections(generate({ pages: [homepage, rejected], overrides: [keep] }))).toEqual({ About: [`${ORIGIN}/psf/strategy`] });
+    expect(sections(generate({ pages: [homepage, rejected], overrides: [{ ...keep, isExcluded: true }] }))).toEqual({});
+  });
+
   it('uses the assessed description and page type, and puts optional pages under Optional', () => {
     const llmsTxt = generate({
       pages: [
@@ -141,7 +196,7 @@ describe('generateLlmsTxt with page assessments', () => {
     const docs = page('/docs', { pageType: 'docs', assessment: assessed({}) });
     const llmsTxt = generate({
       pages: [homepage, docs],
-      overrides: [{ normalisedUrl: docs.record.normalisedUrl, descriptionOverride: 'My words.', isExcluded: false }],
+      overrides: [{ normalisedUrl: docs.record.normalisedUrl, descriptionOverride: 'My words.', isExcluded: false, isKept: false }],
     });
     expect(llmsTxt).toContain(': My words.');
   });
@@ -264,8 +319,8 @@ describe('generateLlmsTxt', () => {
     const llmsTxt = generate({
       pages: [homepage, page('/kept'), page('/dropped')],
       overrides: [
-        { normalisedUrl: `${ORIGIN}/kept`, descriptionOverride: 'Written by the user.', isExcluded: false },
-        { normalisedUrl: `${ORIGIN}/dropped`, descriptionOverride: null, isExcluded: true },
+        { normalisedUrl: `${ORIGIN}/kept`, descriptionOverride: 'Written by the user.', isExcluded: false, isKept: false },
+        { normalisedUrl: `${ORIGIN}/dropped`, descriptionOverride: null, isExcluded: true, isKept: false },
       ],
     });
     expect(llmsTxt).toContain(`- [Title of /kept](${ORIGIN}/kept): Written by the user.`);
@@ -276,16 +331,16 @@ describe('generateLlmsTxt', () => {
     const pages = [homepage, page('/blog'), page('/blog/post'), page('/blog-archive'), page('/docs/intro')];
     const overrides = excludePagesUnderUrlPrefixes(
       [
-        { normalisedUrl: `${ORIGIN}/blog/post`, descriptionOverride: 'Kept for later.', isExcluded: false },
-        { normalisedUrl: `${ORIGIN}/docs/intro`, descriptionOverride: 'Written by the user.', isExcluded: false },
+        { normalisedUrl: `${ORIGIN}/blog/post`, descriptionOverride: 'Kept for later.', isExcluded: false, isKept: false },
+        { normalisedUrl: `${ORIGIN}/docs/intro`, descriptionOverride: 'Written by the user.', isExcluded: false, isKept: false },
       ],
       [`${ORIGIN}/blog`],
       pages,
     );
     expect(overrides).toEqual([
-      { normalisedUrl: `${ORIGIN}/blog/post`, descriptionOverride: 'Kept for later.', isExcluded: true },
-      { normalisedUrl: `${ORIGIN}/docs/intro`, descriptionOverride: 'Written by the user.', isExcluded: false },
-      { normalisedUrl: `${ORIGIN}/blog`, descriptionOverride: null, isExcluded: true },
+      { normalisedUrl: `${ORIGIN}/blog/post`, descriptionOverride: 'Kept for later.', isExcluded: true, isKept: false },
+      { normalisedUrl: `${ORIGIN}/docs/intro`, descriptionOverride: 'Written by the user.', isExcluded: false, isKept: false },
+      { normalisedUrl: `${ORIGIN}/blog`, descriptionOverride: null, isExcluded: true, isKept: false },
     ]);
     expect([...listedEntries(generate({ pages, overrides })).keys()]).toEqual([`${ORIGIN}/blog-archive`, `${ORIGIN}/docs/intro`]);
   });

@@ -5,6 +5,10 @@ import type { PageAssessment } from '@llms-txt/contracts';
 // hash of its inputs, because an LLM words the same thing differently each time.
 
 export const PAGE_ASSESSMENT_MODEL = 'claude-haiku-5-5';
+
+/** The model's answer to "would this page help an AI assistant?". Code maps it to a listing value. */
+export const ASSISTANT_VALUES = ['high', 'some', 'none'] as const;
+export type AssistantValue = (typeof ASSISTANT_VALUES)[number];
 export const SITE_SUMMARY_MODEL = 'claude-opus-5-5';
 
 /** Notes are for the few things the links cannot say, so the file stays an index. */

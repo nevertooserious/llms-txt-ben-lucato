@@ -110,7 +110,7 @@ Signed in, "API docs" in the header opens Swagger UI at `/api-docs`, where every
 | Pin a version | `PUT /api/sites/{slug}/published-version` with `{"versionNumber": 2}` |
 | Follow the latest version | `DELETE /api/sites/{slug}/published-version` |
 | List crawled pages and what is ignored | `GET /api/sites/{slug}/pages` |
-| Set the ignored pages and paths | `PUT /api/sites/{slug}/pages` with `{"excludedUrls": [], "excludedUrlPrefixes": ["https://example.com/blog"]}` |
+| Set the ignored pages and paths | `PUT /api/sites/{slug}/pages` with `{"excludedUrls": [], "excludedUrlPrefixes": ["https://example.com/blog"], "keptUrls": []}` |
 | Get the live file (no login) | `GET /w/{slug}/llms.txt` |
 
 ```sh

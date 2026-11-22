@@ -6,6 +6,7 @@ import type {
   LinkSignals,
   PageExclusionReason,
   PageListingValue,
+  PageScope,
   PageRecord,
   PageType,
   StoredPageAssessment,
@@ -224,7 +225,7 @@ export async function savePageAssessment(
   await database.query(
     `update pages
         set generated_description = $3, assessed_page_type = $4, listing_value = $5,
-            exclusion_reason = $6, assessment_source_hash = $7
+            exclusion_reason = $6, assessment_source_hash = $7, assessed_page_scope = $8
       where site_id = $1 and normalised_url = $2`,
     [
       siteId,
@@ -234,6 +235,7 @@ export async function savePageAssessment(
       assessment.listingValue,
       assessment.exclusionReason,
       assessment.sourceHash,
+      assessment.scope,
     ],
   );
 }
@@ -265,6 +267,7 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
     assessed_page_type: AssessedPageType | null;
     listing_value: PageListingValue | null;
     exclusion_reason: PageExclusionReason | null;
+    assessed_page_scope: PageScope | null;
     assessment_source_hash: string | null;
   }>(
     `select normalised_url, fetch_url, canonical_url, extracted_title, extracted_description,
@@ -273,7 +276,7 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
             inbound_link_count, navigation_label, navigation_position, first_link_position,
             has_noindex_directive,
             markdown_variant_url, generated_description, assessed_page_type, listing_value,
-            exclusion_reason, assessment_source_hash
+            exclusion_reason, assessed_page_scope, assessment_source_hash
        from pages
       where site_id = $1 and removed_at is null and last_extracted_at is not null
       order by normalised_url`,
@@ -300,6 +303,8 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
             description: row.generated_description!,
             listingValue: row.listing_value!,
             exclusionReason: row.exclusion_reason,
+            // An assessment from before scope was asked is not treated as narrow.
+            scope: row.assessed_page_scope ?? 'broad',
             pageType: row.assessed_page_type!,
             sourceHash: row.assessment_source_hash,
           },
