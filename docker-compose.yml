@@ -47,6 +47,7 @@ services:
     environment:
       <<: *app-environment
       BASIC_AUTH_USERNAME: ${BASIC_AUTH_USERNAME:-}
+      CRAWL_PAGE_BUDGET: ${CRAWL_PAGE_BUDGET:-}
       BASIC_AUTH_PASSWORD: ${BASIC_AUTH_PASSWORD:-}
       # Links the home page to the workspace from db/demo-seed.sql.
       DEMO_SITE_ENABLED: "true"

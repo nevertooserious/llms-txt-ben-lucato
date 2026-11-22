@@ -6,7 +6,15 @@ const RUN_TYPE_LABELS: Record<PipelineRunView['triggeredBy'], string> = {
   user_check_now: 'Manual check',
 };
 
-export function RunProgress({ run, hasPublishedVersion }: { run: PipelineRunView | null; hasPublishedVersion: boolean }) {
+export function RunProgress({
+  run,
+  crawlPageBudget,
+  hasPublishedVersion,
+}: {
+  run: PipelineRunView | null;
+  crawlPageBudget: number;
+  hasPublishedVersion: boolean;
+}) {
   if (run === null) {
     return (
       <>
@@ -35,7 +43,7 @@ export function RunProgress({ run, hasPublishedVersion }: { run: PipelineRunView
         <dt>Started:</dt>
         <dd>{new Date(run.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</dd>
         <dt>Pages:</dt>
-        <dd>{pageCountsLabel(run)}</dd>
+        <dd>{pageCountsLabel(run, crawlPageBudget)}</dd>
       </dl>
       {run.status === 'failed' && (
         <p className="notice notice-danger">
@@ -47,10 +55,13 @@ export function RunProgress({ run, hasPublishedVersion }: { run: PipelineRunView
   );
 }
 
-/** "12 of 40 fetched, 3 changed, 1 failed"; the counters rise while the run crawls. */
-function pageCountsLabel(run: PipelineRunView): string {
-  const parts = [`${run.pagesFetchedCount} of ${run.pagesDiscoveredCount} fetched`];
-  if (run.pagesChangedCount > 0) parts.push(`${run.pagesChangedCount} changed`);
+/**
+ * "12 of max 200 fetched, 3 changed, 1 failed"; the counters rise while the run crawls.
+ * A first generation has nothing to compare with, so it does not say how many changed.
+ */
+export function pageCountsLabel(run: PipelineRunView, crawlPageBudget: number): string {
+  const parts = [`${run.pagesFetchedCount} of max ${crawlPageBudget} fetched`];
+  if (run.triggeredBy !== 'submission' && run.pagesChangedCount > 0) parts.push(`${run.pagesChangedCount} changed`);
   if (run.pagesFailedCount > 0) parts.push(`${run.pagesFailedCount} failed`);
   return parts.join(', ');
 }

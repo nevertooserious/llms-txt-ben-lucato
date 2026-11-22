@@ -1,3 +1,4 @@
+import { DEFAULT_CRAWL_PAGE_BUDGET } from '@llms-txt/contracts';
 import { ConfigurationError, logLevel, optionalString, positiveInteger, requiredString, type Environment, type LogLevel } from '@llms-txt/runtime';
 
 /** Everything the worker reads from its environment, checked once at startup. */
@@ -33,7 +34,7 @@ export function readWorkerConfig(environment: Environment = process.env): Worker
     heartbeatStaleAfterSeconds: 120,
     queuedStaleAfterSeconds: 6 * 3600,
     maxMonitorChecksPerTick: 100,
-    crawlPageBudget: positiveInteger(environment, 'CRAWL_PAGE_BUDGET', 200),
+    crawlPageBudget: positiveInteger(environment, 'CRAWL_PAGE_BUDGET', DEFAULT_CRAWL_PAGE_BUDGET),
     maxFailedFetchShare: 0.5,
     llmClient: llmClientConfig(environment),
   };

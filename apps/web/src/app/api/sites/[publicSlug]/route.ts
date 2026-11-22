@@ -14,7 +14,10 @@ export async function GET(
   try {
     const { siteId, response } = await requestedSite(services.databasePool, publicSlug, request);
     if (response) return response;
-    const view = await loadSiteView(siteId, publicSlug, { databasePool: services.databasePool });
+    const view = await loadSiteView(siteId, publicSlug, {
+      databasePool: services.databasePool,
+      crawlPageBudget: services.config.crawlPageBudget,
+    });
     if (view === null) return apiError(404, 'site_not_found', 'There is no site here.');
     return Response.json(view, { headers: { 'cache-control': 'no-store' } });
   } catch (error) {

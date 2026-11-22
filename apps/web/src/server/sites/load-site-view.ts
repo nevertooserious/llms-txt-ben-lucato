@@ -13,7 +13,7 @@ import type { PipelineRunView, SiteView } from '@/shared/site-view';
 export async function loadSiteView(
   siteId: string,
   publicSlug: string,
-  dependencies: { databasePool: DatabasePool },
+  dependencies: { databasePool: DatabasePool; crawlPageBudget: number },
 ): Promise<SiteView | null> {
   const [overview, latestRun, versions] = await Promise.all([
     loadSiteOverview(dependencies.databasePool, siteId),
@@ -31,6 +31,7 @@ export async function loadSiteView(
       nextCheckAt: overview.nextMonitorCheckAt?.toISOString() ?? null,
     },
     latestRun: latestRun === null ? null : pipelineRunView(latestRun),
+    crawlPageBudget: dependencies.crawlPageBudget,
     publishedVersion:
       version === null
         ? null

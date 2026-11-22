@@ -65,7 +65,7 @@ npm run dev:web                          # http://localhost:3000, login user1 / 
 npm run dev:worker
 ```
 
-Each process reads its configuration once at startup and stops with a message naming any missing or malformed variable. `DATABASE_URL` is required, and the worker needs `ANTHROPIC_API_KEY` unless `LLM_CLIENT=stub`; `LOG_LEVEL` (`debug`, `info`, `warn`, `error`), `PIPELINE_RUN_CONCURRENCY` and `CRAWL_PAGE_BUDGET` (worker) and `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` (web) are optional. Logs are one JSON object per line; a run's lines carry its `pipelineRunId`.
+Each process reads its configuration once at startup and stops with a message naming any missing or malformed variable. `DATABASE_URL` is required, and the worker needs `ANTHROPIC_API_KEY` unless `LLM_CLIENT=stub`; `LOG_LEVEL` (`debug`, `info`, `warn`, `error`), `PIPELINE_RUN_CONCURRENCY` (worker), `CRAWL_PAGE_BUDGET` (worker, and web, which shows it beside a run's page count, so set it on both) and `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` (web) are optional. Logs are one JSON object per line; a run's lines carry its `pipelineRunId`.
 
 ## Serving llms.txt from your own domain
 

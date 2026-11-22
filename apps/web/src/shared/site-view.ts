@@ -36,6 +36,8 @@ export interface SiteView {
     nextCheckAt: string | null;
   };
   latestRun: PipelineRunView | null;
+  /** Most pages one run fetches. */
+  crawlPageBudget: number;
   publishedVersion: {
     versionNumber: number;
     llmsTxtContent: string;
