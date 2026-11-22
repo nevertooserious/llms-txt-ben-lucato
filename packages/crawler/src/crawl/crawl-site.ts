@@ -17,7 +17,7 @@ import { HttpFetcher, type FetchOutcome, type FetchRequest } from '../network/ht
 import { cleanUrlForFetch, isInScope, isOnRelatedHost, normaliseUrl } from '../discovery/normalise-url';
 import { parseSitemap } from '../discovery/parse-sitemap';
 import { computeLinkGraphSignals } from './link-graph';
-import { pageFamilyKeyOf } from './page-family';
+import { documentationAreaKeyOf, pageFamilyKeyOf } from './page-family';
 import { readPageSignals, readVisibleTextBlocks, type PageSignals } from '../page-signals/read-page-signals';
 import {
   fragmentRouteLinksOf,
@@ -103,7 +103,11 @@ const TEXT_TYPES = ['text/plain', 'text/markdown', 'text/x-markdown'];
 
 /** Sitemap files fetched per crawl, index files included. */
 const MAX_SITEMAP_FETCHES = 10;
-/** Sitemap URLs kept per page of budget; a huge sitemap need not be held in full. */
+/**
+ * Sitemap URLs kept per page of budget; a huge sitemap need not be held in full. Of a
+ * sitemap with more, the URLs nearest the root are kept, in the sitemap's order: a sitemap
+ * lists a site by path, and its first URLs are the start of the alphabet, not what matters.
+ */
 const SITEMAP_ENTRIES_PER_BUDGETED_PAGE = 4;
 /** Fetch attempts per page of budget; failures do not use budget, so they need their own cap. */
 const ATTEMPTS_PER_BUDGETED_PAGE = 2;
@@ -148,6 +152,8 @@ interface FrontierEntry {
   order: number;
   /** The family whose other pages this one waits behind once enough are fetched; null when it never waits. */
   familyKey: string | null;
+  /** The area of the documentation whose turn this page takes; null when it is not documentation. */
+  documentationAreaKey: string | null;
   /**
    * On another host of the same site (docs.example.com), which the homepage navigation
    * links. Fetched as one page under that host's robots.txt; its links are not followed.
@@ -198,6 +204,8 @@ class SiteCrawl {
   private readonly pending = new Set<string>();
   /** How many pages of each family have been taken from the frontier. */
   private readonly pagesTakenByFamily = new Map<string, number>();
+  /** How many pages of each area of the documentation have been taken from the frontier. */
+  private readonly pagesTakenByDocumentationArea = new Map<string, number>();
   private readonly fetchedUrls = new Set<string>();
   /** The links of each page read in this crawl, in page order. */
   private readonly outboundLinksRead = new Map<string, string[]>();
@@ -383,9 +391,13 @@ class SiteCrawl {
       if (sitemap.kind === 'sitemapindex') {
         queue.push(...sitemap.sitemapUrls);
       } else if (sitemap.kind === 'urlset') {
-        for (const { url, lastModified } of sitemap.entries) {
+        // Each entry keeps the place the sitemap gave it, whenever it is added.
+        const firstOrder = this.insertionOrder;
+        this.insertionOrder += sitemap.entries.length;
+        for (const index of indexesNearestRootFirst(sitemap.entries.map((entry) => entry.url))) {
           if (entriesAdded >= maxEntries) break;
-          if (this.addToFrontier(url, 1, 'sitemap', lastModified)) entriesAdded += 1;
+          const { url, lastModified } = sitemap.entries[index]!;
+          if (this.addToFrontier(url, 1, 'sitemap', lastModified, { order: firstOrder + index })) entriesAdded += 1;
         }
       }
     }
@@ -540,7 +552,7 @@ class SiteCrawl {
     crawlDepth: number,
     discoveredVia: DiscoverySource,
     sitemapLastModified: string | null,
-    { allowRelatedHost = false } = {},
+    { allowRelatedHost = false, order }: { allowRelatedHost?: boolean; order?: number } = {},
   ): boolean {
     const url = this.pageUrlOf(rawUrl);
     const fetchUrl = this.fetchUrlOf(rawUrl);
@@ -566,8 +578,9 @@ class SiteCrawl {
       crawlDepth,
       discoveredVia,
       sitemapLastModified,
-      order: this.insertionOrder++,
+      order: order ?? this.insertionOrder++,
       familyKey: isRelated ? null : pageFamilyKeyOf(url, this.rootUrl),
+      documentationAreaKey: isRelated ? null : documentationAreaKeyOf(url, this.rootUrl),
       isOnRelatedHost: isRelated,
     });
     this.pending.add(url);
@@ -577,6 +590,13 @@ class SiteCrawl {
   /**
    * The next page in order: nearest the homepage first, then by how it was found. A page
    * whose family has had its share waits behind every page that has not.
+   *
+   * Documentation never waits, so nothing shares a budget out within it: a sitemap lists
+   * it by path, and 200 pages went on the two areas of 1,400 pages of documentation that
+   * come first in the alphabet. So when the next page is one of documentation, the turn
+   * goes to the area that has had the fewest pages, among the pages as near the homepage.
+   * Documentation gets the turns it would have had, and a site within its budget has the
+   * same pages read.
    */
   private takeNextFromFrontier(): FrontierEntry | undefined {
     let best: FrontierEntry | undefined;
@@ -592,7 +612,12 @@ class SiteCrawl {
       }
     }
     if (best === undefined) return undefined;
+    if (this.takesTurnsByDocumentationArea(best)) best = this.nextOfLeastFetchedDocumentationArea(best);
     this.pending.delete(best.url);
+    if (best.documentationAreaKey !== null) {
+      const taken = this.pagesTakenByDocumentationArea.get(best.documentationAreaKey) ?? 0;
+      this.pagesTakenByDocumentationArea.set(best.documentationAreaKey, taken + 1);
+    }
     if (best.familyKey !== null) {
       this.pagesTakenByFamily.set(best.familyKey, (this.pagesTakenByFamily.get(best.familyKey) ?? 0) + 1);
     }
@@ -607,6 +632,33 @@ class SiteCrawl {
     if (entry.familyKey === null) return false;
     if (entry.discoveredVia === 'navigation' || entry.discoveredVia === 'existing_llms_txt') return false;
     return (this.pagesTakenByFamily.get(entry.familyKey) ?? 0) >= FAMILY_PAGES_FETCHED_BEFORE_OTHERS;
+  }
+
+  /**
+   * Whether the page is one of documentation that takes its area's turn. A page the
+   * navigation or the site's own llms.txt names was chosen by the site, in the site's
+   * order, and is fetched when that order says.
+   */
+  private takesTurnsByDocumentationArea(entry: FrontierEntry): boolean {
+    if (entry.documentationAreaKey === null) return false;
+    return entry.discoveredVia !== 'navigation' && entry.discoveredVia !== 'existing_llms_txt';
+  }
+
+  /**
+   * The page to fetch in place of `next`: of the documentation pages as near the homepage,
+   * the first of the area that has had the fewest pages. Areas that have had as many keep
+   * the usual order, so the areas are visited in the site's order, and so are an area's pages.
+   */
+  private nextOfLeastFetchedDocumentationArea(next: FrontierEntry): FrontierEntry {
+    const takenOf = (entry: FrontierEntry) => this.pagesTakenByDocumentationArea.get(entry.documentationAreaKey!) ?? 0;
+    let best = next;
+    for (const url of this.pending) {
+      const entry = this.frontier.get(url)!;
+      if (entry.crawlDepth !== next.crawlDepth || !this.takesTurnsByDocumentationArea(entry)) continue;
+      if (this.isHeldBack(entry) !== this.isHeldBack(next)) continue;
+      if ((takenOf(entry) - takenOf(best) || compareEntries(entry, best)) < 0) best = entry;
+    }
+    return best;
   }
 
   // --- fetching --------------------------------------------------------------------
@@ -1015,6 +1067,12 @@ class CrawlDeadlineReached extends Error {}
 /** A response that says the site is struggling or refusing us, not that the page is gone. */
 function isErrorStatus(httpStatusCode: number): boolean {
   return httpStatusCode >= 500 || [401, 403, 429, 451].includes(httpStatusCode);
+}
+
+/** The indexes of the URLs, those with the fewest path segments first and otherwise in order. */
+function indexesNearestRootFirst(urls: readonly string[]): number[] {
+  const depths = urls.map((url) => (URL.canParse(url) ? new URL(url).pathname.split('/').filter(Boolean).length : Infinity));
+  return urls.map((_, index) => index).sort((a, b) => depths[a]! - depths[b]! || a - b);
 }
 
 function compareEntries(a: FrontierEntry, b: FrontierEntry): number {
