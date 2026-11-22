@@ -27,7 +27,7 @@ export interface GenerateLlmsTxtInput {
   siteSummary: string | null;
   /** Cached with the summary: one line each, for what the links cannot say. Usually none. */
   siteNotes?: readonly string[];
-  /** The site's own files for machines (llms-full.txt, a section's llms.txt, an OpenAPI description). */
+  /** The site's own files for machines (llms-full.txt and other versions of it, a section's llms.txt, an OpenAPI description). */
   machineReadableResourceUrls?: readonly string[];
   pages: GeneratorPage[];
   overrides: PageOverride[];
@@ -126,6 +126,8 @@ const MACHINE_READABLE_SECTION_NAME = 'Machine-readable resources';
 /** Said of every file of a kind: what it is, not what this site's says, since it is not read. */
 const MACHINE_READABLE_RESOURCE_DESCRIPTIONS: Record<MachineReadableResourceKind, string> = {
   llms_full_txt: "The full text of the site's pages in one file.",
+  // The file's name is its title, and says which version it is (`llms-small.txt`).
+  llms_text_variant: "Another version of the site's text in one file, often shorter than the full one.",
   llms_txt_index: 'An llms.txt index for this part of the site.',
   openapi_description: 'Machine-readable OpenAPI description of the API.',
 };
