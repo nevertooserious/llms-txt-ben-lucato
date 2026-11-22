@@ -143,7 +143,8 @@ export async function loadSiteOverview(database: Queryable, siteId: string): Pro
     listed_page_count: number | null;
     version_created_at: Date | null;
   }>(
-    `select sites.root_url, sites.site_title, sites.next_monitor_check_at,
+    `select sites.root_url, coalesce(sites.generated_site_name, sites.site_title) as site_title,
+            sites.next_monitor_check_at,
             sites.is_published_version_pinned,
             versions.version_number, versions.llms_txt_content, versions.listed_page_count,
             versions.created_at as version_created_at
@@ -222,6 +223,8 @@ export interface SiteForRun {
   generatedSummary: string | null;
   generatedSummarySourceHash: string | null;
   generatedNotes: string[];
+  /** The site's name from the summary call; null until it has given one. */
+  generatedSiteName: string | null;
   machineReadableResourceUrls: string[];
   /** Null when undecided, or decided over 30 days ago, so the crawl decides again. */
   requiresHeadlessRendering: boolean | null;
@@ -236,12 +239,13 @@ export async function loadSiteForRun(database: Queryable, siteId: string): Promi
     generated_summary: string | null;
     generated_summary_source_hash: string | null;
     generated_notes: string[];
+    generated_site_name: string | null;
     machine_readable_resource_urls: string[];
     requires_headless_rendering: boolean | null;
     sitemap_lastmod_is_trusted: boolean;
   }>(
     `select id, root_url, site_title, generated_summary, generated_summary_source_hash, generated_notes,
-            machine_readable_resource_urls, sitemap_lastmod_is_trusted,
+            generated_site_name, machine_readable_resource_urls, sitemap_lastmod_is_trusted,
             case when headless_rendering_decided_at > now() - ${HEADLESS_DECISION_MAX_AGE}
                  then requires_headless_rendering end as requires_headless_rendering
        from sites
@@ -257,6 +261,7 @@ export async function loadSiteForRun(database: Queryable, siteId: string): Promi
     generatedSummary: row.generated_summary,
     generatedSummarySourceHash: row.generated_summary_source_hash,
     generatedNotes: row.generated_notes,
+    generatedSiteName: row.generated_site_name,
     machineReadableResourceUrls: row.machine_readable_resource_urls,
     requiresHeadlessRendering: row.requires_headless_rendering,
     sitemapLastModifiedIsTrusted: row.sitemap_lastmod_is_trusted,
@@ -299,11 +304,13 @@ export async function saveSiteCrawlOutcome(
 export async function saveGeneratedSummary(
   database: Queryable,
   siteId: string,
-  summary: { text: string; notes: string[]; sourceHash: string },
+  summary: { text: string; notes: string[]; siteName: string | null; sourceHash: string },
 ): Promise<void> {
   await database.query(
-    'update sites set generated_summary = $2, generated_notes = $3, generated_summary_source_hash = $4 where id = $1',
-    [siteId, summary.text, summary.notes, summary.sourceHash],
+    `update sites
+        set generated_summary = $2, generated_notes = $3, generated_site_name = $4, generated_summary_source_hash = $5
+      where id = $1`,
+    [siteId, summary.text, summary.notes, summary.siteName, summary.sourceHash],
   );
 }
 

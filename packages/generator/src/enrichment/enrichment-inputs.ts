@@ -60,11 +60,12 @@ export function siteSummarySourceHash(siteTitle: string, pages: readonly Generat
 export function buildSiteSummaryInput(
   siteTitle: string,
   pages: readonly GeneratorPage[],
-  previous: { summary: string | null; notes: string[] },
+  previous: { summary: string | null; notes: string[]; siteName: string | null },
 ): SiteSummaryInput {
   const homepage = homepageOf(pages);
   return {
     siteTitle,
+    host: homepage === undefined ? '' : new URL(homepage.record.normalisedUrl).host,
     homepageDescription: homepage?.record.description ?? null,
     homepageContentMarkdown: homepage?.record.contentMarkdown ?? '',
     listedPages: selectPages(pages, [])
@@ -76,7 +77,22 @@ export function buildSiteSummaryInput(
       })),
     previousSummary: previous.summary,
     previousNotes: previous.notes,
+    previousSiteName: previous.siteName,
   };
+}
+
+/**
+ * The name the model gave, if the site itself uses it: it must appear in the homepage's
+ * text or description, the name worked out from titles, or the host. A name found
+ * nowhere on the site is the model's own, and the name from titles is used instead.
+ */
+export function siteNameIfOnSite(siteName: string | null, input: SiteSummaryInput): string | null {
+  if (siteName === null) return null;
+  const lettersOf = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+  const name = lettersOf(siteName);
+  if (name === '') return null;
+  const siteText = [input.siteTitle, input.host, input.homepageDescription ?? '', input.homepageContentMarkdown];
+  return siteText.some((text) => lettersOf(text).includes(name)) ? siteName : null;
 }
 
 function sha256(value: unknown): string {

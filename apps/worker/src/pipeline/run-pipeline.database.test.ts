@@ -145,7 +145,7 @@ async function versions(siteId: string) {
 /** A stand-in LLM that excludes not-found and blog-post pages and counts its calls. */
 function fakeLlmClient() {
   const calls = { assessPage: 0, writeSiteSummary: 0 };
-  const behaviour = { failWith: null as Error | null };
+  const behaviour = { failWith: null as Error | null, siteName: null as string | null };
   const client: LlmClient = {
     async assessPage(input) {
       calls.assessPage += 1;
@@ -161,7 +161,7 @@ function fakeLlmClient() {
     async writeSiteSummary() {
       calls.writeSiteSummary += 1;
       if (behaviour.failWith !== null) throw behaviour.failWith;
-      return { summary: 'Acme, summarised.', notes: ['The v1 API is deprecated.'] };
+      return { summary: 'Acme, summarised.', notes: ['The v1 API is deprecated.'], siteName: behaviour.siteName };
     },
   };
   return { client, calls, behaviour };
@@ -201,6 +201,28 @@ describe('runPipeline with an LLM', () => {
     expect((await run(siteId, fakeCrawl(pages), identity, databasePool, llm.client)).status).toBe('unchanged');
     expect(llm.calls).toEqual({ assessPage: 3, writeSiteSummary: 1 });
     expect(await versions(siteId)).toHaveLength(1);
+  });
+
+  it('titles the file with the name the summary call gives, from that one call, and keeps it on later runs', async () => {
+    const { siteId } = await newSite();
+    const llm = fakeLlmClient();
+    llm.behaviour.siteName = 'Acme';
+    const titledByTagline = [{ path: '/', title: 'Welcome to Acme' }, { path: '/docs', title: 'Docs' }];
+    await run(siteId, fakeCrawl(titledByTagline), identity, databasePool, llm.client);
+    expect((await versions(siteId))[0]!.llms_txt_content).toMatch(/^# Acme\n/);
+    expect(llm.calls.writeSiteSummary).toBe(1);
+
+    // The name is cached with the summary: no second call, and the same file.
+    expect((await run(siteId, fakeCrawl(titledByTagline), identity, databasePool, llm.client)).status).toBe('unchanged');
+    expect(llm.calls.writeSiteSummary).toBe(1);
+  });
+
+  it('keeps the name from page titles when the model gives one the homepage does not carry', async () => {
+    const { siteId } = await newSite();
+    const llm = fakeLlmClient();
+    llm.behaviour.siteName = 'Zenith Corporation';
+    await run(siteId, fakeCrawl([{ path: '/', title: 'Welcome to Acme' }, { path: '/docs', title: 'Docs' }]), identity, databasePool, llm.client);
+    expect((await versions(siteId))[0]!.llms_txt_content).toMatch(/^# Welcome to Acme\n/);
   });
 
   it('fails the run and keeps the file when the LLM is down for a new page', async () => {

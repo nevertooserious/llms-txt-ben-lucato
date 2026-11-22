@@ -33,7 +33,7 @@
   <text class="f" x="34" y="92">id, owner_user_id</text>
   <text class="f" x="34" y="110">root_url, submitted_url (unique per owner)</text>
   <text class="f" x="34" y="128">public_slug (unique)</text>
-  <text class="f" x="34" y="146">site_title</text>
+  <text class="f" x="34" y="146">site_title, generated_site_name</text>
   <text class="f" x="34" y="164">generated_summary, generated_notes</text>
   <text class="f" x="34" y="182">generated_summary_source_hash</text>
   <text class="f" x="34" y="200">monitor_check_interval</text>

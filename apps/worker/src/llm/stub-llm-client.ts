@@ -18,7 +18,7 @@ export function createStubLlmClient(): LlmClient {
       };
     },
     async writeSiteSummary(input) {
-      return { summary: input.homepageDescription ?? '', notes: [] };
+      return { summary: input.homepageDescription ?? '', notes: [], siteName: null };
     },
   };
 }

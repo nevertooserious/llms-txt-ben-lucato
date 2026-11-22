@@ -1,4 +1,11 @@
-export { buildSiteSummaryInput, pageAssessmentInputOf, pageAssessmentSourceHash, pagesToAssess, siteSummarySourceHash } from './enrichment-inputs';
+export {
+  buildSiteSummaryInput,
+  pageAssessmentInputOf,
+  pageAssessmentSourceHash,
+  pagesToAssess,
+  siteNameIfOnSite,
+  siteSummarySourceHash,
+} from './enrichment-inputs';
 export {
   LlmOutputRejectedError,
   MAXIMUM_SITE_NOTES,

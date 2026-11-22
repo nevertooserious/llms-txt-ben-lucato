@@ -146,6 +146,7 @@ export async function savePageExclusions(
   if (!loadedPages.some((page) => page.assessment !== null)) return { kind: 'applied_by_next_run' };
   const rendered = generateLlmsTxt({
     siteTitle: siteNameFrom(site.siteTitle ?? new URL(site.rootUrl).host, loadedPages),
+    siteName: site.generatedSiteName,
     siteSummary: site.generatedSummary,
     siteNotes: site.generatedNotes,
     machineReadableResourceUrls: site.machineReadableResourceUrls,

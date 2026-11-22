@@ -7,6 +7,7 @@ export { generateLlmsTxt, type GenerateLlmsTxtInput } from './rendering/generate
 export {
   buildPageAssessmentPrompt,
   buildSiteSummaryInput,
+  siteNameIfOnSite,
   buildSiteSummaryPrompt,
   LlmOutputRejectedError,
   PAGE_ASSESSMENT_MODEL,

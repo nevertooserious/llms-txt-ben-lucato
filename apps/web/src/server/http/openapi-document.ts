@@ -165,7 +165,7 @@ const schemas: Record<string, JsonSchema> = {
   Site: objectOf({
     publicSlug: { type: 'string' },
     rootUrl: { type: 'string', format: 'uri' },
-    siteTitle: nullable('string'),
+    siteTitle: nullable('string', { description: "The site's name, as the file's H1 gives it." }),
     hostedLlmsTxtPath: { type: 'string', description: "The hosted file's path on this app." },
     monitoring: objectOf({ nextCheckAt: nullableDateTime }),
     latestRun: nullableReference('PipelineRun'),

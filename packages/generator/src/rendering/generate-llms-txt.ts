@@ -24,7 +24,10 @@ import {
 import { validateLlmsTxt } from './validate-llms-txt';
 
 export interface GenerateLlmsTxtInput {
+  /** The site's name as worked out from page titles: what entry titles lose from their ends, and the H1 without `siteName`. */
   siteTitle: string;
+  /** The site's name from the summary call, cached with the summary. The H1 when present. */
+  siteName?: string | null;
   /** Cached site summary; written by the LLM only when its inputs change. Null falls back to the homepage's description. */
   siteSummary: string | null;
   /** Cached with the summary: one line each, for what the links cannot say. Usually none. */
@@ -67,7 +70,7 @@ export function generateLlmsTxt(input: GenerateLlmsTxtInput): string {
   const homepageEntry = homepageEntryOf(input, context, summary);
   const titles = entryTitlesOf(selected, context, homepageEntry === null ? [] : [homepageEntry.title]);
 
-  const blocks: string[] = [`# ${siteTitle || 'Untitled site'}`];
+  const blocks: string[] = [`# ${singleLine(input.siteName ?? '') || siteTitle || 'Untitled site'}`];
   if (summary !== '') blocks.push(`> ${summary}`);
   const notes = (input.siteNotes ?? []).map((note) => truncate(singleLine(note))).filter((note) => note !== '');
   if (notes.length > 0) blocks.push(notes.map((note) => `- ${note}`).join('\n'));
