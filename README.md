@@ -126,6 +126,14 @@ A run's `status` is `queued`, `running`, `succeeded`, `unchanged` or `failed`. W
 
 Errors are JSON with a message and a stable code, such as `{"error": "This site has no such run.", "code": "run_not_found"}`. The codes are `unauthorized`, `invalid_request`, `invalid_url`, `invalid_version_number`, `site_not_found`, `run_not_found`, `version_not_found`, `run_in_progress`, `run_produced_no_version`, `site_already_exists`, `cooldown_active` and `internal_error`. A user has one site per URL: submitting a URL they already have answers 409 `site_already_exists`, with the existing site's `publicSlug` and `siteUrl`.
 
+## Deployment
+
+The app runs on [Railway](https://railway.com) as three services in one project: `web`, `worker` and Postgres. Both app services build the repository's `Dockerfile`, and the `SERVICE_ROLE` variable on each (`web` or `worker`) tells `scripts/start-service.sh` which process to start. A merge to `main` deploys both, from the `deploy` job in `.github/workflows/ci.yml`, after the other jobs pass. It needs the repository secret `RAILWAY_TOKEN`, a Railway project token.
+
+Variables are set on the Railway services, not in the repository: `DATABASE_URL` on both (a reference to the Postgres service), `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` on `web`, and `ANTHROPIC_API_KEY` on `worker`.
+
+A deploy does not touch the schema. `db/schema.sql` was applied once to the empty database, so a schema change has to be applied to production by hand before the code that needs it is merged.
+
 ## Examples
 
 [`docs/examples`](docs/examples/README.md) holds files generated for real sites of different kinds (documentation, a site rendered in the browser, a shop, a blog, a site not in English). `node scripts/generate-examples.mjs` regenerates them against a running stack.

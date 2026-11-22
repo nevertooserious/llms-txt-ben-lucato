@@ -62,6 +62,27 @@ jobs:
       - run: npm ci
       - run: scripts/test-e2e.sh
 
+  # Runs only for a merge to main, once the checks have passed. Each service builds the
+  # same Dockerfile; SERVICE_ROLE on the Railway service picks what it starts.
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, e2e, schema]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [web, worker]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --global @railway/cli@5.75.0
+      # A project token, so it also names the project and the environment.
+      - run: railway up --ci --service ${{ matrix.service }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
   pr-description:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

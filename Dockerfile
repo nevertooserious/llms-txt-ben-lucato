@@ -28,3 +28,6 @@ RUN npm run build --workspace @llms-txt/web \
   && chown -R node:node apps/web/.next
 
 USER node
+
+# The host sets SERVICE_ROLE to web or worker; docker-compose.yml overrides this.
+CMD ["scripts/start-service.sh"]
