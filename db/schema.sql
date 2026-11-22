@@ -78,8 +78,6 @@ create table sites (
   -- but the pointer stays until the user unpins it.
   is_published_version_pinned      boolean not null default false,
 
-  -- SHA-256 of the submitter's IP, for per-IP submission rate limiting.
-  creator_ip_hash                  text,
   created_at                       timestamptz not null default now(),
 
   constraint sites_monitor_check_interval_bounds
@@ -91,7 +89,6 @@ create table sites (
 -- The monitor's due-site scan.
 create index sites_due_for_monitor_check_idx
   on sites (next_monitor_check_at) where next_monitor_check_at is not null;
-create index sites_rate_limit_idx on sites (creator_ip_hash, created_at);
 
 -- ---------------------------------------------------------------------------
 -- pipeline_runs

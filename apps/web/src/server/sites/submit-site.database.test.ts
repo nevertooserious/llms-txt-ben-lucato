@@ -21,8 +21,8 @@ const uniqueHost = () => `${crypto.randomUUID()}.example`;
 describe('submitSite', () => {
   it('creates a site with monitoring on and a queued run', async () => {
     const outcome = await submitSite(
-      { submittedUrl: `${uniqueHost()}/docs/`, clientIp: crypto.randomUUID() },
-      { databasePool, queue, submissionsPerIpPerHour: 10 },
+      { submittedUrl: `${uniqueHost()}/docs/` },
+      { databasePool, queue },
     );
     if (outcome.kind !== 'submitted') throw new Error(`expected a submission, got ${outcome.kind}`);
     const stored = await databasePool.query<{ root_url: string; is_monitored: boolean; status: string }>(
@@ -39,25 +39,18 @@ describe('submitSite', () => {
 
   it('gives a second submission of the same URL its own site and its own run', async () => {
     const host = uniqueHost();
-    const dependencies = { databasePool, queue, submissionsPerIpPerHour: 10 };
-    const first = await submitSite({ submittedUrl: host, clientIp: null }, dependencies);
-    const second = await submitSite({ submittedUrl: `https://${host}/`, clientIp: null }, dependencies);
+    const dependencies = { databasePool, queue };
+    const first = await submitSite({ submittedUrl: host }, dependencies);
+    const second = await submitSite({ submittedUrl: `https://${host}/` }, dependencies);
     if (first.kind !== 'submitted' || second.kind !== 'submitted') throw new Error('expected two submissions');
     expect(second.publicSlug).not.toBe(first.publicSlug);
     expect(second.pipelineRunId).not.toBe(first.pipelineRunId);
   });
 
-  it('refuses an IP over its hourly limit', async () => {
-    const clientIp = crypto.randomUUID();
-    const dependencies = { databasePool, queue, submissionsPerIpPerHour: 1 };
-    expect((await submitSite({ submittedUrl: uniqueHost(), clientIp }, dependencies)).kind).toBe('submitted');
-    expect((await submitSite({ submittedUrl: uniqueHost(), clientIp }, dependencies)).kind).toBe('rate_limited');
-  });
-
   it('rejects a URL that is not a web address', async () => {
     const outcome = await submitSite(
-      { submittedUrl: 'ftp://example.com', clientIp: null },
-      { databasePool, queue, submissionsPerIpPerHour: 10 },
+      { submittedUrl: 'ftp://example.com' },
+      { databasePool, queue },
     );
     expect(outcome).toEqual({ kind: 'invalid_url' });
   });

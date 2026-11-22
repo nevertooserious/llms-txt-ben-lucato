@@ -15,7 +15,7 @@ afterAll(() => pool.end());
 /** A site with pages at `paths`. */
 async function siteWithPages(paths: string[]): Promise<{ id: string; origin: string }> {
   const origin = `https://${randomUUID()}.example`;
-  const id = await createSite(pool, { rootUrl: origin, publicSlug: randomUUID(), creatorIpHash: null });
+  const id = await createSite(pool, { rootUrl: origin, publicSlug: randomUUID() });
   const run = await pool.query<{ id: string }>(
     `insert into pipeline_runs (site_id, triggered_by, status, finished_at)
      values ($1, 'submission', 'succeeded', now()) returning id`,

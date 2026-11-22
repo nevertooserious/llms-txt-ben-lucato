@@ -38,7 +38,7 @@ async function crawledSite(options: { isPublished?: boolean; isAssessed?: boolea
   const origin = `https://${randomUUID()}.example`;
   const url = (path: string) => (path === '/' ? origin : `${origin}${path}`);
   const publicSlug = randomUUID();
-  const siteId = await createSite(databasePool, { rootUrl: origin, publicSlug, creatorIpHash: null });
+  const siteId = await createSite(databasePool, { rootUrl: origin, publicSlug });
   const run = await databasePool.query<{ id: string }>(
     `insert into pipeline_runs (site_id, triggered_by, status, finished_at)
      values ($1, 'submission', 'succeeded', now()) returning id`,

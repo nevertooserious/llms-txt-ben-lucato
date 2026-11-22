@@ -93,7 +93,7 @@ const renderLlmsTxt = (input: GenerateLlmsTxtInput) =>
 
 async function newSite(): Promise<{ siteId: string; rootUrl: string }> {
   const rootUrl = `https://${crypto.randomUUID()}.example`;
-  const siteId = await createSite(databasePool, { rootUrl, publicSlug: crypto.randomUUID(), creatorIpHash: null });
+  const siteId = await createSite(databasePool, { rootUrl, publicSlug: crypto.randomUUID() });
   return { siteId, rootUrl };
 }
 

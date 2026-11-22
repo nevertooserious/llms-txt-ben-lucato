@@ -76,7 +76,6 @@ describe.skipIf(!databaseUrl)('the monitor schedule, on the real clock', () => {
     const siteId = await createSite(databasePool, {
       rootUrl: site.origin,
       publicSlug: crypto.randomUUID(),
-      creatorIpHash: null,
     });
     await databasePool.query(
       `update sites

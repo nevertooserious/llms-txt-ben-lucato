@@ -6,7 +6,6 @@ export type ApiErrorCode =
   | 'invalid_request'
   | 'invalid_url'
   | 'invalid_version_number'
-  | 'rate_limited'
   | 'run_in_progress'
   | 'run_not_found'
   | 'run_produced_no_version'

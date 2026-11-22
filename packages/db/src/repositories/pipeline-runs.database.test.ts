@@ -31,7 +31,7 @@ afterAll(async () => {
 });
 
 const newSite = () =>
-  createSite(pool, { rootUrl: `https://${randomUUID()}.example`, publicSlug: randomUUID(), creatorIpHash: null });
+  createSite(pool, { rootUrl: `https://${randomUUID()}.example`, publicSlug: randomUUID() });
 const startSubmission = (siteId: string) =>
   withTransaction(pool, (transaction) =>
     startPipelineRun(transaction, queue, { siteId, triggeredBy: 'submission' }),

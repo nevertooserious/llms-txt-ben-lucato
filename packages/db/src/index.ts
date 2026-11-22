@@ -32,7 +32,6 @@ export {
 } from './repositories/pipeline-runs';
 export {
   claimDueMonitorChecks,
-  countRecentSitesFromIp,
   createSite,
   deleteSite,
   loadPageOverrides,
