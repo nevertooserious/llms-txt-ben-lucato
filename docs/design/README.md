@@ -2,7 +2,7 @@
 
 A web app that takes a website URL, generates an [llms.txt](https://llmstxt.org) for it, and keeps that file up to date as the site changes.
 
-Status: the extractor, the crawler, the run lifecycle, the worker's run of the stages, the generator and the monitor's scheduling are implemented. The generator's LLM calls are wired in behind `ANTHROPIC_API_KEY`, but have not yet run against the live API; the worker needs a key, or `LLM_CLIENT=stub` for local development and tests (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
+Status: the extractor, the crawler, the run lifecycle, the worker's run of the stages, the generator and the monitor's scheduling are implemented. The generator's LLM calls need `ANTHROPIC_API_KEY`: the worker needs a key, or `LLM_CLIENT=stub` for local development and tests (see the [root README](../../README.md)). The schema in [`db/schema.sql`](../../db/schema.sql) is applied to Postgres 14 in CI on every PR ([`scripts/validate-schema.sh`](../../scripts/validate-schema.sh)).
 
 ## Contents
 
@@ -266,6 +266,3 @@ Not yet decided or designed.
 - **Related hosts:** a stored page on a related host that the navigation no longer links is still re-checked, but nothing removes it short of its own 404. A related host is told from the site's host alone, so `blog.example.com` is not related to a site at `docs.example.com`.
 - **Meta refresh:** a stored page that becomes a meta-refresh stub is neither updated nor removed; its target is crawled as a new page.
 - **Thresholds:** the page budget (200, `CRAWL_PAGE_BUDGET`) and the safety-gate failure share (0.5) have starting values that have not been tuned against real sites. The headless thresholds have starting values in `packages/crawler/src/page-signals/render-decision.ts`, tuned only against the fixture sites.
-
-
-// TODO blucato

@@ -32,5 +32,3 @@ which opens exactly the fixture ports and nothing else. `../tests/crawler.test.t
 and `../tests/http-fetcher.test.ts` test the crawler against these sites. `../tests/monitor.test.ts` runs monitor checks against `changing-site`.
 `../tests/site-flavours.test.ts` runs the whole pipeline against the rest through the real
 worker and Postgres, including changes over time with `editable-site`.
-
-// TODO blucato
