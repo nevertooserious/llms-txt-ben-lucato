@@ -24,13 +24,7 @@ async function dueMonitoredSite(): Promise<string> {
     rootUrl: `https://${randomUUID()}.example`,
     publicSlug: randomUUID(),
   });
-  await databasePool.query(
-    `update sites
-        set next_monitor_check_at = now() - interval '1 minute',
-            monitoring_enabled_until = now() + interval '30 days'
-      where id = $1`,
-    [siteId],
-  );
+  await databasePool.query(`update sites set next_monitor_check_at = now() - interval '1 minute' where id = $1`, [siteId]);
   return siteId;
 }
 

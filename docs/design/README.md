@@ -146,15 +146,15 @@ All SQL is hand-written in `packages/db`, one module per table, and the rest of 
 
 ![Monitor check](diagrams/monitor-check.svg)
 
-A check runs on a fixed interval per site (default 7 days) or when a user presses "check now". A site is only scheduled while its monitoring is unexpired.
+A check runs on a fixed interval per site (default 7 days) or when a user presses "check now".
 
 ### Scheduling
 
 The monitor only acts on a schedule. A request to check now arrives over HTTP, so the web app takes it and queues the run itself, through the same `startPipelineRun`. The two never call each other.
 
-- **Starting and renewing:** every submission turns monitoring on for 30 days and users cannot turn it off. "Check now" renews it for 30 days, including after it has lapsed. If the site has no check scheduled, it gets one a full interval out: the site was just crawled, so checking sooner would find nothing.
+- **Starting:** every submission turns monitoring on, and it runs until the site is deleted. Users cannot turn it off. If the site has no check scheduled, it gets one a full interval out: the site was just crawled, so checking sooner would find nothing.
 - **Deleting a site:** removes its pages, overrides, excluded paths, runs, versions and hosted file. A run in progress loses its row, so its next write fails and it cannot publish.
-- **The tick:** every 5 minutes, a pg-boss cron job in the worker reaps stale runs (section 4). Then it claims up to 100 due sites, skipping rows another tick has locked, moves each one's next check on by its interval, and queues a monitor run behind user requests. A due site whose monitoring has lapsed is unscheduled at that point, so expiry needs no job of its own.
+- **The tick:** every 5 minutes, a pg-boss cron job in the worker reaps stale runs (section 4). Then it claims up to 100 due sites, skipping rows another tick has locked, moves each one's next check on by its interval, and queues a monitor run behind user requests.
 - **Check now:** the same pipeline as a scheduled check, queued ahead of scheduled checks. A run already in progress is joined. Otherwise the site is checked at most once per 5 minutes, counted from its last run of any kind.
 
 ### Change detection
@@ -206,7 +206,7 @@ A site with nothing to list besides its homepage publishes nothing: the run fail
 - **Site link:** `/w/{public_slug}`. The browser keeps the sites it created so the home page can show them as a table with each one's latest status. Submitting a site opens its details page.
 - **API (HTTP Basic auth):** a REST API that the web app also uses, documented in the [root README](../../README.md#rest-api). A submission creates a site. A run has its own status, and a file is reached by version number or by the run that published it. A run that published nothing answers 404 with the code `run_produced_no_version`, rather than some other run's file. Errors carry a stable `code` beside the human-readable `error`.
 - **Hosted URL:** a stable `/w/{public_slug}/llms.txt`. The spec puts llms.txt at the site's own root, so the site owner redirects or proxies to this URL. The [root README](../../README.md#serving-llmstxt-from-your-own-domain) explains how.
-- **Monitoring:** on for every site with an expiry, a "check now" button that renews it, and version history with diffs: the user picks any two versions and sees a line diff, computed in the browser.
+- **Monitoring:** on for every site until it is deleted, a "check now" button, and version history with diffs: the user picks any two versions and sees a line diff, computed in the browser.
 - **Versions:** a list of versions with counts of pages added, removed and changed, from which the user makes one live and pins it, or returns to following the latest.
 
 ## 7. Security and abuse limits
@@ -217,7 +217,6 @@ The app is public, has no accounts, and fetches URLs that users supply.
 - **Network policy:** the guard's rule is passed in when the fetcher is created. Production uses the public-internet-only policy. End-to-end tests pass one that allows only their fixture sites' loopback ports; it lives in the tests, and no setting or environment variable can loosen the guard.
 - **Fetch limits:** 15 seconds per fetch including redirects, 5 MB per response, 5 redirects, and only `http` and `https`; a page budget per run. A response of a type the caller did not ask for is dropped without reading its body.
 - **Submission limits:** a global concurrency cap from the queue. Submissions are not limited per client, so the login is what keeps strangers from creating sites.
-- **Monitor expiry:** `monitoring_enabled_until` stops abandoned submissions from being re-crawled forever.
 - **Check-now cooldown:** a site is checked by hand at most once per 5 minutes, so nobody can keep a site under constant crawling. The active-run index already stops parallel crawls, but not back-to-back ones.
 - **Login:** needed on every path except the hosted file, the login page and Next's static assets, and compared in constant time. API clients use HTTP Basic auth. A signed-out browser is sent to `/login`, whose form sets a cookie the proxy accepts in place of the header. The cookie is an expiry time (30 days) signed with the username and password, so no sessions are stored and changing the login signs everyone out. It is `HttpOnly` and `SameSite=Lax`, which keeps it off requests other sites make to the API. The form does not limit attempts. The username and password come from `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD`, defaulting to `user1` and `pass1`, which are public, so a deployment must set its own. Basic auth sends the password with each request, and the form sends it once, so a deployment needs HTTPS.
 - **Served files:** `text/plain` with `X-Content-Type-Options: nosniff`.

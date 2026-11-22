@@ -10,18 +10,12 @@ const pool = createDatabasePool(databaseUrl);
 
 afterAll(() => pool.end());
 
-async function siteWithMonitoring(options: { nextCheck: string; monitoringUntil: string | null }): Promise<string> {
+async function siteWithNextCheck(nextCheck: string): Promise<string> {
   const siteId = await createSite(pool, {
     rootUrl: `https://${randomUUID()}.example`,
     publicSlug: randomUUID(),
   });
-  await pool.query(
-    `update sites
-        set next_monitor_check_at = now() + $2::interval,
-            monitoring_enabled_until = now() + $3::interval
-      where id = $1`,
-    [siteId, options.nextCheck, options.monitoringUntil],
-  );
+  await pool.query('update sites set next_monitor_check_at = now() + $2::interval where id = $1', [siteId, nextCheck]);
   return siteId;
 }
 
@@ -43,29 +37,15 @@ describe('createSite', () => {
 });
 
 describe('claimDueMonitorChecks', () => {
-  it('takes a due, monitored site and moves its next check on', async () => {
-    const siteId = await siteWithMonitoring({ nextCheck: '-1 minute', monitoringUntil: '30 days' });
+  it('takes a due site and moves its next check on', async () => {
+    const siteId = await siteWithNextCheck('-1 minute');
     const claimed = await withTransaction(pool, (transaction) => claimDueMonitorChecks(transaction, 1000));
     expect(claimed).toContain(siteId);
     expect(await nextCheckIsInFuture(siteId)).toBe(true);
   });
 
-  it('unschedules a due site whose monitoring has expired', async () => {
-    const siteId = await siteWithMonitoring({ nextCheck: '-1 minute', monitoringUntil: '-1 day' });
-    const claimed = await withTransaction(pool, (transaction) => claimDueMonitorChecks(transaction, 1000));
-    expect(claimed).not.toContain(siteId);
-    expect(await nextCheckIsInFuture(siteId)).toBeNull();
-  });
-
-  it('unschedules a due site that never had monitoring', async () => {
-    const siteId = await siteWithMonitoring({ nextCheck: '-1 minute', monitoringUntil: null });
-    const claimed = await withTransaction(pool, (transaction) => claimDueMonitorChecks(transaction, 1000));
-    expect(claimed).not.toContain(siteId);
-    expect(await nextCheckIsInFuture(siteId)).toBeNull();
-  });
-
   it('leaves a site that is not due', async () => {
-    const siteId = await siteWithMonitoring({ nextCheck: '1 hour', monitoringUntil: '30 days' });
+    const siteId = await siteWithNextCheck('1 hour');
     const claimed = await withTransaction(pool, (transaction) => claimDueMonitorChecks(transaction, 1000));
     expect(claimed).not.toContain(siteId);
   });

@@ -643,10 +643,6 @@ a.button:hover {
   color: var(--color-text-muted);
 }
 
-.monitoring-state {
-  margin: 0;
-  font-size: 13px;
-}
 .confirm-actions {
   display: flex;
   flex-wrap: wrap;

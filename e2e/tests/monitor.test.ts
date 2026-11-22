@@ -183,12 +183,6 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
   });
 
   it('a submission schedules the first check a full interval out', async () => {
-    const monitoring = await databasePool.query<{ monitoring_days: number }>(
-      `select extract(epoch from monitoring_enabled_until - now())::float8 / 86400 as monitoring_days
-         from sites where public_slug = $1`,
-      [publicSlug],
-    );
-    expect(monitoring.rows[0]!.monitoring_days).toBeCloseTo(30, 1);
     expect((await monitorSchedule()).next_check_in_days).toBeCloseTo(7, 1);
 
     // Not due yet, so a tick leaves the site alone.
@@ -297,25 +291,9 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
     expect(await hostedLlmsTxt()).toContain('Written after unpinning.');
   });
 
-  it('expired monitoring stops scheduled checks, keeps the file, and "check now" renews it', async () => {
-    const servedBefore = await hostedLlmsTxt();
-    await databasePool.query(
-      `update sites set monitoring_enabled_until = now() - interval '1 minute' where public_slug = $1`,
-      [publicSlug],
-    );
-    await databasePool.query(`update sites set next_monitor_check_at = now() - interval '1 second' where id = $1`, [siteId]);
-
-    const before = await runIds();
-    await runMonitorTick();
-    expect(await runIds()).toEqual(before);
-    expect((await monitorSchedule()).next_check_in_days).toBeNull();
-    expect(await hostedLlmsTxt()).toBe(servedBefore);
-
-    await databasePool.query(`update pipeline_runs set created_at = created_at - interval '1 hour' where site_id = $1`, [
-      siteId,
-    ]);
-    expect((await checkNowRoute(apiRequest('POST'), slugParams())).status).toBe(202);
-    await waitForNewRun(before);
+  it('keeps checking a site long after it was submitted', async () => {
+    await databasePool.query(`update sites set created_at = created_at - interval '1 year' where id = $1`, [siteId]);
+    expect(await scheduledCheck()).toMatchObject({ triggered_by: 'monitor' });
     expect((await monitorSchedule()).next_check_in_days).toBeCloseTo(7, 1);
   });
 

@@ -49,7 +49,7 @@ export {
   type SiteOverview,
 } from './repositories/sites';
 export { loadExcludedUrlPrefixes, replaceExcludedPages, replaceExcludedUrlPrefixes } from './repositories/page-exclusions';
-export { enableSiteMonitoring, type MonitorSchedule } from './repositories/monitor-schedule';
+export { scheduleSiteMonitoring } from './repositories/monitor-schedule';
 export {
   loadGeneratorPages,
   loadStoredPages,

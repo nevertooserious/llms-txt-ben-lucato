@@ -78,10 +78,7 @@ describe.skipIf(!databaseUrl)('the monitor schedule, on the real clock', () => {
       publicSlug: crypto.randomUUID(),
     });
     await databasePool.query(
-      `update sites
-          set monitoring_enabled_until = now() + interval '30 days',
-              next_monitor_check_at = now() - interval '1 second'
-        where id = $1`,
+      `update sites set next_monitor_check_at = now() - interval '1 second' where id = $1`,
       [siteId],
     );
 

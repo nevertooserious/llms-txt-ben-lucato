@@ -1,12 +1,11 @@
 import {
-  enableSiteMonitoring,
   loadLatestPipelineRun,
+  scheduleSiteMonitoring,
   startPipelineRun,
   withTransaction,
   type DatabasePool,
   type PipelineRunQueue,
 } from '@llms-txt/db';
-import { MONITORING_DURATION_SECONDS } from './monitoring-duration';
 
 export interface CheckSiteNowDependencies {
   databasePool: DatabasePool;
@@ -28,13 +27,12 @@ export type CheckSiteNowOutcome =
  * no one can keep a site under constant crawling.
  */
 // TODO blucato should probably only allow one refresh per day
-// TODO blucato decide what to do with monitoring timeout of 30 days
 export async function checkSiteNow(
   siteId: string,
   dependencies: CheckSiteNowDependencies,
 ): Promise<CheckSiteNowOutcome> {
   return withTransaction(dependencies.databasePool, async (transaction) => {
-    await enableSiteMonitoring(transaction, { siteId, durationSeconds: MONITORING_DURATION_SECONDS });
+    await scheduleSiteMonitoring(transaction, siteId);
     const latest = await loadLatestPipelineRun(transaction, siteId);
     if (latest?.isActive) return { kind: 'joined', pipelineRunId: latest.id };
     if (latest !== null && latest.ageSeconds < dependencies.checkNowCooldownSeconds) {

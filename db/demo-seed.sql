@@ -99,14 +99,13 @@ $version$# Fernhill Cloud
 $version$];
 begin
   insert into sites (
-    root_url, public_slug, site_title, generated_summary, monitoring_enabled_until,
+    root_url, public_slug, site_title, generated_summary,
     last_monitor_check_at, created_at)
   values (
     'https://docs.fernhill.example',
     'demo',
     'Fernhill Cloud',
     'Fernhill Cloud hosts web applications and runs their builds.',
-    now() + interval '30 days',
     now() - version_ages[4],
     now() - version_ages[1])
   returning id into demo_site_id;

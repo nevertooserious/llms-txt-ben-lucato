@@ -50,10 +50,8 @@ create table sites (
 
   -- Monitor state. A fixed interval; users can also trigger a check by hand.
   monitor_check_interval           interval not null default interval '7 days',
-  -- Set for 30 days by the submission and renewed by "check now". It expires so that
-  -- abandoned submissions stop being re-crawled.
-  monitoring_enabled_until         timestamptz,
-  -- Null means no check is scheduled. Set only while monitoring is unexpired.
+  -- Set by the submission and moved on by each check, until the site is deleted. Null
+  -- means no check is scheduled.
   next_monitor_check_at            timestamptz,
   last_monitor_check_at            timestamptz,
   -- Whether sitemap <lastmod> can be used as a change signal for this site. False

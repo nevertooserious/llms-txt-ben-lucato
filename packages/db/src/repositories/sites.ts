@@ -65,8 +65,6 @@ export async function loadPageOverrides(database: Queryable, siteId: string): Pr
 export interface SiteOverview {
   rootUrl: string;
   siteTitle: string | null;
-  /** In the past once monitoring has lapsed; null for a site that never had it. */
-  monitoringEnabledUntil: Date | null;
   nextMonitorCheckAt: Date | null;
   isPublishedVersionPinned: boolean;
   publishedVersion: {
@@ -81,7 +79,6 @@ export async function loadSiteOverview(database: Queryable, siteId: string): Pro
   const result = await database.query<{
     root_url: string;
     site_title: string | null;
-    monitoring_enabled_until: Date | null;
     next_monitor_check_at: Date | null;
     is_published_version_pinned: boolean;
     version_number: number | null;
@@ -89,7 +86,7 @@ export async function loadSiteOverview(database: Queryable, siteId: string): Pro
     listed_page_count: number | null;
     version_created_at: Date | null;
   }>(
-    `select sites.root_url, sites.site_title, sites.monitoring_enabled_until, sites.next_monitor_check_at,
+    `select sites.root_url, sites.site_title, sites.next_monitor_check_at,
             sites.is_published_version_pinned,
             versions.version_number, versions.llms_txt_content, versions.listed_page_count,
             versions.created_at as version_created_at
@@ -103,7 +100,6 @@ export async function loadSiteOverview(database: Queryable, siteId: string): Pro
   return {
     rootUrl: row.root_url,
     siteTitle: row.site_title,
-    monitoringEnabledUntil: row.monitoring_enabled_until,
     nextMonitorCheckAt: row.next_monitor_check_at,
     isPublishedVersionPinned: row.is_published_version_pinned,
     publishedVersion:
@@ -120,14 +116,13 @@ export async function loadSiteOverview(database: Queryable, siteId: string): Pro
 
 /**
  * Takes up to `limit` sites whose monitor check is due, locking them so two ticks never
- * take the same site, and moves each one's next check on by its interval. A due site
- * whose monitoring has expired is unscheduled instead and not returned. Returns the ids
- * of the sites to check.
+ * take the same site, and moves each one's next check on by its interval. Returns the
+ * ids of the sites to check.
  */
 export async function claimDueMonitorChecks(transaction: Transaction, limit: number): Promise<string[]> {
-  const result = await transaction.query<{ id: string; is_monitored: boolean }>(
+  const result = await transaction.query<{ id: string }>(
     `with due as (
-       select id, coalesce(monitoring_enabled_until > now(), false) as is_monitored
+       select id
          from sites
         where next_monitor_check_at <= now()
         order by next_monitor_check_at
@@ -135,14 +130,14 @@ export async function claimDueMonitorChecks(transaction: Transaction, limit: num
         for update skip locked
      )
      update sites
-        set next_monitor_check_at = case when due.is_monitored then now() + sites.monitor_check_interval end,
-            last_monitor_check_at = case when due.is_monitored then now() else sites.last_monitor_check_at end
+        set next_monitor_check_at = now() + sites.monitor_check_interval,
+            last_monitor_check_at = now()
        from due
       where sites.id = due.id
-     returning sites.id, due.is_monitored`,
+     returning sites.id`,
     [limit],
   );
-  return result.rows.filter((row) => row.is_monitored).map((row) => row.id);
+  return result.rows.map((row) => row.id);
 }
 
 /** Records where a site really lives, once its first crawl has followed the homepage redirect. */
