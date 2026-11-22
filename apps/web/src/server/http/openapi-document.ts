@@ -169,6 +169,7 @@ const schemas: Record<string, JsonSchema> = {
     hostedLlmsTxtPath: { type: 'string', description: "The hosted file's path on this app." },
     monitoring: objectOf({ nextCheckAt: nullableDateTime }),
     latestRun: nullableReference('PipelineRun'),
+    crawlPageBudget: { ...positiveInteger, description: 'Most pages one run fetches.' },
     publishedVersion: nullableReference('PublishedVersion'),
     isPublishedVersionPinned: {
       type: 'boolean',
