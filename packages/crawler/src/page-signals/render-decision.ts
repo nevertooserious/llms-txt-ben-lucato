@@ -1,4 +1,5 @@
-import { normaliseUrl } from '../discovery/normalise-url';
+import { fragmentRoutePathOf } from '@llms-txt/contracts';
+import { isInScope, normaliseUrl } from '../discovery/normalise-url';
 import type { PageSignals } from './read-page-signals';
 
 // When to use the headless browser (docs/design/README.md, section 2, Fetching).
@@ -49,6 +50,29 @@ export function renderingAddsContent(
   const extraPages = [...sitePagesLinkedBy(rendered, isOnSite)].filter((url) => !plainPages.has(url)).length;
   const linksGrew = extraPages >= MIN_EXTRA_LINKS && extraPages >= plainPages.size * MIN_EXTRA_LINKS_SHARE;
   return textGrew || linksGrew;
+}
+
+/** A site routes on the URL fragment when its homepage links at least this many routes of itself... */
+const MIN_FRAGMENT_ROUTES = 3;
+/** ...and at least this many of them for each other page of the site it links. */
+const FRAGMENT_ROUTES_PER_PATH_PAGE = 2;
+
+/**
+ * Whether the rendered homepage is a single page that shows a route named in the URL
+ * fragment: most of what it links are routes of itself (`#/install`, `#!/guide`). Strict
+ * on purpose. A site wrongly taken for one would have each such link crawled as a page;
+ * one that is missed fails as it did before, with a message that says why.
+ */
+export function routesOnUrlFragment(renderedHomepage: PageSignals, rootUrl: string): boolean {
+  const routes = new Set<string>();
+  const otherPages = new Set<string>();
+  for (const linkUrl of renderedHomepage.linkUrls) {
+    const url = normaliseUrl(linkUrl);
+    if (url === null || !isInScope(url, rootUrl)) continue;
+    if (url !== rootUrl) otherPages.add(url);
+    else if (fragmentRoutePathOf(new URL(linkUrl)) !== '') routes.add(fragmentRoutePathOf(new URL(linkUrl)));
+  }
+  return routes.size >= MIN_FRAGMENT_ROUTES && routes.size >= otherPages.size * FRAGMENT_ROUTES_PER_PATH_PAGE;
 }
 
 /** The distinct pages of the site a page links, by normalised URL. */

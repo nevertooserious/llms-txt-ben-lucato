@@ -1,3 +1,4 @@
+import { fragmentRoutePathOf } from '@llms-txt/contracts';
 import {
   loadExcludedUrlPrefixes,
   loadGeneratorPages,
@@ -69,7 +70,10 @@ function normaliseUrlPrefix(urlPrefix: string): string | null {
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
   // Parsing percent-encodes, so the stored form can be far longer than what was sent.
-  const normalised = `${parsed.origin}${parsed.pathname.replace(/\/+$/, '')}`;
+  // A route in the fragment is part of the prefix on a site that routes on it: `/#/guide`.
+  const routePath = fragmentRoutePathOf(parsed);
+  const path = parsed.pathname.replace(/\/+$/, '');
+  const normalised = routePath === '' ? `${parsed.origin}${path}` : `${parsed.origin}${path}/#${routePath}`;
   return normalised.length <= MAX_URL_LENGTH ? normalised : null;
 }
 

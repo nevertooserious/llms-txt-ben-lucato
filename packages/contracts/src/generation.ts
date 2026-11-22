@@ -25,10 +25,37 @@ export interface PageOverride {
 }
 
 /**
+ * The client-side route a URL's fragment names, as a path: `/install` for `#/install`,
+ * `#!/install` and `#/install?id=usage`. Empty when the fragment is not a route, or is
+ * the root route (`#/`). Only the pages of a site that routes on the fragment have one
+ * (docs/design/README.md, section 2, Hash-routed sites).
+ */
+export function fragmentRoutePathOf(url: URL): string {
+  const route = /^#!?\/([^?]*)/.exec(url.hash)?.[1] ?? '';
+  // Sites write the same route several ways (`#/./plugins`, `#/guide/../plugins`).
+  const segments: string[] = [];
+  for (const segment of route.split('/')) {
+    if (segment === '..') segments.pop();
+    else if (segment !== '' && segment !== '.') segments.push(segment);
+  }
+  return segments.length === 0 ? '' : `/${segments.join('/')}`;
+}
+
+/**
+ * Where a page stands in its site: the URL's path without trailing slashes, then its
+ * fragment route. `/docs/guide` for `https://example.com/docs/guide/`, and `/install`
+ * for `https://example.com/#/install`.
+ */
+export function pagePathOf(url: URL): string {
+  return `${url.pathname.replace(/\/+$/, '')}${fragmentRoutePathOf(url)}`;
+}
+
+/**
  * Whether a URL is at or under an excluded URL prefix, by whole path segments:
  * `https://example.com/blog` covers `/blog` and `/blog/2024/post`, not `/blog-archive`.
  * A prefix with no path covers its whole host. Query strings and trailing slashes are
- * ignored on both sides.
+ * ignored on both sides. On a site that routes on the URL fragment, the route counts as
+ * path: `https://example.com/#/guide` covers `/#/guide/setup`.
  */
 export function isUrlUnderPrefix(url: string, urlPrefix: string): boolean {
   let page: URL;
@@ -40,7 +67,7 @@ export function isUrlUnderPrefix(url: string, urlPrefix: string): boolean {
     return false;
   }
   if (page.origin !== prefix.origin) return false;
-  const pagePath = page.pathname.replace(/\/+$/, '');
-  const prefixPath = prefix.pathname.replace(/\/+$/, '');
+  const pagePath = pagePathOf(page);
+  const prefixPath = pagePathOf(prefix);
   return pagePath === prefixPath || pagePath.startsWith(`${prefixPath}/`);
 }

@@ -14,6 +14,15 @@ describe('markdownVariantUrlFor', () => {
     expect(markdownVariantUrlFor(pageUrl)).toBe(expected);
   });
 
+  it.each([
+    ['https://example.com/#/install', 'https://example.com/install.md'],
+    ['https://example.com/#/guide/setup', 'https://example.com/guide/setup.md'],
+    ['https://example.com/docs/#/install', 'https://example.com/docs/install.md'],
+    ['https://example.com/docs/index.html#/install', 'https://example.com/docs/install.md'],
+  ])('looks for the file a route is written in: %s -> %s', (pageUrl, expected) => {
+    expect(markdownVariantUrlFor(pageUrl)).toBe(expected);
+  });
+
   it('does not probe query URLs or markdown URLs', () => {
     expect(markdownVariantUrlFor('https://example.com/search?q=x')).toBeNull();
     expect(markdownVariantUrlFor('https://example.com/a.md')).toBeNull();

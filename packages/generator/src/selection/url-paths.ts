@@ -1,8 +1,13 @@
+import { pagePathOf } from '@llms-txt/contracts';
+
 // Reading and comparing URLs and the text made from them. Pure string work.
 
-/** The URL's path segments, lowercased and decoded. */
+/**
+ * The URL's path segments, lowercased and decoded. On a site that routes on the URL
+ * fragment the route counts as path: `/#/guide/setup` is `guide`, `setup`.
+ */
 export function pathSegmentsOf(url: string): string[] {
-  return new URL(url).pathname
+  return pagePathOf(new URL(url))
     .split('/')
     .filter((segment) => segment !== '')
     .map((segment) => {

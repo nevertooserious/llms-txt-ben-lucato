@@ -9,6 +9,7 @@ import {
   type KnownPage,
   type LinkSignals,
   type RawPage,
+  fragmentRoutePathOf,
 } from '@llms-txt/contracts';
 import { looksLikeBotChallenge } from '../page-signals/detect-bot-challenge';
 import { HeadlessRenderer } from '../network/headless-renderer';
@@ -17,7 +18,12 @@ import { cleanUrlForFetch, isInScope, isOnRelatedHost, normaliseUrl } from '../d
 import { parseSitemap } from '../discovery/parse-sitemap';
 import { computeLinkGraphSignals } from './link-graph';
 import { readPageSignals, type PageSignals } from '../page-signals/read-page-signals';
-import { looksLikeJavaScriptShell, renderedPageIsBetter, renderingAddsContent } from '../page-signals/render-decision';
+import {
+  looksLikeJavaScriptShell,
+  renderedPageIsBetter,
+  renderingAddsContent,
+  routesOnUrlFragment,
+} from '../page-signals/render-decision';
 import {
   parseRobotsTxt,
   ROBOTS_TXT_MAX_PARSED_BYTES,
@@ -168,6 +174,12 @@ class SiteCrawl {
   private lastRequestAt = 0;
 
   private requiresHeadlessRendering: boolean | null;
+  /**
+   * The site is one page whose script shows a route named in the URL fragment
+   * (`/#/install`). Each route of the root page is then a page of its own, rendered in the
+   * browser. Decided from the rendered homepage, and kept once any stored page is a route.
+   */
+  private routesOnUrlFragment: boolean;
   private readonly frontier = new Map<string, FrontierEntry>();
   private readonly pending = new Set<string>();
   private readonly fetchedUrls = new Set<string>();
@@ -214,6 +226,7 @@ class SiteCrawl {
     this.requestIntervalMs = options.minRequestIntervalMs ?? 500;
     this.requiresHeadlessRendering = options.requiresHeadlessRendering ?? null;
     for (const knownPage of options.knownPages ?? []) this.knownPages.set(knownPage.normalisedUrl, knownPage);
+    this.routesOnUrlFragment = [...this.knownPages.keys()].some((url) => fragmentRoutePathOf(new URL(url)) !== '');
     for (const url of options.knownMachineReadableResourceUrls ?? []) this.addMachineReadableResourceCandidate(url);
     this.addMachineReadableResourceCandidate(`${this.rootUrl}/llms-full.txt`);
   }
@@ -460,6 +473,21 @@ class SiteCrawl {
     }
   }
 
+  /**
+   * A page's identity. On a site that routes on the URL fragment, a route of the root page
+   * is a page; anywhere else a fragment is a place in a page and is dropped.
+   */
+  private pageUrlOf(rawUrl: string): string | null {
+    const url = normaliseUrl(rawUrl);
+    return this.routesOnUrlFragment && url === this.rootUrl ? normaliseUrl(rawUrl, { keepRouteFragment: true }) : url;
+  }
+
+  /** What is requested for a page: with its route, where `pageUrlOf` keeps one. */
+  private fetchUrlOf(rawUrl: string): string | null {
+    const keepRouteFragment = this.routesOnUrlFragment && normaliseUrl(rawUrl) === this.rootUrl;
+    return cleanUrlForFetch(rawUrl, { keepRouteFragment });
+  }
+
   /** robots.txt rules for a URL on this site's host. robots.txt itself is always allowed. */
   private isAllowedByRobots(url: string): boolean {
     return this.robots.isAllowed(url);
@@ -483,8 +511,8 @@ class SiteCrawl {
     sitemapLastModified: string | null,
     { allowRelatedHost = false } = {},
   ): boolean {
-    const url = normaliseUrl(rawUrl);
-    const fetchUrl = cleanUrlForFetch(rawUrl);
+    const url = this.pageUrlOf(rawUrl);
+    const fetchUrl = this.fetchUrlOf(rawUrl);
     if (url === null || fetchUrl === null) return false;
     const isRelated = !isInScope(url, this.rootUrl);
     if (isRelated && !(allowRelatedHost && isOnRelatedHost(url, this.rootUrl))) return false;
@@ -539,7 +567,7 @@ class SiteCrawl {
     if (page === null) return;
 
     // A redirect elsewhere in scope lands on a URL that may also be in the frontier.
-    const finalUrl = normaliseUrl(page.finalUrl);
+    const finalUrl = this.pageUrlOf(page.finalUrl);
     if (finalUrl === null) return;
     if (entry.isOnRelatedHost) {
       // A related host that only redirects into the site (example.com to www.example.com)
@@ -561,6 +589,9 @@ class SiteCrawl {
     let markdownVariantUrl: string | null = null;
     if (isSuccess) {
       const signals = readPageSignals(page.html, page.finalUrl, page.headers);
+      if (entry.crawlDepth === 0 && page.fetchMethod === 'headless_browser' && !this.routesOnUrlFragment) {
+        this.routesOnUrlFragment = routesOnUrlFragment(signals, this.rootUrl);
+      }
       if (this.followMetaRefresh(entry, finalUrl, signals)) return;
       hasNoindexDirective = signals.isNoindex;
       if (entry.isOnRelatedHost) {
@@ -722,7 +753,7 @@ class SiteCrawl {
    */
   private followMetaRefresh(entry: FrontierEntry, finalUrl: string, signals: PageSignals): boolean {
     if (entry.crawlDepth === 0 || signals.metaRefreshUrl === null) return false;
-    const targetUrl = normaliseUrl(signals.metaRefreshUrl);
+    const targetUrl = this.pageUrlOf(signals.metaRefreshUrl);
     if (targetUrl === null || targetUrl === entry.url || targetUrl === finalUrl) return false;
 
     this.addToFrontier(signals.metaRefreshUrl, entry.crawlDepth, entry.discoveredVia, null, {
@@ -746,7 +777,7 @@ class SiteCrawl {
     if (isHomepage) {
       this.homepageWasRead = true;
       for (const [position, navigationLink] of signals.navigationLinks.entries()) {
-        const url = normaliseUrl(navigationLink.url);
+        const url = this.pageUrlOf(navigationLink.url);
         if (url === null) continue;
         if (isInScope(url, this.rootUrl)) {
           // Membership is a fact about the page; nofollow only forbids following the link.
@@ -770,7 +801,7 @@ class SiteCrawl {
     const sourceUrl = entry.url;
     for (const link of signals.linkUrls) {
       if (this.addMachineReadableResourceCandidate(link)) continue;
-      const url = normaliseUrl(link);
+      const url = this.pageUrlOf(link);
       if (url === null || url === sourceUrl) continue;
       // Links to a related-host page count toward it, but only the navigation queues one.
       if (!isInScope(url, this.rootUrl) && this.frontier.get(url)?.isOnRelatedHost !== true) continue;
@@ -914,6 +945,16 @@ function compareEntries(a: FrontierEntry, b: FrontierEntry): number {
 export function markdownVariantUrlFor(pageUrl: string): string | null {
   const url = new URL(pageUrl);
   if (url.search !== '' || url.pathname.endsWith('.md')) return null;
+  // A route in the fragment is served from a file of that name beside the page, where
+  // the site is written in markdown (Docsify): `/#/install` from `/install.md`.
+  const routePath = fragmentRoutePathOf(url);
+  if (routePath !== '') {
+    url.hash = '';
+    // The page is a directory (`/docs/`) or a file in one (`/docs/index.html`).
+    const directory = url.pathname.replace(/\/[^/]*\.[^/]*$/, '').replace(/\/+$/, '');
+    url.pathname = `${directory}${routePath}.md`;
+    return url.href;
+  }
   const lastSegment = url.pathname.split('/').pop() ?? '';
   url.pathname = lastSegment === '' ? `${url.pathname.replace(/\/$/, '')}/index.html.md` : `${url.pathname}.md`;
   return url.href;

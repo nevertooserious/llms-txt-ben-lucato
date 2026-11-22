@@ -1,4 +1,4 @@
-import type { GeneratorPage } from '@llms-txt/contracts';
+import { pagePathOf, type GeneratorPage } from '@llms-txt/contracts';
 import { titleCaseOf } from '../selection';
 import type { NamingContext } from './naming-context';
 import { singleLine } from '../text/normalise-text';
@@ -71,7 +71,7 @@ function titleFromUrl(page: GeneratorPage): string {
 }
 
 function lastPathSegmentOf(page: GeneratorPage): string {
-  const lastSegment = new URL(page.record.normalisedUrl).pathname.split('/').filter(Boolean).pop() ?? '';
+  const lastSegment = pagePathOf(new URL(page.record.normalisedUrl)).split('/').filter(Boolean).pop() ?? '';
   try {
     return decodeURIComponent(lastSegment);
   } catch {

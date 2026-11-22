@@ -133,12 +133,44 @@ describe('rendering', () => {
     expect(dashboard.html).toContain('Trading dashboard');
   });
 
-  it('hash routing: one page, as a known limitation', async () => {
+  it('hash routing: each route of the page is crawled as a page, in the browser', async () => {
     const site = sites['hash-routing-site'];
     const result = await crawl('hash-routing-site');
     expect(result.requiresHeadlessRendering).toBe(true);
-    expect(paths(result, site)).toEqual(['/']);
+    // `#/install?id=usage` is the Install route again, so it adds no page.
+    expect(paths(result, site)).toEqual(['/', '/#/configure', '/#/guide', '/#/guide/plugins', '/#/install']);
     expect(result.failedFetches).toEqual([]);
+
+    const install = pageAt(result, site, '/#/install');
+    expect(install.fetchMethod).toBe('headless_browser');
+    expect(install.html).toContain('Download the binary');
+    expect(install.html).not.toContain('Write a config file');
+    expect(pageAt(result, site, '/#/guide/plugins').crawlSignals.crawlDepth).toBe(2);
+    // The route written in a markdown file is linked to it; the others have none.
+    expect(pageAt(result, site, '/#/guide').markdownVariantUrl).toBe(`${site.origin}/guide.md`);
+    expect(install.markdownVariantUrl).toBeNull();
+    expect(result.linkSignals[`${site.origin}/#/install`]).toMatchObject({ isInSiteNavigation: true, navigationLabel: 'Install' });
+  });
+
+  it('hash routing: stored routes are crawled again as routes', async () => {
+    const site = sites['hash-routing-site'];
+    const result = await crawl('hash-routing-site', {
+      requiresHeadlessRendering: true,
+      knownPages: [
+        {
+          normalisedUrl: `${site.origin}/#/install`,
+          fetchUrl: `${site.origin}/#/install`,
+          crawlDepth: 1,
+          discoveredVia: 'navigation',
+          httpEtag: null,
+          httpLastModified: null,
+          sitemapLastModifiedAt: null,
+          outboundLinkUrls: [],
+          isRemoved: false,
+        },
+      ],
+    });
+    expect(paths(result, site)).toEqual(['/', '/#/configure', '/#/guide', '/#/guide/plugins', '/#/install']);
   });
 });
 

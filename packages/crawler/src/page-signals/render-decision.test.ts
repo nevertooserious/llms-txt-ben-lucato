@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { PageSignals } from './read-page-signals';
-import { looksLikeJavaScriptShell, renderedPageIsBetter, renderingAddsContent } from './render-decision';
+import {
+  looksLikeJavaScriptShell,
+  renderedPageIsBetter,
+  renderingAddsContent,
+  routesOnUrlFragment,
+} from './render-decision';
 
 const signals = (overrides: Partial<PageSignals>): PageSignals => ({
   linkUrls: [],
@@ -81,5 +86,32 @@ describe('renderedPageIsBetter', () => {
   it('keeps the rendered page only when it shows more', () => {
     expect(renderedPageIsBetter(signals({ visibleTextLength: 10 }), signals({ visibleTextLength: 200 }))).toBe(true);
     expect(renderedPageIsBetter(signals({ visibleTextLength: 200 }), signals({ visibleTextLength: 200 }))).toBe(false);
+  });
+});
+
+describe('routesOnUrlFragment', () => {
+  const rootUrl = 'https://example.com';
+  const routes = (...names: string[]) => names.map((name) => `https://example.com/#/${name}`);
+
+  it('is true when the homepage links mostly routes of itself', () => {
+    const linkUrls = [...routes('install', 'configure', 'guide'), 'https://example.com/#/', 'https://github.com/example'];
+    expect(routesOnUrlFragment(signals({ linkUrls }), rootUrl)).toBe(true);
+  });
+
+  it('counts a route once, however it is written', () => {
+    const linkUrls = ['https://example.com/#/install', 'https://example.com/#/install?id=usage', 'https://example.com/#!/install/'];
+    expect(routesOnUrlFragment(signals({ linkUrls }), rootUrl)).toBe(false);
+  });
+
+  it('is false for a few route-like links on a site with pages of its own', () => {
+    const linkUrls = [...routes('tab-1', 'tab-2', 'tab-3'), 'https://example.com/docs', 'https://example.com/pricing'];
+    expect(routesOnUrlFragment(signals({ linkUrls }), rootUrl)).toBe(false);
+  });
+
+  it('is false for anchors, and for routes of another page', () => {
+    const anchors = ['https://example.com/#install', 'https://example.com/#usage', 'https://example.com/#faq'];
+    expect(routesOnUrlFragment(signals({ linkUrls: anchors }), rootUrl)).toBe(false);
+    const elsewhere = ['a', 'b', 'c'].map((name) => `https://example.com/app#/${name}`);
+    expect(routesOnUrlFragment(signals({ linkUrls: elsewhere }), rootUrl)).toBe(false);
   });
 });
