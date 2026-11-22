@@ -51,7 +51,7 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
     changingSite.reset();
     site = await startFixtureSite('changing-site');
     databasePool = createDatabasePool(databaseUrl!);
-    ownerUserId = (await createUserIfAbsent(databasePool, { username: 'monitor-test-owner', passwordHash: 'matches no password' })).id;
+    ownerUserId = (await createUserIfAbsent(databasePool, { username: `monitor-test-owner-${crypto.randomUUID()}`, passwordHash: 'matches no password' })).id;
     workerQueue = new PgBoss({ connectionString: databaseUrl!, schedule: false });
     await workerQueue.start();
     const networkPolicy = allowLoopbackPorts([site.port]);
@@ -185,6 +185,14 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
     expect(llmsTxt).toContain('# Acme');
     expect(llmsTxt).toContain(`- [Pricing](${site.origin}/pricing): What Acme costs.`);
     expect(llmsTxt).toContain(`- [Launch post](${site.origin}/blog/launch)`);
+  });
+
+  it('submitting the same URL again is refused and names the site the user has', async () => {
+    const response = await submitSiteRoute(apiRequest('POST', { url: `${site.origin}/` }));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: 'site_already_exists', publicSlug });
+    const sites = await databasePool.query('select 1 from sites where owner_user_id = $1', [ownerUserId]);
+    expect(sites.rowCount).toBe(1);
   });
 
   it('a submission schedules the first check a full interval out', async () => {

@@ -19,8 +19,12 @@ import { createStubLlmClient } from '../../apps/worker/src/llm/stub-llm-client';
 import { startFixtureSite, type FixtureSite } from './fixture-site-server';
 import { allowLoopbackPorts } from './local-network-policy';
 
-/** Sites need an owner; these tests are not about who it is. */
-const TEST_OWNER = { username: 'test-owner', passwordHash: 'matches no password' };
+/**
+ * Sites need an owner; these tests are not about who it is. A new one each time, because a
+ * user has one site per URL and a fixture site's port can come round again in a database
+ * that outlives the test run.
+ */
+const TEST_OWNER = { username: `test-owner-${randomUUID()}`, passwordHash: 'matches no password' };
 
 // The whole pipeline as it runs in production: a run is submitted through pg-boss, the
 // real worker claims it, crawls a fixture site through real HTTP and Chromium, extracts,

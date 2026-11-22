@@ -73,6 +73,7 @@ const schemas: Record<string, JsonSchema> = {
           'run_in_progress',
           'run_not_found',
           'run_produced_no_version',
+          'site_already_exists',
           'site_not_found',
           'unauthorized',
           'version_not_found',
@@ -82,6 +83,15 @@ const schemas: Record<string, JsonSchema> = {
   ),
   CooldownError: {
     allOf: [reference('ApiError'), objectOf({ retryAfterSeconds: count })],
+  },
+  SiteAlreadyExistsError: {
+    allOf: [
+      reference('ApiError'),
+      objectOf({
+        publicSlug: { type: 'string', description: 'The slug of the site the user already has.' },
+        siteUrl: { type: 'string', description: "The API path of that site's state." },
+      }),
+    ],
   },
   SubmitSiteRequest: objectOf({ url: { type: 'string', format: 'uri', examples: ['https://example.com'] } }),
   SiteList: objectOf({
@@ -235,6 +245,7 @@ const paths = {
         202: jsonResponse('The site was saved and its run queued.', reference('SubmittedSite'), locationHeader),
         400: errorResponse('`invalid_request` or `invalid_url`.'),
         401: unauthorised,
+        409: jsonResponse('`site_already_exists`: the user already has a site for this URL.', reference('SiteAlreadyExistsError')),
         500: internalError,
       },
     },
