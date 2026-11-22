@@ -23,6 +23,8 @@ export interface PageAssessmentInput {
   title: string | null;
   metaDescription: string | null;
   urlBasedPageType: string;
+  /** The homepage's navigation links the page: the site chose to show it, which a stream of posts is not. */
+  isInSiteNavigation: boolean;
   contentMarkdown: string;
 }
 

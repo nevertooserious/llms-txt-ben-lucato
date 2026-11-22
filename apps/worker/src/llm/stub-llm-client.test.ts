@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { createStubLlmClient } from './stub-llm-client';
 
-const input = { url: 'https://example.com/docs', title: 'Docs', metaDescription: 'The docs.', contentMarkdown: '' };
+const input = {
+  url: 'https://example.com/docs',
+  title: 'Docs',
+  metaDescription: 'The docs.',
+  isInSiteNavigation: false,
+  contentMarkdown: '',
+};
 
 describe('createStubLlmClient', () => {
   it('keeps the page and repeats what the crawl found', async () => {

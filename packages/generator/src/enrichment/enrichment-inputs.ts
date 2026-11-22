@@ -13,11 +13,12 @@ export function pageAssessmentInputOf(page: GeneratorPage): PageAssessmentInput 
     title: page.record.title,
     metaDescription: page.record.description,
     urlBasedPageType: page.record.pageType,
+    isInSiteNavigation: page.crawlSignals.isInSiteNavigation,
     contentMarkdown: page.record.contentMarkdown,
   };
 }
 
-/** Changes when the page's content, the model or the prompt does. */
+/** Changes when the page's content, its place in the navigation, the model or the prompt does. */
 export function pageAssessmentSourceHash(page: GeneratorPage): string {
   return sha256([
     PAGE_ASSESSMENT_MODEL,
@@ -27,6 +28,7 @@ export function pageAssessmentSourceHash(page: GeneratorPage): string {
     page.record.description,
     page.record.pageType,
     page.record.contentDigest,
+    page.crawlSignals.isInSiteNavigation,
   ]);
 }
 
