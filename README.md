@@ -132,6 +132,8 @@ The app runs on [Railway](https://railway.com) as three services in one project:
 
 Variables are set on the Railway services, not in the repository: `DATABASE_URL` on both (a reference to the Postgres service), `BASIC_AUTH_USERNAME`, `BASIC_AUTH_PASSWORD` and `DEMO_SITE_ENABLED` on `web`, and `ANTHROPIC_API_KEY` on `worker`. The login is not the default one. `db/demo-seed.sql` was applied once after the schema and its site was handed to the deployment's user, so the demo workspace is there too.
 
+A deploy replaces the worker while runs may be under way. The old worker takes no new runs and has 10 minutes to finish its own, which needs `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` (set to 660) on the `worker` service; Railway otherwise kills it at once and those runs fail.
+
 A deploy does not touch the schema. `db/schema.sql` was applied once to the empty database, so a schema change has to be applied to production by hand before the code that needs it is merged.
 
 ## Examples
