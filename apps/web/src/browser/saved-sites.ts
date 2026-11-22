@@ -8,7 +8,6 @@ export interface SavedSite {
 
 const STORAGE_KEY = 'llms-txt-generator.sites';
 
-// TODO blucato
 export function loadSavedSites(): SavedSite[] {
   try {
     const parsed: unknown = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '[]');

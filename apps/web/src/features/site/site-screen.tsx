@@ -85,7 +85,6 @@ export function SiteScreen({ publicSlug }: { publicSlug: string }) {
     );
   }
 
-  const siteHost = new URL(view.rootUrl).host;
   return (
     <main>
       <section className="site-heading">
@@ -112,7 +111,7 @@ export function SiteScreen({ publicSlug }: { publicSlug: string }) {
           <MonitoringPanel view={view} onChanged={refresh} />
         </section>
         <section className="cell">
-          <LlmsTxtResult view={view} siteHost={siteHost} />
+          <LlmsTxtResult view={view} />
         </section>
         <section className="cell">
           <PagesPanel view={view} onChanged={refresh} />

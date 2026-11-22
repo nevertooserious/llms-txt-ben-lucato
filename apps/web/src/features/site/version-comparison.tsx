@@ -86,7 +86,7 @@ export function VersionComparison({
       </header>
 
       {versions.length < 2 ? (
-        <p className="empty-state">There is one version so far. A new one appears here when the site changes.</p>
+        <p className="empty-state">Comparison is available once more than a single version is available.</p>
       ) : (
         <>
           <div className="version-controls">

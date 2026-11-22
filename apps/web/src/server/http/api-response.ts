@@ -27,7 +27,6 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 
 export const isPipelineRunId = (text: string) => UUID_PATTERN.test(text);
 
-// TODO blucato
 export function llmsTxtFileResponse(file: { versionNumber: number; llmsTxtContent: string }): Response {
   return new Response(file.llmsTxtContent, {
     status: 200,

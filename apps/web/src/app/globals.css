@@ -629,12 +629,25 @@ a.button:hover {
 
 /* --- side panels ---------------------------------------------------------------------- */
 
+.meta-row-top {
+  align-items: flex-start;
+}
+.published-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
 .hosted-field {
-  margin-top: 16px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.hosted-field .label {
+  flex: none;
 }
 .hosted-url {
-  display: block;
-  margin-top: 4px;
   overflow-wrap: anywhere;
 }
 .hint {
