@@ -144,6 +144,23 @@ describe('crawler limits', () => {
     }
   });
 
+  it('lists an llms.txt for a section with pages under it, not one that stands beside a single page', async () => {
+    const pages: Record<string, string> = {
+      '/': html('<a href="/docs/">Docs</a>'),
+      '/docs/': html('<a href="/docs/intro">Intro</a> <a href="/docs/llms.txt">Section index</a>'),
+      // svelte.dev publishes each page's text at <page>/llms.txt.
+      '/docs/intro': html('Introduction. <a href="/docs/intro/llms.txt">This page for LLMs</a>'),
+    };
+    const { rootUrl, port } = await serve((request, response) => {
+      const path = request.url ?? '/';
+      if (path.endsWith('/llms.txt')) response.writeHead(200, { 'content-type': 'text/plain' }).end('# Text\n');
+      else if (pages[path] !== undefined) response.writeHead(200, { 'content-type': 'text/html' }).end(pages[path]);
+      else response.writeHead(404).end();
+    });
+    const result = await crawl(rootUrl, port);
+    expect(result.machineReadableResourceUrls).toEqual([`${rootUrl}/docs/llms.txt`]);
+  });
+
   it('skips a non-HTML link on a rendered site without counting a failure', async () => {
     const { rootUrl, port } = await serve((request, response) => {
       if (request.url === '/robots.txt') response.writeHead(404).end();

@@ -353,9 +353,9 @@ describe('generateLlmsTxt', () => {
     const llmsTxt = generate({
       pages: [
         homepage,
-        page('/guide.html', { contentDigest: 'guide' }),
-        page('/guide', { contentDigest: 'guide', markdownVariantUrl: `${ORIGIN}/guide.md` }),
-        page('/guide/index.html', { contentDigest: 'guide' }),
+        page('/guide.html', { title: 'Guide', contentDigest: 'guide' }),
+        page('/guide', { title: 'Guide', contentDigest: 'guide', markdownVariantUrl: `${ORIGIN}/guide.md` }),
+        page('/guide/index.html', { title: 'Guide', contentDigest: 'guide' }),
       ],
     });
     expect(Object.values(sections(llmsTxt)).flat()).toEqual([`${ORIGIN}/guide.md`]);
@@ -365,9 +365,9 @@ describe('generateLlmsTxt', () => {
     const llmsTxt = generate({
       pages: [
         homepage,
-        page('/play?q=11', { contentDigest: 'play' }),
-        page('/play', { contentDigest: 'play' }),
-        page('/play?ts=next', { contentDigest: 'play' }),
+        page('/play?q=11', { title: 'Playground', contentDigest: 'play' }),
+        page('/play', { title: 'Playground', contentDigest: 'play' }),
+        page('/play?ts=next', { title: 'Playground', contentDigest: 'play' }),
         page('/article?id=7', { contentDigest: 'seven' }),
         page('/article?id=8', { contentDigest: 'eight' }),
       ],
@@ -394,6 +394,80 @@ describe('generateLlmsTxt', () => {
       `${ORIGIN}/#/install`,
       `${ORIGIN}/guide.md`,
     ]);
+  });
+
+  it('lists one URL for pages with the same title and content, however the URLs differ, and the shortest of them', () => {
+    // gnu.org: a language in the file name, and a file named after its directory.
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/gnu/gnu.en.html', { title: 'About', contentDigest: 'about' }),
+        page('/gnu/gnu.html', { title: 'About', contentDigest: 'about' }),
+        page('/software/software.html', { title: 'Software', contentDigest: 'software' }),
+        page('/software', { title: 'Software', contentDigest: 'software' }),
+        // Made from one template, with a title of their own: two pages.
+        page('/posts/first', { title: 'First post', contentDigest: 'a post' }),
+        page('/posts/second', { title: 'Second post', contentDigest: 'a post' }),
+      ],
+    });
+    expect(Object.values(sections(llmsTxt)).flat().sort()).toEqual([
+      `${ORIGIN}/gnu/gnu.html`,
+      `${ORIGIN}/posts/first`,
+      `${ORIGIN}/posts/second`,
+      `${ORIGIN}/software`,
+    ]);
+  });
+
+  it('leaves out a page again under a query string, even when its content differs a little', () => {
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/start.html', { title: 'Getting started', contentDigest: 'start' }),
+        page('/start.html?distro=guix', { title: 'Getting started', contentDigest: 'start, guix' }),
+        page('/start.html?distro=pureos', { title: 'Getting started', contentDigest: 'start, pureos' }),
+        // A query string that selects another page changes the title.
+        page('/article', { title: 'Articles', contentDigest: 'articles' }),
+        page('/article?id=7', { title: 'The seventh article', contentDigest: 'seven' }),
+      ],
+    });
+    expect(Object.values(sections(llmsTxt)).flat().sort()).toEqual([
+      `${ORIGIN}/article`,
+      `${ORIGIN}/article?id=7`,
+      `${ORIGIN}/start.html`,
+    ]);
+  });
+
+  it('leaves out the homepage again under a query string of another of its URLs', () => {
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/home.en.html', { title: 'Example', contentDigest: 'digest of /' }),
+        page('/home.en.html?distro=guix', { title: 'Example', contentDigest: 'home, guix' }),
+        page('/docs', { contentDigest: 'docs' }),
+      ],
+    });
+    expect(Object.values(sections(llmsTxt)).flat()).toEqual([`${ORIGIN}/docs`]);
+  });
+
+  it('leaves out a translation named by its file name, when the page exists without one', () => {
+    const llmsTxt = generate({
+      pages: [
+        homepage,
+        page('/philosophy.html', { languageCode: 'en', contentDigest: 'philosophy' }),
+        // Declares the site's language, as gnu.org's Danish page does.
+        page('/philosophy.da.html', { languageCode: 'en', contentDigest: 'filosofi' }),
+        // Two letters that are no translation of anything.
+        page('/about.me.html', { languageCode: 'en', contentDigest: 'me' }),
+      ],
+    });
+    expect(Object.values(sections(llmsTxt)).flat().sort()).toEqual([`${ORIGIN}/about.me.html`, `${ORIGIN}/philosophy.html`]);
+  });
+
+  it('leaves out a source or export of a page in another format', () => {
+    const llmsTxt = generate({
+      pages: [homepage, page('/licenses/gpl.html'), page('/licenses/gpl.dbk'), page('/licenses/fdl.xml'), page('/licenses/gpl.texi')],
+    });
+    expect(Object.values(sections(llmsTxt)).flat()).toEqual([`${ORIGIN}/licenses/gpl.html`]);
   });
 
   it('keeps pages at similar URLs when their content differs', () => {

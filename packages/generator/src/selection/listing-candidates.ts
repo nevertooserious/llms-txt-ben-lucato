@@ -1,4 +1,4 @@
-import { pagePathOf, type GeneratorPage } from '@llms-txt/contracts';
+import type { GeneratorPage } from '@llms-txt/contracts';
 import { homepageOf, isDocumentationPage, JOB_BOARD_SEGMENT } from './page-kinds';
 import { canonicalKey, compareText, isPaginationUrl, pathSegmentsOf } from './url-paths';
 
@@ -9,15 +9,17 @@ const MINIMUM_PAGES_IN_COLLAPSED_FAMILY = 5;
  * The pages that could be listed, by rules that need no LLM: not the homepage (it is the
  * H1) under any of its URLs or with its content at another URL, noindex pages,
  * pagination, utility pages (login, cart), archive listings (tag, category), numbered
- * records, what sits under a job board, large families of deep sibling pages, or pages
- * in another language than the site's; and one page per set of URL variants. These are
- * the pages worth paying to assess.
+ * records, what sits under a job board, large families of deep sibling pages, pages in
+ * another language than the site's, files in a format that is not a web page, or a page
+ * again under a query string; and one page for each content. These are the pages worth
+ * paying to assess.
  */
 export function listingCandidates(pages: readonly GeneratorPage[]): GeneratorPage[] {
   const siteLanguage = primaryLanguageOf(pages);
   const homepage = homepageOf(pages);
+  const pagesByUrl = new Map(pages.map((page) => [page.record.normalisedUrl, page]));
   return withoutLargeDeepFamilies(
-    keepOnePerUrlVariant(
+    keepOnePerContent(
       pages.filter(
         (page) =>
           page.record.pageType !== 'home' &&
@@ -27,7 +29,9 @@ export function listingCandidates(pages: readonly GeneratorPage[]): GeneratorPag
           !isPaginationUrl(page.record.normalisedUrl) &&
           !isUtilityPage(page) &&
           !isArchiveOrRecordPage(page) &&
-          !isOtherLanguage(page, siteLanguage),
+          !isOtherFormat(page) &&
+          !isQueryVariantOfAnotherPage(page, pagesByUrl) &&
+          !isOtherLanguage(page, siteLanguage, pagesByUrl),
       ),
     ),
   );
@@ -95,39 +99,58 @@ function withoutLargeDeepFamilies(pages: readonly GeneratorPage[]): GeneratorPag
 
 const LOCALE_SEGMENT = /^[a-z]{2}(?:[-_][a-z]{2})?$/;
 
+/** A source or export of a page in another format, which sites link beside it (`gpl.dbk`, `fdl.xml`). */
+const OTHER_FORMAT_EXTENSION = /\.(?:xml|dbk|sgml|texi|texinfo|tex|ps|dvi|rtf|odt|rss|atom|ics)$/i;
+
+function isOtherFormat(page: GeneratorPage): boolean {
+  return OTHER_FORMAT_EXTENSION.test(new URL(page.record.normalisedUrl).pathname);
+}
+
 /**
- * `/guide`, `/guide/`, `/guide.html`, `/guide.md`, `/guide/index.html` and `/guide?tab=2`
- * are one page when their content is the same. Different content at such URLs stays
- * separate, so a page the query string selects (`/article?id=7`) is still its own page.
+ * The same page again under a query string: the URL without it is a page of the site
+ * with the same title (`/home.html?distro=guix`, `/docs?ref=nav`). That page stands for
+ * it, whatever becomes of that page. A query string that selects another page changes the
+ * title (`/article?id=7`), and stays.
  */
-function urlVariantKey(page: GeneratorPage): string {
+function isQueryVariantOfAnotherPage(page: GeneratorPage, pagesByUrl: ReadonlyMap<string, GeneratorPage>): boolean {
   const url = new URL(page.record.normalisedUrl);
-  const path = pagePathOf(url)
-    .replace(/\.md$/i, '')
-    .replace(/\.html?$/i, '')
-    .replace(/\/index$/i, '');
-  return JSON.stringify([url.origin, path, page.record.contentDigest]);
+  if (url.search === '') return false;
+  url.search = '';
+  const pageWithoutQuery = pagesByUrl.get(url.href) ?? pagesByUrl.get(url.href.replace(/\/$/, ''));
+  return pageWithoutQuery !== undefined && page.record.title !== null && pageWithoutQuery.record.title === page.record.title;
 }
 
-/** The URL the page declares as canonical wins, then one without a query string, then one with a markdown version. */
-function keepOnePerUrlVariant(pages: readonly GeneratorPage[]): GeneratorPage[] {
-  const byVariantKey = new Map<string, GeneratorPage>();
+/**
+ * Two URLs with the same title and content are one page, however they differ: `/guide`,
+ * `/guide.html`, `/guide.md`, `/guide/index.html`, `/guide.en.html`, `/guide?tab=2`, or a
+ * file named after its directory (`/guide/guide.html`). The title counts because the
+ * content digest leaves it out: pages made from one template with little text of their
+ * own share a digest and are still different pages.
+ */
+function keepOnePerContent(pages: readonly GeneratorPage[]): GeneratorPage[] {
+  const byContent = new Map<string, GeneratorPage>();
   for (const page of pages) {
-    const key = urlVariantKey(page);
-    const current = byVariantKey.get(key);
-    if (current === undefined || isBetterUrlVariant(page, current)) byVariantKey.set(key, page);
+    const key = JSON.stringify([page.record.title, page.record.contentDigest]);
+    const current = byContent.get(key);
+    if (current === undefined || isBetterUrlOfContent(page, current)) byContent.set(key, page);
   }
-  return [...byVariantKey.values()];
+  return [...byContent.values()];
 }
 
-/** Ignores crawl scores, so the listed URL does not flip as inbound link counts change. */
-function isBetterUrlVariant(candidate: GeneratorPage, current: GeneratorPage): boolean {
+/**
+ * The URL the page declares as canonical wins, then one without a query string, then one
+ * with a markdown version, then the shorter. Ignores crawl scores, so the listed URL does
+ * not flip as inbound link counts change.
+ */
+function isBetterUrlOfContent(candidate: GeneratorPage, current: GeneratorPage): boolean {
   const candidateIsCanonical = declaresItselfCanonical(candidate);
   if (candidateIsCanonical !== declaresItselfCanonical(current)) return candidateIsCanonical;
   const candidateHasQuery = new URL(candidate.record.normalisedUrl).search !== '';
   if (candidateHasQuery !== (new URL(current.record.normalisedUrl).search !== '')) return !candidateHasQuery;
   const candidateHasMarkdown = candidate.markdownVariantUrl !== null;
   if (candidateHasMarkdown !== (current.markdownVariantUrl !== null)) return candidateHasMarkdown;
+  const lengthDifference = candidate.record.normalisedUrl.length - current.record.normalisedUrl.length;
+  if (lengthDifference !== 0) return lengthDifference < 0;
   return compareText(candidate.record.normalisedUrl, current.record.normalisedUrl) < 0;
 }
 
@@ -153,9 +176,32 @@ function primaryLanguageOf(pages: readonly GeneratorPage[]): string | null {
   return ranked[0]?.[0] ?? null;
 }
 
-function isOtherLanguage(page: GeneratorPage, siteLanguage: string | null): boolean {
+/** `guide.da.html`: the language a file name says the page is in, and the name without it. */
+const LANGUAGE_FILE_NAME = /^(.+)\.([a-z]{2}(?:-[a-z]{2,4})?)(\.html?)$/i;
+
+/**
+ * In another language than the site's: by what the page declares, or by its file name
+ * when the same file exists without a language or in the site's (`guide.da.html` beside
+ * `guide.html`). A translation may well declare the site's language; a file name with two
+ * letters in it that are not a language (`about.me.html`) has no such sibling.
+ */
+function isOtherLanguage(
+  page: GeneratorPage,
+  siteLanguage: string | null,
+  pagesByUrl: ReadonlyMap<string, GeneratorPage>,
+): boolean {
+  if (siteLanguage === null) return false;
   const language = primarySubtag(page.record.languageCode);
-  return siteLanguage !== null && language !== null && language !== siteLanguage;
+  if (language !== null && language !== siteLanguage) return true;
+
+  const url = new URL(page.record.normalisedUrl);
+  const directory = url.pathname.slice(0, url.pathname.lastIndexOf('/') + 1);
+  const fileName = LANGUAGE_FILE_NAME.exec(url.pathname.slice(directory.length));
+  if (fileName === null || primarySubtag(fileName[2]!) === siteLanguage) return false;
+  const [, name, , extension] = fileName;
+  return [`${name}${extension}`, `${name}.${siteLanguage}${extension}`].some((sibling) =>
+    pagesByUrl.has(`${url.origin}${directory}${sibling}`),
+  );
 }
 
 function primarySubtag(languageCode: string | null): string | null {
