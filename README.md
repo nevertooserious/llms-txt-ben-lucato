@@ -130,7 +130,7 @@ Errors are JSON with a message and a stable code, such as `{"error": "This site 
 
 The app runs on [Railway](https://railway.com) as three services in one project: `web`, `worker` and Postgres. Both app services build the repository's `Dockerfile`, and the `SERVICE_ROLE` variable on each (`web` or `worker`) tells `scripts/start-service.sh` which process to start. A merge to `main` deploys both, from the `deploy` job in `.github/workflows/ci.yml`, after the other jobs pass. It needs the repository secret `RAILWAY_TOKEN`, a Railway project token.
 
-Variables are set on the Railway services, not in the repository: `DATABASE_URL` on both (a reference to the Postgres service), `BASIC_AUTH_USERNAME`, `BASIC_AUTH_PASSWORD` and `DEMO_SITE_ENABLED` on `web`, and `ANTHROPIC_API_KEY` on `worker`. The login is the default `user1` / `pass1`, and `db/demo-seed.sql` was applied once after the schema, so the demo workspace is there too.
+Variables are set on the Railway services, not in the repository: `DATABASE_URL` on both (a reference to the Postgres service), `BASIC_AUTH_USERNAME`, `BASIC_AUTH_PASSWORD` and `DEMO_SITE_ENABLED` on `web`, and `ANTHROPIC_API_KEY` on `worker`. The login is not the default one. `db/demo-seed.sql` was applied once after the schema and its site was handed to the deployment's user, so the demo workspace is there too.
 
 A deploy does not touch the schema. `db/schema.sql` was applied once to the empty database, so a schema change has to be applied to production by hand before the code that needs it is merged.
 
