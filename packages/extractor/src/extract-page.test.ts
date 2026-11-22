@@ -108,6 +108,17 @@ describe('extractPage rules', () => {
       expect(extractPage({ ...inner, html: withoutHeading }).title).toBe('Changes | Acme');
     });
 
+    it('prefers the <h1> to a title that is only the page’s file name', () => {
+      // llmstxt.org/domains.html: a site generator titled the page with its file's name.
+      const siteName = '<meta property="og:site_name" content="Acme">';
+      const html = page(`${siteName}<title>domains – Acme</title>`, '<h1>Acme in different domains</h1>');
+      expect(extract(html, 'https://acme.test/domains.html').title).toBe('Acme in different domains');
+      expect(extract(page('<title>domains</title>', '<h1>Acme in different domains</h1>'), 'https://acme.test/guide/domains').title).toBe('Acme in different domains');
+      // A name an author wrote, or the only name there is, stays.
+      expect(extract(page('<title>Domains</title>', '<h1>Acme in different domains</h1>'), 'https://acme.test/domains').title).toBe('Domains');
+      expect(extract(page('<title>domains</title>', '<p>No heading.</p>'), 'https://acme.test/domains').title).toBe('domains');
+    });
+
     it('keeps an og:title that is the page name its <title> starts with', () => {
       const html = page('<meta property="og:title" content="Our blogs"><title>Our blogs | Acme</title>', '<h1>The latest post</h1>');
       expect(extract(html, 'https://acme.test/blogs').title).toBe('Our blogs');

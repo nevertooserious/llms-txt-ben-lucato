@@ -31,6 +31,8 @@ const MAXIMUM_SITE_NAME_LENGTH = 60;
  * declares (`Downloads | Acme` with og:site_name `Acme`), that page name. Otherwise the
  * Open Graph title, then <title>, then the first <h1>; and on an inner page whose Open
  * Graph title is only the site name its <title> ends with, the first <h1>, then <title>.
+ * A title that is only the page's file name (`domains` at `/domains.html`) gives way to
+ * the first <h1>: a site generator wrote it, not an author.
  * Site name: og:site_name, then a JSON-LD WebSite name, then application-name.
  * Description: meta description, then Open Graph description, then the first
  * paragraph of the main content.
@@ -56,11 +58,12 @@ export function extractPage(input: ExtractPageInput): PageRecord {
     input.isHomepage || titleTag === null || declaredSiteName === null
       ? null
       : withoutSiteName(titleTag, declaredSiteName);
-  const title =
+  const declaredTitle =
     pageNameInTitleTag ??
     (!input.isHomepage && openGraphTitle !== null && titleTag !== null && isSiteNameOf(openGraphTitle, titleTag)
       ? (heading ?? titleTag)
       : (openGraphTitle ?? titleTag ?? heading));
+  const title = declaredTitle !== null && isFileNameOf(declaredTitle, input.normalisedUrl) ? (heading ?? declaredTitle) : declaredTitle;
   const metadataDescription =
     metaContent($, 'meta[name="description" i]') ?? metaContent($, 'meta[property="og:description"]');
   const canonicalHref = $('link[rel~="canonical"][href]').first().attr('href');
@@ -104,6 +107,18 @@ function metaContent($: CheerioAPI, selector: string): string | null {
  */
 function isSiteNameOf(openGraphTitle: string, titleTag: string): boolean {
   return TITLE_SEPARATORS.some((separator) => titleTag.endsWith(`${separator}${openGraphTitle}`));
+}
+
+/** Whether the title is exactly the URL's last path segment, less any extension: `domains` for `/guide/domains.html`. */
+function isFileNameOf(title: string, url: string): boolean {
+  const lastSegment = new URL(url).pathname.split('/').filter(Boolean).pop() ?? '';
+  let fileName = lastSegment.replace(/\.[a-z0-9]+$/i, '');
+  try {
+    fileName = decodeURIComponent(fileName);
+  } catch {
+    // Kept as written.
+  }
+  return fileName !== '' && title === fileName;
 }
 
 /** The page name in `Page | Site` or `Site | Page`, or null when the title is not that. */
