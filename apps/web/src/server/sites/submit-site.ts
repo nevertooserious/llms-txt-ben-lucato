@@ -15,6 +15,8 @@ export interface SubmitSiteDependencies {
 }
 
 export interface SubmitSiteRequest {
+  /** The signed-in user, who will own the site. */
+  ownerUserId: string;
   submittedUrl: string;
 }
 
@@ -28,8 +30,8 @@ export type SubmitSiteOutcome =
 
 /**
  * A URL submission: in one transaction create a new site with monitoring on and start
- * its first run. Each submission is an independent site, even for a URL submitted before
- * by another user.
+ * its first run. Each submission is an independent site owned by the user who made it,
+ * even for a URL submitted before.
  */
 export async function submitSite(
   request: SubmitSiteRequest,
@@ -40,7 +42,7 @@ export async function submitSite(
 
   const publicSlug = randomBytes(12).toString('base64url');
   return withTransaction(dependencies.databasePool, async (transaction) => {
-    const siteId = await createSite(transaction, { rootUrl, publicSlug });
+    const siteId = await createSite(transaction, { ownerUserId: request.ownerUserId, rootUrl, publicSlug });
     await scheduleSiteMonitoring(transaction, siteId);
     const run = await startPipelineRun(transaction, dependencies.queue, { siteId, triggeredBy: 'submission' });
     // The site was created in this transaction, so nothing else can have a run on it.

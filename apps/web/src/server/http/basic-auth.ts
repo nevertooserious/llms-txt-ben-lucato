@@ -1,9 +1,10 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 
-// The login for the whole app (src/proxy.ts). One shared username and password, with no
-// accounts: API clients send it with HTTP Basic auth each time, and the browser gives it
-// once on /login in return for a cookie (session.ts).
+// HTTP Basic auth, which is what API clients sign in with: the same username and
+// password the browser gives once on /login in return for a cookie (session.ts). Who
+// they belong to is decided in server/users/authentication.ts.
 
+/** The login the app is configured with; the one user is made from it. */
 export interface BasicAuthCredentials {
   username: string;
   password: string;
@@ -15,21 +16,15 @@ export function isSameText(presented: string, expected: string): boolean {
   return timingSafeEqual(hash(presented), hash(expected));
 }
 
-export function isCorrectLogin(username: string, password: string, credentials: BasicAuthCredentials): boolean {
-  const isUsernameCorrect = isSameText(username, credentials.username);
-  const isPasswordCorrect = isSameText(password, credentials.password);
-  return isUsernameCorrect && isPasswordCorrect;
-}
-
-/** Whether an `Authorization` header carries these credentials. */
-export function isAuthorised(authorizationHeader: string | null, credentials: BasicAuthCredentials): boolean {
+/** The username and password an `Authorization` header carries, or null if it is not Basic auth. */
+export function basicAuthLogin(authorizationHeader: string | null): BasicAuthCredentials | null {
   const encoded = /^Basic\s+([A-Za-z0-9+/]+={0,2})\s*$/i.exec(authorizationHeader ?? '')?.[1];
-  if (encoded === undefined) return false;
+  if (encoded === undefined) return null;
   const decoded = Buffer.from(encoded, 'base64').toString('utf8');
   // A username cannot contain a colon; a password can (RFC 7617).
   const separator = decoded.indexOf(':');
-  if (separator === -1) return false;
-  return isCorrectLogin(decoded.slice(0, separator), decoded.slice(separator + 1), credentials);
+  if (separator === -1) return null;
+  return { username: decoded.slice(0, separator), password: decoded.slice(separator + 1) };
 }
 
 /**

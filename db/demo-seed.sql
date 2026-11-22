@@ -98,10 +98,17 @@ $version$# Fernhill Cloud
 - [Changelog](https://docs.fernhill.example/changelog): Every product change, newest first.
 $version$];
 begin
+  -- The demo belongs to the default login's user. The web app creates that user at
+  -- startup; here it gets a password hash that matches nothing, which the app replaces.
+  insert into users (username, password_hash)
+  values ('user1', 'set by the web app at startup')
+  on conflict (username) do nothing;
+
   insert into sites (
-    root_url, public_slug, site_title, generated_summary,
+    owner_user_id, root_url, public_slug, site_title, generated_summary,
     last_monitor_check_at, created_at)
   values (
+    (select id from users where username = 'user1'),
     'https://docs.fernhill.example',
     'demo',
     'Fernhill Cloud',

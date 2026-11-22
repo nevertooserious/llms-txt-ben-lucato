@@ -34,6 +34,8 @@ export {
   claimDueMonitorChecks,
   createSite,
   deleteSite,
+  listSitesOwnedBy,
+  loadOwnedSiteIdBySlug,
   loadPageOverrides,
   loadPublishedLlmsTxt,
   loadSiteForRun,
@@ -44,10 +46,19 @@ export {
   saveSiteCrawlOutcome,
   saveSiteTitle,
   type NewSite,
+  type OwnedSite,
   type SiteCrawlOutcome,
   type SiteForRun,
   type SiteOverview,
 } from './repositories/sites';
+export {
+  createUserIfAbsent,
+  loadUserById,
+  loadUserByUsername,
+  saveUserPasswordHash,
+  type NewUser,
+  type StoredUser,
+} from './repositories/users';
 export { loadExcludedUrlPrefixes, replaceExcludedPages, replaceExcludedUrlPrefixes, replaceKeptPages } from './repositories/page-exclusions';
 export { scheduleSiteMonitoring } from './repositories/monitor-schedule';
 export {

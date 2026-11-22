@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readBasicAuthCredentials } from '../composition/web-config';
-import { isAuthorised, isPublicPath } from './basic-auth';
+import { basicAuthLogin, isPublicPath } from './basic-auth';
 
 const credentials = { username: 'user1', password: 'pass1' };
 const header = (text: string) => `Basic ${Buffer.from(text).toString('base64')}`;
@@ -19,27 +19,24 @@ describe('readBasicAuthCredentials', () => {
   });
 });
 
-describe('isAuthorised', () => {
-  it('accepts the right credentials, whatever the scheme case', () => {
-    expect(isAuthorised(header('user1:pass1'), credentials)).toBe(true);
-    expect(isAuthorised(header('user1:pass1').replace('Basic', 'basic'), credentials)).toBe(true);
+describe('basicAuthLogin', () => {
+  it('reads the username and password, whatever the scheme case', () => {
+    expect(basicAuthLogin(header('user1:pass1'))).toEqual(credentials);
+    expect(basicAuthLogin(header('user1:pass1').replace('Basic', 'basic'))).toEqual(credentials);
   });
 
   it('keeps a colon in the password', () => {
-    expect(isAuthorised(header('user1:pa:ss'), { username: 'user1', password: 'pa:ss' })).toBe(true);
+    expect(basicAuthLogin(header('user1:pa:ss'))).toEqual({ username: 'user1', password: 'pa:ss' });
   });
 
   it.each([
     ['no header', null],
     ['an empty header', ''],
     ['another scheme', 'Bearer dXNlcjE6cGFzczE='],
-    ['a wrong password', header('user1:wrong')],
-    ['a wrong username', header('other:pass1')],
     ['no colon', header('user1pass1')],
-    ['an empty password', header('user1:')],
     ['malformed base64', 'Basic !!!'],
-  ])('refuses %s', (_name, value) => {
-    expect(isAuthorised(value, credentials)).toBe(false);
+  ])('reads nothing from %s', (_name, value) => {
+    expect(basicAuthLogin(value)).toBeNull();
   });
 });
 

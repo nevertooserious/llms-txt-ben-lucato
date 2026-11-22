@@ -4,7 +4,11 @@ import { createDatabasePool } from '../connection/database-pool';
 import { publishLlmsTxtVersion } from './llms-txt-versions';
 import { scheduleSiteMonitoring } from './monitor-schedule';
 import { createSite, deleteSite } from './sites';
+import { createUserIfAbsent } from './users';
 import { withTransaction } from '../connection/transaction';
+
+/** Sites need an owner; these tests are not about who it is. */
+const TEST_OWNER = { username: 'test-owner', passwordHash: 'matches no password' };
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL must point at a database with db/schema.sql applied');
@@ -14,8 +18,10 @@ afterAll(() => pool.end());
 
 const DAY_MS = 24 * 3600 * 1000;
 
-const newSite = () =>
-  createSite(pool, { rootUrl: `https://${randomUUID()}.example`, publicSlug: randomUUID() });
+const newSite = async () =>
+  createSite(pool, {
+    ownerUserId: (await createUserIfAbsent(pool, TEST_OWNER)).id,
+    rootUrl: `https://${randomUUID()}.example`, publicSlug: randomUUID() });
 const schedule = (siteId: string) =>
   withTransaction(pool, (transaction) => scheduleSiteMonitoring(transaction, siteId));
 const publish = (siteId: string) =>

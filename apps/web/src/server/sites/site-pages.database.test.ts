@@ -3,6 +3,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   createDatabasePool,
   createSite,
+  createUserIfAbsent,
   listLlmsTxtVersions,
   loadGeneratorPages,
   loadPublishedLlmsTxt,
@@ -15,6 +16,9 @@ import {
 } from '@llms-txt/db';
 import { decidePublication, generateLlmsTxt, listedEntries } from '@llms-txt/generator';
 import { loadSitePagesView, savePageExclusions } from './site-pages';
+
+/** Sites need an owner; these tests are not about who it is. */
+const TEST_OWNER = { username: 'test-owner', passwordHash: 'matches no password' };
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL must point at a database with db/schema.sql applied');
@@ -38,7 +42,9 @@ async function crawledSite(options: { isPublished?: boolean; isAssessed?: boolea
   const origin = `https://${randomUUID()}.example`;
   const url = (path: string) => (path === '/' ? origin : `${origin}${path}`);
   const publicSlug = randomUUID();
-  const siteId = await createSite(databasePool, { rootUrl: origin, publicSlug });
+  const siteId = await createSite(databasePool, {
+    ownerUserId: (await createUserIfAbsent(databasePool, TEST_OWNER)).id,
+    rootUrl: origin, publicSlug });
   const run = await databasePool.query<{ id: string }>(
     `insert into pipeline_runs (site_id, triggered_by, status, finished_at)
      values ($1, 'submission', 'succeeded', now()) returning id`,

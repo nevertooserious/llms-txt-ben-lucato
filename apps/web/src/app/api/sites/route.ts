@@ -1,6 +1,31 @@
-import { apiError, hostedLlmsTxtPath, runApiPath } from '@/server/http/api-response';
+import { apiError, hostedLlmsTxtPath, runApiPath, siteApiPath } from '@/server/http/api-response';
+import { requiredUser } from '@/server/http/signed-in-user';
+import { listSites } from '@/server/sites/list-sites';
 import { submitSite } from '@/server/sites/submit-site';
 import { webServices } from '@/server/composition/web-services';
+
+// The signed-in user's sites, newest first.
+export async function GET(request: Request): Promise<Response> {
+  const services = webServices();
+  try {
+    const { userId, response } = requiredUser(request);
+    if (response) return response;
+    const sites = await listSites(services.databasePool, userId);
+    return Response.json(
+      {
+        sites: sites.map((site) => ({
+          ...site,
+          siteUrl: siteApiPath(site.publicSlug),
+          llmsTxtUrl: hostedLlmsTxtPath(site.publicSlug),
+        })),
+      },
+      { headers: { 'cache-control': 'no-store' } },
+    );
+  } catch (error) {
+    services.logger.error('listing sites failed', { error });
+    return apiError(500, 'internal_error', 'The sites could not be listed.');
+  }
+}
 
 // Submit a URL. The work is in server/sites/submit-site.ts; this handler only parses the
 // request and shapes the response.
@@ -13,8 +38,10 @@ export async function POST(request: Request): Promise<Response> {
 
   const services = webServices();
   try {
+    const { userId, response } = requiredUser(request);
+    if (response) return response;
     const outcome = await submitSite(
-      { submittedUrl },
+      { ownerUserId: userId, submittedUrl },
       { databasePool: services.databasePool, queue: await services.queue() },
     );
     switch (outcome.kind) {

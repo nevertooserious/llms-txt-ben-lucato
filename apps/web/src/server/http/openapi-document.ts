@@ -55,7 +55,7 @@ const versionNumberParameter = { name: 'versionNumber', in: 'path', required: tr
 
 const unauthorised = { $ref: '#/components/responses/Unauthorized' };
 const internalError = { $ref: '#/components/responses/InternalError' };
-const siteNotFound = errorResponse('`site_not_found`: there is no site at this slug.');
+const siteNotFound = errorResponse('`site_not_found`: the signed-in user has no site at this slug.');
 
 const schemas: Record<string, JsonSchema> = {
   ApiError: objectOf(
@@ -84,6 +84,18 @@ const schemas: Record<string, JsonSchema> = {
     allOf: [reference('ApiError'), objectOf({ retryAfterSeconds: count })],
   },
   SubmitSiteRequest: objectOf({ url: { type: 'string', format: 'uri', examples: ['https://example.com'] } }),
+  SiteList: objectOf({
+    sites: {
+      type: 'array',
+      items: objectOf({
+        publicSlug: { type: 'string' },
+        rootUrl: { type: 'string', format: 'uri' },
+        createdAt: dateTime,
+        siteUrl: { type: 'string', description: "The API path of the site's state." },
+        llmsTxtUrl: { type: 'string', description: 'The path of the hosted file.' },
+      }),
+    },
+  }),
   SubmittedSite: objectOf({
     publicSlug: { type: 'string' },
     pipelineRunId: { type: 'string', format: 'uuid' },
@@ -204,6 +216,16 @@ const hostedFileTag = 'Hosted file';
 
 const paths = {
   '/api/sites': {
+    get: {
+      tags: [sitesTag],
+      operationId: 'listSites',
+      summary: "List the signed-in user's sites",
+      responses: {
+        200: jsonResponse('The sites this user submitted, newest first.', reference('SiteList')),
+        401: unauthorised,
+        500: internalError,
+      },
+    },
     post: {
       tags: [sitesTag],
       operationId: 'submitSite',
@@ -414,7 +436,8 @@ export const openApiDocument = {
     version: '1.0.0',
     description:
       'Generate an llms.txt for a website and keep it up to date. Every endpoint needs HTTP Basic auth, or the ' +
-      "web app's sign-in cookie, except the live file.",
+      "web app's sign-in cookie, except the live file. A site belongs to the user who submitted it, and " +
+      "another user's site answers 404.",
   },
   tags: [sitesTag, runsTag, versionsTag, pagesTag, hostedFileTag].map((name) => ({ name })),
   security: [{ basicAuth: [] }],

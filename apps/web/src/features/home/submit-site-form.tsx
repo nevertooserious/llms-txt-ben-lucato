@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { goToLoginIfSignedOut } from '@/browser/login-redirect';
-import { saveSite, sitePath } from '@/browser/saved-sites';
+import { sitePath } from '@/shared/site-list';
 
 interface SubmitResponse {
   publicSlug?: string;
@@ -34,11 +34,6 @@ export function SubmitSiteForm() {
       if (!response.ok || !body.publicSlug) {
         throw new Error(body.error ?? 'The site could not be submitted.');
       }
-      saveSite({
-        publicSlug: body.publicSlug,
-        rootUrl: url,
-        createdAt: new Date().toISOString(),
-      });
       router.push(sitePath(body.publicSlug));
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'The site could not be submitted.');

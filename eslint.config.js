@@ -231,7 +231,7 @@ export default tseslint.config(
   {
     files: ['apps/web/src/browser/**/*.ts'],
     rules: restrict(networkBuiltins, [...networkPackages, ...databasePackages], BROWSER_MESSAGE, [
-      webLayers(['app', 'server', 'features'], 'browser/ holds the API client and local storage; components in features/ call it, not the reverse.'),
+      webLayers(['app', 'server', 'features'], 'browser/ holds the API client; components in features/ call it, not the reverse.'),
     ]),
   },
   {

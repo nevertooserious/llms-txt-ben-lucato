@@ -2,8 +2,8 @@
 
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { readBasicAuthCredentials } from '@/server/composition/web-config';
-import { isCorrectLogin } from '@/server/http/basic-auth';
+import { webServices } from '@/server/composition/web-services';
+import { userWithLogin } from '@/server/users/authentication';
 import {
   createSessionToken,
   LOGIN_PATH,
@@ -19,13 +19,15 @@ export async function signIn(_previous: SignInState, form: FormData): Promise<Si
     const value = form.get(name);
     return typeof value === 'string' ? value : '';
   };
-  const credentials = readBasicAuthCredentials();
-  if (!isCorrectLogin(text('username'), text('password'), credentials)) {
+  const services = webServices();
+  await services.configuredUserIsReady();
+  const user = await userWithLogin(services.databasePool, text('username'), text('password'));
+  if (user === null) {
     return { errorMessage: 'That username or password is not right.', username: text('username') };
   }
 
   const requestHeaders = await headers();
-  (await cookies()).set(SESSION_COOKIE_NAME, createSessionToken(credentials), {
+  (await cookies()).set(SESSION_COOKIE_NAME, createSessionToken(user), {
     httpOnly: true,
     // Lax keeps the cookie off requests other sites make to the API.
     sameSite: 'lax',

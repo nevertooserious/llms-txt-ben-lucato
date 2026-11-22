@@ -1,6 +1,9 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { createDatabasePool, createSite, type PipelineRunQueue } from '@llms-txt/db';
+import { createDatabasePool, createSite, createUserIfAbsent, type PipelineRunQueue } from '@llms-txt/db';
 import { checkSiteNow } from './check-site-now';
+
+/** Sites need an owner; these tests are not about who it is. */
+const TEST_OWNER = { username: 'test-owner', passwordHash: 'matches no password' };
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL must point at a database with db/schema.sql applied');
@@ -18,8 +21,9 @@ const queue = {
 
 const dependencies = { databasePool, queue, checkNowCooldownSeconds: 300 };
 
-const newSite = () =>
+const newSite = async () =>
   createSite(databasePool, {
+    ownerUserId: (await createUserIfAbsent(databasePool, TEST_OWNER)).id,
     rootUrl: `https://${crypto.randomUUID()}.example`,
     publicSlug: crypto.randomUUID(),
   });

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="790" style="color:#171717;font-family:system-ui,-apple-system,'Segoe UI',sans-serif" viewBox="0 0 1100 790" role="img" aria-label="Six tables. A site has many pages, runs and llms.txt versions, and points at the version it serves. Users edit pages through page overrides and keep whole paths out through excluded URL prefixes. Nothing is shared between sites.">
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="790" style="color:#171717;font-family:system-ui,-apple-system,'Segoe UI',sans-serif" viewBox="0 0 1100 790" role="img" aria-label="Seven tables. A user owns many sites. A site has many pages, runs and llms.txt versions, and points at the version it serves. Users edit pages through page overrides and keep whole paths out through excluded URL prefixes. Nothing is shared between sites.">
 <style>
 .b { fill: #fff; stroke: currentColor; stroke-width: 1.2; }
 .sep { stroke: currentColor; stroke-width: 1; opacity: .35; }
@@ -26,11 +26,11 @@
   </defs>
 
   <!-- sites -->
-  <rect class="b" x="20" y="40" width="280" height="300" rx="6"/>
+  <rect class="b" x="20" y="40" width="280" height="336" rx="6"/>
   <text class="t" x="34" y="62">sites</text>
   <text class="n" x="286" y="62" text-anchor="end">one per submission</text>
   <line class="sep" x1="20" y1="72" x2="300" y2="72"/>
-  <text class="f" x="34" y="92">id, root_url</text>
+  <text class="f" x="34" y="92">id, owner_user_id, root_url</text>
   <text class="f" x="34" y="110">public_slug (unique)</text>
   <text class="f" x="34" y="128">site_title</text>
   <text class="f" x="34" y="146">generated_summary, generated_notes</text>
@@ -133,7 +133,19 @@
   <text class="f" x="834" y="492">page_changes (jsonb)</text>
   <text class="f" x="834" y="510">created_by, created_at</text>
 
+  <!-- users -->
+  <rect class="b" x="20" y="450" width="130" height="102" rx="6"/>
+  <text class="t" x="34" y="472">users</text>
+  <text class="n" x="136" y="472" text-anchor="end">who signs in</text>
+  <line class="sep" x1="20" y1="482" x2="150" y2="482"/>
+  <text class="f" x="34" y="502">id, created_at</text>
+  <text class="f" x="34" y="520">username (unique)</text>
+  <text class="f" x="34" y="538">password_hash</text>
+
   <!-- relations -->
+  <line class="ln" x1="85" y1="450" x2="85" y2="376" marker-end="url(#ar)"/>
+  <text class="l" x="93" y="418">owns</text>
+
   <line class="ln" x1="300" y1="100" x2="380" y2="100" marker-end="url(#ar)"/>
   <text class="l" x="340" y="94" text-anchor="middle">has many</text>
 

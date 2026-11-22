@@ -109,7 +109,8 @@ The full DDL with comments is in [`db/schema.sql`](../../db/schema.sql).
 
 | Table | Holds | Mutability |
 |---|---|---|
-| `sites` | One crawled website: root URL, cached summary and notes, machine-readable files found, monitor schedule | Updated in place |
+| `users` | Who can sign in: a username and a password hash. One row, made from the configured login | Updated in place |
+| `sites` | One crawled website: its owner, root URL, cached summary and notes, machine-readable files found, monitor schedule | Updated in place |
 | `pages` | Current state of each known URL of a site | Updated in place |
 | `page_overrides` | The user's edits to individual pages | Updated in place |
 | `excluded_url_prefixes` | The paths the user keeps out of the file | Replaced as a set |
@@ -119,7 +120,7 @@ The full DDL with comments is in [`db/schema.sql`](../../db/schema.sql).
 ### Design choices
 
 - **Each submission is its own site.** Nothing is shared between submissions: submitting a URL twice makes two sites, each with its own crawl data, overrides, excluded paths, versions and schedule. This costs repeat crawls and LLM calls for a popular URL, and two submissions can crawl one host at the same time. In exchange, nobody can reach a file by submitting its URL.
-- **One shared login, no accounts.** `apps/web/src/proxy.ts` covers the web app and REST API with one username and password: API clients send it with HTTP Basic auth, and the browser gives it once on the login page. Anyone with the login can read and change every site. Only the hosted file is public, because a site's own `/llms.txt` proxies or redirects to it.
+- **A site belongs to a user; there is no sign-up.** `sites.owner_user_id` is the user who submitted it. `apps/web/src/proxy.ts` works out who each request is from (API clients send a username and password with HTTP Basic auth, and the browser gives them once on the login page) and tells the routes in a request header that it alone can set. The home page lists the user's sites, and every site route looks the slug up together with the owner, so another user's site answers 404 like one that does not exist. Only the hosted file is public, because a site's own `/llms.txt` proxies or redirects to it. The one user is created at startup from the configured login, so today everyone who has that login shares its sites; the table and the ownership check are what a second user would need.
 - **Column groups in `pages` have one writer each.** Crawler, extractor and generator each own a set of columns, so a stage can be re-run without clobbering another's output.
 - **User edits are stored as inputs.** Overrides are applied by the generator on every run, so an edit survives regeneration. Only the description and an exclude flag can be overridden.
 - **A path is excluded by rule, not page by page.** `excluded_url_prefixes` holds URL prefixes (`https://example.com/blog`). Each render excludes every page at or under one, by whole path segments, so the rule covers pages a later crawl finds, which per-page flags cannot. The crawl still fetches and stores those pages, so including the path again needs no crawl.
@@ -206,7 +207,7 @@ A site with nothing to list besides its homepage publishes nothing: the run fail
 - **Result:** rendered preview next to raw text, spec validation status, copy and download.
 - **Pages:** an expandable list of every crawled page, grouped by the directories of its URL path, with the section each is listed under. Unticking a page excludes that page; unticking a path excludes everything under it, now and in later checks. Changes are collected and saved together. Saving renders the file again from the stored crawl, with no fetch and no LLM call, and records the result as a `user_edit` version; while a run is active the choices are only saved, and that run applies them.
 - **Editing descriptions:** overriding a page's description is not built yet.
-- **Site link:** `/w/{public_slug}`. The browser keeps the sites it created so the home page can show them as a table with each one's latest status. Submitting a site opens its details page.
+- **Site link:** `/w/{public_slug}`. The home page lists the signed-in user's sites, from the database, as a table with each one's latest status. Submitting a site opens its details page.
 - **API (HTTP Basic auth):** a REST API that the web app also uses, documented in the [root README](../../README.md#rest-api). A submission creates a site. A run has its own status, and a file is reached by version number or by the run that published it. A run that published nothing answers 404 with the code `run_produced_no_version`, rather than some other run's file. Errors carry a stable `code` beside the human-readable `error`.
 - **Hosted URL:** a stable `/w/{public_slug}/llms.txt`. The spec puts llms.txt at the site's own root, so the site owner redirects or proxies to this URL. The [root README](../../README.md#serving-llmstxt-from-your-own-domain) explains how.
 - **Monitoring:** on for every site until it is deleted, a "check now" button, and version history with diffs: the user picks any two versions and sees a line diff, computed in the browser.
@@ -214,14 +215,14 @@ A site with nothing to list besides its homepage publishes nothing: the run fail
 
 ## 7. Security and abuse limits
 
-The app is public, has no accounts, and fetches URLs that users supply.
+The app is public, has no sign-up, and fetches URLs that users supply.
 
 - **SSRF guard:** blocks private, loopback and link-local addresses, including IPv6 and IPv4-mapped forms and the hosting platform's private network. It runs inside the HTTP client's connector: the host is resolved there, every address is checked, and the socket connects to the checked address, so there is no second lookup for DNS rebinding to exploit. A host with any blocked address is refused. Redirects are followed by hand, and each hop opens a new, checked connection. It covers the headless browser by performing every browser request in Node through the same connector. As a second layer, the browser's own DNS is disabled, so a request that escaped interception could not reach anything. WebSockets, service workers and popups are refused.
 - **Network policy:** the guard's rule is passed in when the fetcher is created. Production uses the public-internet-only policy. End-to-end tests pass one that allows only their fixture sites' loopback ports; it lives in the tests, and no setting or environment variable can loosen the guard.
 - **Fetch limits:** 15 seconds per fetch including redirects, 5 MB per response, 5 redirects, and only `http` and `https`; a page budget per run. A response of a type the caller did not ask for is dropped without reading its body.
 - **Submission limits:** a global concurrency cap from the queue. Submissions are not limited per client, so the login is what keeps strangers from creating sites.
 - **Check-now cooldown:** a site is checked by hand at most once per 5 minutes, so nobody can keep a site under constant crawling. The active-run index already stops parallel crawls, but not back-to-back ones.
-- **Login:** needed on every path except the hosted file, the login page and Next's static assets, and compared in constant time. API clients use HTTP Basic auth. A signed-out browser is sent to `/login`, whose form sets a cookie the proxy accepts in place of the header. The cookie is an expiry time (30 days) signed with the username and password, so no sessions are stored and changing the login signs everyone out. It is `HttpOnly` and `SameSite=Lax`, which keeps it off requests other sites make to the API. The form does not limit attempts. The username and password come from `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD`, defaulting to `user1` and `pass1`, which are public, so a deployment must set its own. Basic auth sends the password with each request, and the form sends it once, so a deployment needs HTTPS.
+- **Login:** needed on every path except the hosted file, the login page and Next's static assets, and checked against the user's password hash in `users` (scrypt, salted). API clients use HTTP Basic auth. A signed-out browser is sent to `/login`, whose form sets a cookie the proxy accepts in place of the header. The cookie is the user's id and an expiry time (30 days) signed with that user's password hash, so no sessions are stored and changing a password signs that user out everywhere. It is `HttpOnly` and `SameSite=Lax`, which keeps it off requests other sites make to the API. The form does not limit attempts. The one user's username and password come from `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD`, defaulting to `user1` and `pass1`, which are public, so a deployment must set its own. The web app creates that user on its first request and replaces the stored hash when the configured password changes. A changed username makes a new user, who does not see the old one's sites. Basic auth sends the password with each request, and the form sends it once, so a deployment needs HTTPS.
 - **Served files:** `text/plain` with `X-Content-Type-Options: nosniff`.
 - **Preview:** crawled titles and descriptions are untrusted and are escaped before display.
 
@@ -241,8 +242,8 @@ Checked against llmstxt.org.
 
 | Left out | Why |
 |---|---|
-| User accounts | One shared HTTP Basic login covers the app without sessions or a user table |
-| Webhook and email notifications | Both are open relays on an app without accounts |
+| Sign-up, password reset and more than one user | Sites belong to a user, but the only user is the one made from the configured login. Registration needs email, reset and attempt limits |
+| Webhook and email notifications | Both are open relays on an app that does not verify an address belongs to its user |
 | Adaptive check interval | A fixed interval plus "check now" is simpler and easier to demonstrate |
 | Generating an `llms-full.txt` | Not found in the spec; it would duplicate large content per version. A site's own is linked when it has one |
 | Notes written by the site's owner | Overrides are limited to description and exclude; the notes are the LLM's, from what the site states |

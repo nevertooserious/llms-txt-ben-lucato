@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { sitePath, type SavedSite } from '@/browser/saved-sites';
+import { sitePath, type SiteListEntry } from '@/shared/site-list';
 import { isActiveRunStatus, runStatusLabel, type SiteView } from '@/shared/site-view';
 import { fetchSiteView, SiteApiError } from '@/browser/site-api';
 
@@ -14,7 +14,7 @@ function isRunActive(row: SiteRowState | undefined): boolean {
 }
 
 /** Loads every site once, then keeps polling only those with a run in progress. */
-function useSiteRows(sites: SavedSite[]): Map<string, SiteRowState> {
+function useSiteRows(sites: SiteListEntry[]): Map<string, SiteRowState> {
   const [rows, setRows] = useState<Map<string, SiteRowState>>(new Map());
 
   useEffect(() => {
@@ -22,7 +22,7 @@ function useSiteRows(sites: SavedSite[]): Map<string, SiteRowState> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let isCancelled = false;
 
-    const loadRow = async (site: SavedSite) => {
+    const loadRow = async (site: SiteListEntry) => {
       try {
         const view = await fetchSiteView(site.publicSlug);
         latestRows.set(site.publicSlug, { kind: 'loaded', view });
@@ -71,12 +71,12 @@ function SiteStatus({ row }: { row: SiteRowState | undefined }) {
   );
 }
 
-export function SitesTable({ sites }: { sites: SavedSite[] }) {
+export function SitesTable({ sites }: { sites: SiteListEntry[] }) {
   const rows = useSiteRows(sites);
   return (
     <section className="sites">
       <table className="sites-table">
-        <caption className="visually-hidden">Sites started on this browser</caption>
+        <caption className="visually-hidden">Your sites</caption>
         <thead>
           <tr>
             <th scope="col">Site</th>

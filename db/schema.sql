@@ -1,8 +1,9 @@
 -- llms.txt generator: data model (Postgres 14+)
 --
--- Five tables:
---   sites              one row per submission of a URL: crawl and monitor state, the
---                      public slug and the published version
+-- Seven tables:
+--   users              who can sign in; each site belongs to one
+--   sites              one row per submission of a URL: its owner, crawl and monitor
+--                      state, the public slug and the published version
 --   pages              current state of each known URL of a site; mutable
 --   page_overrides     the user's edits to individual pages
 --   excluded_url_prefixes  the paths the user keeps out of the file
@@ -19,18 +20,40 @@
 begin;
 
 -- ---------------------------------------------------------------------------
+-- users
+-- ---------------------------------------------------------------------------
+-- There is no sign-up. The web app creates one user at startup from its configured
+-- login (BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD) and keeps that user's password in
+-- step with it.
+create table users (
+  id             uuid primary key default gen_random_uuid(),
+
+  -- What is typed on the login page and sent with HTTP Basic auth.
+  username       text not null unique,
+
+  -- "scrypt$<salt>$<key>", both base64url. Also the key that signs this user's session
+  -- cookies, so changing the password signs the user out everywhere.
+  password_hash  text not null,
+
+  created_at     timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
 -- sites
 -- ---------------------------------------------------------------------------
 create table sites (
   id                               uuid primary key default gen_random_uuid(),
+
+  -- The user who submitted the site. Only they can see or change it through the app and
+  -- the API; the published file at /w/{public_slug}/llms.txt is public.
+  owner_user_id                    uuid not null references users (id) on delete cascade,
 
   -- Crawl scope: scheme + host + optional path prefix, lowercase host, no trailing
   -- slash. "https://example.com" or "https://example.com/docs". Replaced by where the
   -- homepage redirects on the first crawl. Not unique: each submission is its own site.
   root_url                         text not null,
 
-  -- Identifier in every URL of this site: /w/{public_slug}/llms.txt and the API. There
-  -- are no accounts, so knowing the slug is what allows changing the site.
+  -- Identifier in every URL of this site: /w/{public_slug}/llms.txt and the API.
   public_slug                      text not null unique,
 
   -- Extractor: the site's name, from the homepage.
@@ -87,6 +110,8 @@ create table sites (
 -- The monitor's due-site scan.
 create index sites_due_for_monitor_check_idx
   on sites (next_monitor_check_at) where next_monitor_check_at is not null;
+-- The home page: a user's sites, newest first.
+create index sites_owner_idx on sites (owner_user_id, created_at desc);
 
 -- ---------------------------------------------------------------------------
 -- pipeline_runs

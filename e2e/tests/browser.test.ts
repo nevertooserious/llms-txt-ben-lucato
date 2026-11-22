@@ -253,6 +253,9 @@ describe.skipIf(!databaseUrl)('the web app in a browser', () => {
     const pageWithoutLogin = await fetch(`${stack.webAppOrigin}/w/${slug}`, { redirect: 'manual' });
     expect(pageWithoutLogin.status).toBe(307);
     expect(pageWithoutLogin.headers.get('location')).toBe(`/login?next=%2Fw%2F${slug}`);
+    // Only the app's proxy says who is signed in: a client naming a user itself is ignored.
+    const forged = { 'x-llms-txt-user-id': '00000000-0000-4000-8000-000000000000' };
+    expect((await fetch(`${stack.webAppOrigin}/api/sites`, { headers: forged })).status).toBe(401);
     const wrongLogin = { authorization: `Basic ${Buffer.from('user1:wrong').toString('base64')}` };
     expect((await fetch(`${stack.webAppOrigin}/api/sites/${slug}/versions`, { headers: wrongLogin })).status).toBe(401);
 

@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { createDatabasePool, type PipelineRunQueue } from '@llms-txt/db';
+import { createDatabasePool, createUserIfAbsent, type PipelineRunQueue } from '@llms-txt/db';
 import { submitSite } from './submit-site';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -16,12 +16,14 @@ const queue = {
   },
 } as unknown as PipelineRunQueue;
 
+const ownerUserId = async () =>
+  (await createUserIfAbsent(databasePool, { username: 'test-owner', passwordHash: 'matches no password' })).id;
 const uniqueHost = () => `${crypto.randomUUID()}.example`;
 
 describe('submitSite', () => {
   it('creates a site with monitoring on and a queued run', async () => {
     const outcome = await submitSite(
-      { submittedUrl: `${uniqueHost()}/docs/` },
+      { ownerUserId: await ownerUserId(), submittedUrl: `${uniqueHost()}/docs/` },
       { databasePool, queue },
     );
     if (outcome.kind !== 'submitted') throw new Error(`expected a submission, got ${outcome.kind}`);
@@ -40,8 +42,8 @@ describe('submitSite', () => {
   it('gives a second submission of the same URL its own site and its own run', async () => {
     const host = uniqueHost();
     const dependencies = { databasePool, queue };
-    const first = await submitSite({ submittedUrl: host }, dependencies);
-    const second = await submitSite({ submittedUrl: `https://${host}/` }, dependencies);
+    const first = await submitSite({ ownerUserId: await ownerUserId(), submittedUrl: host }, dependencies);
+    const second = await submitSite({ ownerUserId: await ownerUserId(), submittedUrl: `https://${host}/` }, dependencies);
     if (first.kind !== 'submitted' || second.kind !== 'submitted') throw new Error('expected two submissions');
     expect(second.publicSlug).not.toBe(first.publicSlug);
     expect(second.pipelineRunId).not.toBe(first.pipelineRunId);
@@ -49,7 +51,7 @@ describe('submitSite', () => {
 
   it('rejects a URL that is not a web address', async () => {
     const outcome = await submitSite(
-      { submittedUrl: 'ftp://example.com' },
+      { ownerUserId: await ownerUserId(), submittedUrl: 'ftp://example.com' },
       { databasePool, queue },
     );
     expect(outcome).toEqual({ kind: 'invalid_url' });

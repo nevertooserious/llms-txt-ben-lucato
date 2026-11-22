@@ -2,6 +2,7 @@ import type { PageOverride } from '@llms-txt/contracts';
 import type { Queryable, Transaction } from '../connection/transaction';
 
 export interface NewSite {
+  ownerUserId: string;
   rootUrl: string;
   publicSlug: string;
 }
@@ -9,10 +10,10 @@ export interface NewSite {
 /** A new, independent site: each submission of a URL gets its own. */
 export async function createSite(database: Queryable, site: NewSite): Promise<string> {
   const result = await database.query<{ id: string }>(
-    `insert into sites (root_url, public_slug)
-     values ($1, $2)
+    `insert into sites (owner_user_id, root_url, public_slug)
+     values ($1, $2, $3)
      returning id`,
-    [site.rootUrl, site.publicSlug],
+    [site.ownerUserId, site.rootUrl, site.publicSlug],
   );
   return result.rows[0]!.id;
 }
@@ -21,6 +22,37 @@ export async function createSite(database: Queryable, site: NewSite): Promise<st
 export async function loadSiteIdBySlug(database: Queryable, publicSlug: string): Promise<string | null> {
   const result = await database.query<{ id: string }>('select id from sites where public_slug = $1', [publicSlug]);
   return result.rows[0]?.id ?? null;
+}
+
+/** The same, but only if the site belongs to this user: someone else's site is not there. */
+export async function loadOwnedSiteIdBySlug(
+  database: Queryable,
+  publicSlug: string,
+  ownerUserId: string,
+): Promise<string | null> {
+  const result = await database.query<{ id: string }>(
+    'select id from sites where public_slug = $1 and owner_user_id = $2',
+    [publicSlug, ownerUserId],
+  );
+  return result.rows[0]?.id ?? null;
+}
+
+export interface OwnedSite {
+  publicSlug: string;
+  rootUrl: string;
+  createdAt: Date;
+}
+
+/** A user's sites, newest first. */
+export async function listSitesOwnedBy(database: Queryable, ownerUserId: string): Promise<OwnedSite[]> {
+  const result = await database.query<{ public_slug: string; root_url: string; created_at: Date }>(
+    `select public_slug, root_url, created_at
+     from sites
+     where owner_user_id = $1
+     order by created_at desc, id`,
+    [ownerUserId],
+  );
+  return result.rows.map((row) => ({ publicSlug: row.public_slug, rootUrl: row.root_url, createdAt: row.created_at }));
 }
 
 /**

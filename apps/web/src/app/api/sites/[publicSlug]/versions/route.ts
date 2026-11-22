@@ -6,12 +6,12 @@ import type { LlmsTxtVersionSummaryView } from '@/shared/site-view';
 
 // The site's version history, newest first, without the file contents.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ publicSlug: string }> },
 ): Promise<Response> {
   const services = webServices();
   try {
-    const { siteId, response } = await requestedSite(services.databasePool, (await params).publicSlug);
+    const { siteId, response } = await requestedSite(services.databasePool, (await params).publicSlug, request);
     if (response) return response;
     const versions = await listLlmsTxtVersions(services.databasePool, siteId);
     const body: LlmsTxtVersionSummaryView[] = versions.map((version) => ({

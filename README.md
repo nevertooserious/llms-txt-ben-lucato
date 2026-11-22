@@ -36,7 +36,7 @@ Each package's `src/` is grouped by layer, and `src/index.ts` is its only entry 
 | `packages/monitor` | `scheduling/` (the tick) |
 | `packages/db` | `connection/` (pool, transactions), `repositories/` (one module per table), `queue/` (the pipeline-run queue) |
 | `apps/worker` | `main.ts` (composition root), `config/`, `jobs/` (queue consumers), `llm/` (Anthropic client), `pipeline/` (the run's lifecycle, one module per stage in `pipeline/stages/`, and the pure rules they call in `pipeline/decisions/`: page reconciliation, safety gate, sitemap trust) |
-| `apps/web` | `app/` (Next.js routes only), `features/` (React components, by screen: `home/`, `login/`, `site/`), `browser/` (API client, local storage), `server/` (`sites/`, `http/`, `composition/`), `shared/` (types and pure helpers for both sides) |
+| `apps/web` | `app/` (Next.js routes only), `features/` (React components, by screen: `home/`, `login/`, `site/`), `browser/` (API client), `server/` (`sites/`, `users/`, `http/`, `composition/`), `shared/` (types and pure helpers for both sides) |
 
 ESLint enforces these layers too. In the crawler only `network/` may open a connection, so every request is made beside the SSRF guard. In `packages/db` only `connection/` imports `pg`. The worker's pipeline is handed its dependencies and does not import the worker's wiring, and its `decisions/` do no I/O and take only types from `packages/db`. The monitor only schedules runs, so it does not import the crawler, extractor or generator. Packages are imported only through their entry point and along the allowed dependencies (`packageDependencies` in `eslint.config.js`). Only the worker's `llm/` uses the Anthropic SDK, only the config modules read `process.env`, and the extractor, generator and pipeline decisions read no clock or randomness. In the web app, routes in `app/` call `server/` and render `features/`; server and browser code share only `shared/`. The web app imports across its folders with the `@/` alias (`@/server/...`).
 
@@ -92,13 +92,14 @@ The last one is for Vercel, in `vercel.json`. Use a temporary redirect, so clien
 
 ## REST API
 
-Every endpoint uses HTTP Basic auth except the live file, which stays public so sites can proxy to it. The web app uses the same login: a signed-out visitor lands on `/login`, and signing in there sets a cookie that lasts 30 days. The default is `user1` / `pass1`. Set `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` on any deployment, because the default is public.
+Every endpoint uses HTTP Basic auth except the live file, which stays public so sites can proxy to it. The web app uses the same login: a signed-out visitor lands on `/login`, and signing in there sets a cookie that lasts 30 days. The default is `user1` / `pass1`. Set `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` on any deployment, because the default is public. The web app keeps that login as a row in `users` (the password hashed) and every site belongs to the user who submitted it: the API lists and serves only the signed-in user's sites. There is no sign-up, so that user is the only one.
 
 Signed in, "API docs" in the header opens Swagger UI at `/api-docs`, where every endpoint can be tried. The OpenAPI 3.1 description it reads is at `/api/openapi.json`, behind the same login.
 
 | Action | Request |
 |---|---|
 | Submit a site | `POST /api/sites` with `{"url": "https://example.com"}` |
+| List your sites | `GET /api/sites` |
 | Get a site | `GET /api/sites/{slug}` |
 | Delete a site | `DELETE /api/sites/{slug}` |
 | Re-trigger a site | `POST /api/sites/{slug}/runs` |

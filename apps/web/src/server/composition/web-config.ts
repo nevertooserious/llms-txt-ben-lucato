@@ -17,9 +17,7 @@ export function readWebConfig(environment: Environment = process.env): WebConfig
   };
 }
 
-// Read apart from WebConfig, which needs DATABASE_URL: the login runs on every request,
-// and a deployment without the demo must not touch the database to find that out.
-
+/** The login of the one user, who is created from it at startup (server/users/authentication.ts). */
 export function readBasicAuthCredentials(environment: Environment = process.env): BasicAuthCredentials {
   return {
     username: environment.BASIC_AUTH_USERNAME || 'user1',
@@ -27,7 +25,7 @@ export function readBasicAuthCredentials(environment: Environment = process.env)
   };
 }
 
-/** Set only by docker-compose.yml. */
+/** Set only by docker-compose.yml. Read apart from WebConfig, so other deployments skip the lookup. */
 export function readDemoSiteEnabled(environment: Environment = process.env): boolean {
   return environment.DEMO_SITE_ENABLED === 'true';
 }

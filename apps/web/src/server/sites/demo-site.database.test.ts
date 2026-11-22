@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createDatabasePool, listLlmsTxtVersions, loadLlmsTxtVersionContent, loadSiteIdBySlug } from '@llms-txt/db';
+import { createDatabasePool, createUserIfAbsent, listLlmsTxtVersions, loadLlmsTxtVersionContent, loadSiteIdBySlug } from '@llms-txt/db';
 import { validateLlmsTxt } from '@llms-txt/generator';
 import { DEMO_PUBLIC_SLUG, loadDemoSitePath } from './demo-site';
 
@@ -18,10 +18,13 @@ describe('db/demo-seed.sql', () => {
     try {
       // Rolled back, so the shared test database never holds the demo site.
       await client.query('begin');
-      expect(await loadDemoSitePath(client)).toBeNull();
       await client.query(seed);
 
-      expect(await loadDemoSitePath(client)).toBe('/w/demo');
+      // It belongs to the default login's user and to nobody else.
+      const users = await client.query<{ id: string }>("select id from users where username = 'user1'");
+      const other = await createUserIfAbsent(client, { username: 'test-owner', passwordHash: 'matches no password' });
+      expect(await loadDemoSitePath(client, users.rows[0]!.id)).toBe('/w/demo');
+      expect(await loadDemoSitePath(client, other.id)).toBeNull();
       const siteId = (await loadSiteIdBySlug(client, DEMO_PUBLIC_SLUG))!;
 
       const versions = await listLlmsTxtVersions(client, siteId);
