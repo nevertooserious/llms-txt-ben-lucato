@@ -169,6 +169,9 @@ export class HeadlessRenderer {
         '--force-webrtc-ip-handling-policy=disable_non_proxied_udp',
         '--disable-background-networking',
         '--disable-features=NetworkPrediction',
+        // Shared memory goes to the temporary directory instead of /dev/shm, which is
+        // 64 MB in a container unless the host raises it, and Railway cannot.
+        '--disable-dev-shm-usage',
       ],
     });
     this.browser = launching;

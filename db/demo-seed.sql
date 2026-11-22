@@ -1,6 +1,7 @@
--- One demo site with four published versions, for local demos. docker-compose.yml applies
--- it after db/schema.sql, only when the data volume is empty. Never apply it to a shared
--- database. It is served at /w/demo.
+-- One demo site with four published versions, for demos. docker-compose.yml applies it
+-- after db/schema.sql, only when the data volume is empty, and it was applied once to the
+-- deployment's empty database. Never apply it to a database that already has sites. It is
+-- served at /w/demo.
 --
 -- The site is on the reserved .example domain and is seeded with no monitor check
 -- scheduled, so the worker does not crawl it by itself until "check now" is pressed, which

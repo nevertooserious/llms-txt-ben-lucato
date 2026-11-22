@@ -29,7 +29,7 @@ Two processes and one database.
 
 The five components are the crawler, extractor, generator, monitor and frontend. The monitor has no pipeline of its own: it puts check jobs on the same queue, and they run through the same three stages as a first-time generation.
 
-Stack: TypeScript throughout, Next.js for the web app, a Node worker with Playwright as the headless fallback, pg-boss for the queue, and node-postgres with hand-written SQL. Hosting is not decided; the proposal is Railway or Fly, as a web service, a worker service and Postgres.
+Stack: TypeScript throughout, Next.js for the web app, a Node worker with Playwright as the headless fallback, pg-boss for the queue, and node-postgres with hand-written SQL. It is hosted on Railway as a web service, a worker service and Postgres, deployed from CI on every merge to `main` (`README.md`, "Deployment").
 
 ## 2. Pipeline stages
 
@@ -257,7 +257,7 @@ Checked against llmstxt.org.
 
 Not yet decided or designed.
 
-- **Hosting:** Railway or Fly is proposed, not decided.
+- **Schema changes in production:** there is no migration tool. `db/schema.sql` was applied once to the empty production database, and a later change has to be applied by hand.
 - **Redirects:** a page that now returns a permanent redirect is not handled, and neither is a site with stored pages whose homepage moves to another origin (its runs fail and the published file stays). Proposal: treat it as an immediate removal of the old URL and add the target as a page if it is in scope. Needs one new column on `pages` for the redirect target.
 - **Soft 404s:** sites that answer a deleted URL with 200 and a "not found" body are not handled. Proposal: an extractor check that counts the same as a real 404.
 - **Stale sitemap:** if `lastmod` is trusted and a deleted page is still listed with an unchanged date, no request is made and the deletion is missed.

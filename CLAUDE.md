@@ -30,6 +30,7 @@ Stack (confirmed): TypeScript on Node 24, Next.js for the web app, a Node worker
 - **Ship through a PR.** Run `scripts/lint.sh` and `scripts/test.sh`, commit on the branch, push it, and open the PR with `gh pr create`. Watch CI with `gh pr checks <number> --watch`.
 - **Merge automatically once green.** When every required check has passed, merge the PR yourself without asking: `gh pr merge <number> --merge --delete-branch`. Then tell the user it merged. Never merge with a failing or pending check, and never use `--admin`.
 - **PR descriptions are at most 500 characters.** HTML comments do not count. CI job `pr-description` enforces it (`scripts/check_pr_description.py`). If a description runs over, shorten it with `gh pr edit --body-file`.
+- **A merge to `main` deploys.** The `deploy` job in `.github/workflows/ci.yml` pushes the web app and the worker to Railway once the other jobs pass (`README.md`, "Deployment"). It does not apply schema changes.
 - **Checks live in `scripts/`.** `scripts/lint.sh` and `scripts/test.sh` run locally and in CI; `scripts/validate-schema.sh` applies `db/schema.sql` to an empty Postgres (CI only, needs `DATABASE_URL`). When adding a check, add it to `.github/workflows/ci.yml` and to the required checks on `main`.
 
 ## Conventions
