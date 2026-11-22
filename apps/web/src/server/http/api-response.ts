@@ -29,21 +29,14 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 export const isPipelineRunId = (text: string) => UUID_PATTERN.test(text);
 
 // TODO blucato
-export function llmsTxtFileResponse(
-  request: Request,
-  file: { versionNumber: number; llmsTxtContent: string; llmsTxtContentHash: string },
-): Response {
-  const etag = `"${file.llmsTxtContentHash}"`;
-  const headers = {
-    etag,
-    'cache-control': 'no-cache',
-    'x-llms-txt-version': String(file.versionNumber),
-    'x-content-type-options': 'nosniff',
-  };
-  const presented = (request.headers.get('if-none-match') ?? '').split(',').map((tag) => tag.trim().replace(/^W\//, ''));
-  if (presented.includes(etag) || presented.includes('*')) return new Response(null, { status: 304, headers });
+export function llmsTxtFileResponse(file: { versionNumber: number; llmsTxtContent: string }): Response {
   return new Response(file.llmsTxtContent, {
     status: 200,
-    headers: { ...headers, 'content-type': 'text/plain; charset=utf-8' },
+    headers: {
+      'cache-control': 'no-store',
+      'content-type': 'text/plain; charset=utf-8',
+      'x-llms-txt-version': String(file.versionNumber),
+      'x-content-type-options': 'nosniff',
+    },
   });
 }

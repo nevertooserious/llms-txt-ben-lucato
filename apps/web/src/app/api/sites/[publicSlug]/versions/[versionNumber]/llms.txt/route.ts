@@ -6,7 +6,7 @@ import { webServices } from '@/server/composition/web-services';
 
 // One version's file, as text/plain.
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ publicSlug: string; versionNumber: string }> },
 ): Promise<Response> {
   const services = webServices();
@@ -17,7 +17,7 @@ export async function GET(
     const versionNumber = parseVersionNumber(requestedVersion);
     const file = versionNumber === null ? null : await loadLlmsTxtVersionFile(services.databasePool, siteId, versionNumber);
     if (file === null) return apiError(404, 'version_not_found', 'There is no such version.');
-    return llmsTxtFileResponse(request, file);
+    return llmsTxtFileResponse(file);
   } catch (error) {
     services.logger.error('loading a version file failed', { error });
     return apiError(500, 'internal_error', 'The file could not be loaded.');
