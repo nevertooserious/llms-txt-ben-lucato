@@ -143,6 +143,9 @@ export class WebAppStack {
   }
 }
 
+/** How long dropping a test database waits for its connections to close by themselves. */
+const DROP_DATABASE_WAIT_MS = 10_000;
+
 /** A new database with db/schema.sql applied, for a test whose queue must not be shared. */
 export async function createE2eDatabase(
   serverDatabaseUrl: string,
@@ -162,6 +165,18 @@ export async function createE2eDatabase(
   return {
     databaseUrl: databaseUrl.toString(),
     dropDatabase: async () => {
+      // A pool or queue that was just stopped can still be closing its connections. One
+      // that `force` ends reports it as an error nothing is listening for any more, which
+      // fails the test run as an uncaught exception, so they get a moment to finish.
+      const deadline = Date.now() + DROP_DATABASE_WAIT_MS;
+      for (;;) {
+        const connections = await serverPool.query<{ open: number }>(
+          'select count(*)::int as open from pg_stat_activity where datname = $1',
+          [databaseName],
+        );
+        if (connections.rows[0]!.open === 0 || Date.now() > deadline) break;
+        await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+      }
       // `with (force)` closes connections the web app may still hold.
       await serverPool.query(`drop database if exists ${databaseName} with (force)`);
       await serverPool.end();
