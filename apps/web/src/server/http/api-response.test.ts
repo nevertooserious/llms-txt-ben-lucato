@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { apiError, isPipelineRunId, llmsTxtFileResponse } from './api-response';
 
-const file = { versionNumber: 3, llmsTxtContent: '# Site\n', llmsTxtContentHash: 'abc' };
-const requestWith = (ifNoneMatch?: string) =>
-  new Request('http://app.test/llms.txt', { headers: ifNoneMatch ? { 'if-none-match': ifNoneMatch } : {} });
+const file = { versionNumber: 3, llmsTxtContent: '# Site\n' };
 
 describe('apiError', () => {
   it('carries a message, a stable code and the status', async () => {
@@ -14,24 +12,13 @@ describe('apiError', () => {
 });
 
 describe('llmsTxtFileResponse', () => {
-  it('serves the file as plain text with its hash as the ETag', async () => {
-    const response = llmsTxtFileResponse(requestWith(), file);
+  it('serves the file as plain text', async () => {
+    const response = llmsTxtFileResponse(file);
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('text/plain; charset=utf-8');
     expect(response.headers.get('x-content-type-options')).toBe('nosniff');
-    expect(response.headers.get('etag')).toBe('"abc"');
     expect(response.headers.get('x-llms-txt-version')).toBe('3');
     expect(await response.text()).toBe('# Site\n');
-  });
-
-  it.each(['"abc"', 'W/"abc"', '"other", "abc"', '*'])('answers 304 to If-None-Match: %s', async (tag) => {
-    const response = llmsTxtFileResponse(requestWith(tag), file);
-    expect(response.status).toBe(304);
-    expect(await response.text()).toBe('');
-  });
-
-  it('sends the file when the ETag differs', () => {
-    expect(llmsTxtFileResponse(requestWith('"other"'), file).status).toBe(200);
   });
 });
 

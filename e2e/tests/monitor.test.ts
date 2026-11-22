@@ -321,8 +321,7 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
 
   it('reports each run and serves the file it published', async () => {
     const runParams = (pipelineRunId: string) => ({ params: Promise.resolve({ publicSlug, pipelineRunId }) });
-    const fileRequest = (etag?: string) =>
-      new Request('http://app.test/llms.txt', { headers: etag ? { 'if-none-match': etag } : {} });
+    const fileRequest = () => new Request('http://app.test/llms.txt');
     const runs = await databasePool.query<{ id: string; status: string; version_number: number | null }>(
       `select runs.id, runs.status, versions.version_number
          from pipeline_runs runs
@@ -348,10 +347,8 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
     const versionFile = await versionFileRoute(fileRequest(), versionParams);
     expect(versionFile.status).toBe(200);
     expect(versionFile.headers.get('content-type')).toContain('text/plain');
-    const etag = versionFile.headers.get('etag')!;
     const versionText = await versionFile.text();
     expect(versionText).toContain('# Acme');
-    expect((await versionFileRoute(fileRequest(etag), versionParams)).status).toBe(304);
     const runFile = await runFileRoute(fileRequest(), runParams(published.id));
     expect(await runFile.text()).toBe(versionText);
 
