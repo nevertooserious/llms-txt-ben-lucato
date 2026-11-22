@@ -52,7 +52,16 @@ export function parseSiteSummary(responseText: string): GeneratedSiteSummary {
     seen.add(comparable);
     notes.push(note);
   }
-  return { summary, notes: notes.slice(0, MAXIMUM_SITE_NOTES) };
+  return { summary, notes: notes.slice(0, MAXIMUM_SITE_NOTES), siteName: parseSiteName(parsed.site_name) };
+}
+
+/** A name longer than this is a tagline or a sentence. */
+const MAXIMUM_SITE_NAME_LENGTH = 60;
+
+/** The name as one line of plain text, or null: a missing or unusable name does not spoil the summary. */
+function parseSiteName(value: unknown): string | null {
+  const siteName = cleanGeneratedLine(value);
+  return siteName === '' || siteName.length > MAXIMUM_SITE_NAME_LENGTH ? null : siteName;
 }
 
 function parseJsonObject(responseText: string): Record<string, unknown> {

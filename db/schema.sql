@@ -74,6 +74,11 @@ create table sites (
   -- the summary and cached on the same hash. Empty for most sites: a note is only for
   -- something an assistant would get wrong from the links alone.
   generated_notes                  text[] not null default '{}',
+  -- Generator: the site's name, from the same LLM call and cached on the same hash. It is
+  -- the file's H1 when present; site_title, worked out from page titles, is the fallback
+  -- and is still what is taken off the end of entry titles. Null until that call has run,
+  -- or when its answer was not found anywhere on the homepage.
+  generated_site_name              text,
 
   -- Monitor state. A fixed interval; users can also trigger a check by hand.
   monitor_check_interval           interval not null default interval '7 days',

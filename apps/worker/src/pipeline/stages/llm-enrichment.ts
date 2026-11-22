@@ -6,6 +6,7 @@ import {
   pageAssessmentInputOf,
   pageAssessmentSourceHash,
   pagesToAssess,
+  siteNameIfOnSite,
   siteSummarySourceHash,
   type GeneratedSiteSummary,
   type LlmClient,
@@ -28,6 +29,8 @@ export interface LlmEnrichmentResult {
   pages: GeneratorPage[];
   siteSummary: string | null;
   siteNotes: string[];
+  /** The site's name from the summary call; null means use the one from page titles. */
+  siteName: string | null;
 }
 
 /**
@@ -76,15 +79,19 @@ export async function enrichPagesWithLlm(request: LlmEnrichmentRequest): Promise
   });
 
   const sourceHash = siteSummarySourceHash(siteTitle, merged);
-  const previous = { siteSummary: site.generatedSummary, siteNotes: site.generatedNotes };
+  const previous = { siteSummary: site.generatedSummary, siteNotes: site.generatedNotes, siteName: site.generatedSiteName };
   if (site.generatedSummary !== null && site.generatedSummarySourceHash === sourceHash) {
     return { pages: merged, ...previous };
   }
+  const summaryInput = buildSiteSummaryInput(siteTitle, merged, {
+    summary: site.generatedSummary,
+    notes: site.generatedNotes,
+    siteName: site.generatedSiteName,
+  });
   let written: GeneratedSiteSummary;
   try {
-    written = await llmClient.writeSiteSummary(
-      buildSiteSummaryInput(siteTitle, merged, { summary: site.generatedSummary, notes: site.generatedNotes }),
-    );
+    // One call writes the name, the summary and the notes.
+    written = await llmClient.writeSiteSummary(summaryInput);
   } catch (error) {
     if (error instanceof LlmOutputRejectedError || site.generatedSummary !== null) {
       logger.warn('site summary not updated', { error });
@@ -93,6 +100,10 @@ export async function enrichPagesWithLlm(request: LlmEnrichmentRequest): Promise
     logger.warn('site summary failed', { error });
     throw new PipelineRunFailure('The LLM could not be reached to write the site summary; the published file was left alone.');
   }
-  await saveGeneratedSummary(databasePool, site.id, { text: written.summary, notes: written.notes, sourceHash });
-  return { pages: merged, siteSummary: written.summary, siteNotes: written.notes };
+  const siteName = siteNameIfOnSite(written.siteName, summaryInput);
+  if (written.siteName !== null && siteName === null) {
+    logger.warn('site name not used: it is nowhere on the homepage', { siteName: written.siteName });
+  }
+  await saveGeneratedSummary(databasePool, site.id, { text: written.summary, notes: written.notes, siteName, sourceHash });
+  return { pages: merged, siteSummary: written.summary, siteNotes: written.notes, siteName };
 }

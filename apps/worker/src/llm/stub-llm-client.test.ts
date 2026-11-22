@@ -26,12 +26,14 @@ describe('createStubLlmClient', () => {
   it('uses the homepage description as the summary, with no notes', async () => {
     const summary = await createStubLlmClient().writeSiteSummary({
       siteTitle: 'Acme',
+      host: 'acme.example',
       homepageDescription: 'Acme makes things.',
       homepageContentMarkdown: '',
       listedPages: [],
       previousSummary: null,
+      previousSiteName: null,
       previousNotes: [],
     });
-    expect(summary).toEqual({ summary: 'Acme makes things.', notes: [] });
+    expect(summary).toEqual({ summary: 'Acme makes things.', notes: [], siteName: null });
   });
 });

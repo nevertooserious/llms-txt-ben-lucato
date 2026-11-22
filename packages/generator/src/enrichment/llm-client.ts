@@ -29,13 +29,17 @@ export interface PageAssessmentInput {
 }
 
 export interface SiteSummaryInput {
+  /** The name worked out from page titles, which may be a tagline or the publisher. */
   siteTitle: string;
+  /** The site's host, which often holds its name. */
+  host: string;
   homepageDescription: string | null;
   homepageContentMarkdown: string;
   listedPages: Array<{ title: string; description: string | null; sectionName: string }>;
   /** Kept unless it is now wrong, so a real change gives a small diff. */
   previousSummary: string | null;
   previousNotes: string[];
+  previousSiteName: string | null;
 }
 
 /** What the LLM writes for the top of the file. */
@@ -43,6 +47,8 @@ export interface GeneratedSiteSummary {
   summary: string;
   /** One line each, under the summary. Empty for most sites. */
   notes: string[];
+  /** What the site is called, for the file's H1. Null when the model gave nothing usable. */
+  siteName: string | null;
 }
 
 /** The LLM calls the generator needs. Throws LlmOutputRejectedError for an unusable answer. */

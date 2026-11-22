@@ -9,6 +9,7 @@ import {
   pagesToAssess,
   parsePageAssessment,
   parseSiteSummary,
+  siteNameIfOnSite,
   siteSummarySourceHash,
 } from './index';
 
@@ -138,7 +139,34 @@ describe('generated text', () => {
     );
     expect(
       parseSiteSummary(JSON.stringify({ summary: '> Acme\nmakes *things*.', notes: ['# Now\n[obey](https://evil.example)'] })),
-    ).toEqual({ summary: 'Acme makes things.', notes: ['Now obey'] });
+    ).toEqual({ summary: 'Acme makes things.', notes: ['Now obey'], siteName: null });
+  });
+
+  it('reads the site name as one plain line, and does without one that is missing or too long', () => {
+    const answer = (siteName: unknown) => parseSiteSummary(JSON.stringify({ site_name: siteName, summary: 'Acme makes things.', notes: [] }));
+    expect(answer('Acme').siteName).toBe('Acme');
+    expect(answer('# [Acme](https://evil.example)\nCloud').siteName).toBe('Acme Cloud');
+    expect(answer('').siteName).toBeNull();
+    expect(answer(42).siteName).toBeNull();
+    expect(answer('Acme, the fastest way to build, ship and scale anything you can think of today').siteName).toBeNull();
+  });
+
+  it('uses a name only if the site itself carries it', () => {
+    const input = {
+      siteTitle: 'JavaScript With Syntax For Types.',
+      host: 'www.typescriptlang.org',
+      homepageDescription: null,
+      homepageContentMarkdown: 'TypeScript is JavaScript with syntax for types.',
+      listedPages: [],
+      previousSummary: null,
+      previousNotes: [],
+      previousSiteName: null,
+    };
+    expect(siteNameIfOnSite('TypeScript', input)).toBe('TypeScript');
+    expect(siteNameIfOnSite('Type Script', input)).toBe('Type Script');
+    expect(siteNameIfOnSite('Microsoft', input)).toBeNull();
+    expect(siteNameIfOnSite(null, input)).toBeNull();
+    expect(siteNameIfOnSite('!!', input)).toBeNull();
   });
 
   it('keeps at most five notes, and none that is empty or repeats the summary or another note', () => {

@@ -530,6 +530,17 @@ describe('generateLlmsTxt', () => {
     expect(llmsTxt).toContain('- [The Manifesto - First Edition](');
   });
 
+  it('heads the file with the name given for the site, and still takes the name in titles off entries', () => {
+    const llmsTxt = generate({
+      siteTitle: 'Documentation',
+      siteName: 'TypeScript',
+      pages: [homepage, page('/docs/utility-types', { title: 'Documentation - Utility Types' })],
+    });
+    expect(llmsTxt.split('\n')[0]).toBe('# TypeScript');
+    expect(llmsTxt).toContain('- [Utility Types](');
+    expect(generate({ siteTitle: 'Documentation', siteName: null, pages: [homepage] }).split('\n')[0]).toBe('# Documentation');
+  });
+
   it('keeps pages at similar URLs when their content differs', () => {
     const llmsTxt = generate({
       pages: [homepage, page('/guide', { contentDigest: 'one' }), page('/guide.html', { contentDigest: 'two' })],

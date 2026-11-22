@@ -28,7 +28,7 @@ export async function generateStage(
   if (crawled.siteTitle !== null && siteTitle !== crawled.siteTitle) {
     await saveSiteTitle(databasePool, site.id, siteTitle);
   }
-  const { pages, siteSummary, siteNotes } = await enrichPagesWithLlm({
+  const { pages, siteSummary, siteNotes, siteName } = await enrichPagesWithLlm({
     databasePool,
     logger,
     llmClient: dependencies.llmClient,
@@ -39,6 +39,7 @@ export async function generateStage(
 
   return {
     siteTitle,
+    siteName,
     siteSummary,
     siteNotes,
     machineReadableResourceUrls: crawled.crawl.machineReadableResourceUrls ?? site.machineReadableResourceUrls,
