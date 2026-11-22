@@ -42,6 +42,7 @@ function page(path: string, options: { digest?: string; title?: string; isInSite
       firstLinkPosition: null,
     },
     markdownVariantUrl: null,
+    outboundLinkUrls: [],
   };
 }
 

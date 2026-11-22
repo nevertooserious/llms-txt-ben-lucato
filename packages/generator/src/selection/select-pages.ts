@@ -3,6 +3,7 @@ import { pagesCoveredByBroaderPage } from './broader-pages';
 import { listingCandidates } from './listing-candidates';
 import { homepageOf } from './page-kinds';
 import { withoutReferenceFamilies } from './reference-families';
+import { pagesSampledFromListedIndex } from './sampled-pages';
 import { scorePage } from './score-page';
 import { areaSectionNamesOf, sectionNameOf } from './sections';
 import { canonicalKey, compareText } from './url-paths';
@@ -20,7 +21,8 @@ export interface SelectedPage {
  * limit on entries and no minimum score. Takes the listing candidates, minus pages not
  * assessed yet, pages the user excluded and pages the assessment judged not useful, minus
  * the rest of a folder most of whose pages are reference entries; keeps one page per
- * canonical URL; and drops narrow pages that a listed broader page stands for. The score
+ * canonical URL; and drops narrow pages that a listed broader page stands for, and pages
+ * that are a sample of the many a listed index page links. The score
  * only orders the entries of a section. Pages that score the same keep the order of the
  * site's navigation, then the order the crawl first saw links to them, then of their
  * URLs. An assessment's page type replaces the extractor's. A page the user keeps passes
@@ -40,7 +42,11 @@ export function selectPages(pages: readonly GeneratorPage[], overrides: readonly
   const candidates = keepOnePerCanonicalUrl(
     assessedCandidates.filter((page) => outsideReferenceFamilies.has(page) || isKept(page)),
   );
-  const coveredPages = new Set(pagesCoveredByBroaderPage(candidates).filter((page) => !isKept(page)));
+  const coveredPages = new Set(
+    [...pagesCoveredByBroaderPage(candidates), ...pagesSampledFromListedIndex(candidates, pages)].filter(
+      (page) => !isKept(page),
+    ),
+  );
   const listedPages = candidates.filter((page) => !coveredPages.has(page));
 
   const ranked = listedPages

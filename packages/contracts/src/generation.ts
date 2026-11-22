@@ -13,6 +13,8 @@ export interface GeneratorPage {
   fetchUrl: string;
   crawlSignals: CrawlSignals;
   markdownVariantUrl: string | null;
+  /** The pages of the site this page links, as normalised URLs (pages.outbound_link_urls). Empty until it is read. */
+  outboundLinkUrls: readonly string[];
 }
 
 /** The user's edit to one page. Applied as an input on every render. */

@@ -263,6 +263,7 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
     first_link_position: number | null;
     has_noindex_directive: boolean;
     markdown_variant_url: string | null;
+    outbound_link_urls: string[] | null;
     generated_description: string | null;
     assessed_page_type: AssessedPageType | null;
     listing_value: PageListingValue | null;
@@ -275,7 +276,7 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
             listing_fields_hash, crawl_depth, discovered_via, is_in_site_navigation,
             inbound_link_count, navigation_label, navigation_position, first_link_position,
             has_noindex_directive,
-            markdown_variant_url, generated_description, assessed_page_type, listing_value,
+            markdown_variant_url, outbound_link_urls, generated_description, assessed_page_type, listing_value,
             exclusion_reason, assessed_page_scope, assessment_source_hash
        from pages
       where site_id = $1 and removed_at is null and last_extracted_at is not null
@@ -320,5 +321,6 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
       firstLinkPosition: row.first_link_position,
     },
     markdownVariantUrl: row.markdown_variant_url,
+    outboundLinkUrls: row.outbound_link_urls ?? [],
   }));
 }

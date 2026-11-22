@@ -18,6 +18,8 @@ interface PageOptions {
   canonicalUrl?: string | null;
   languageCode?: string | null;
   markdownVariantUrl?: string | null;
+  /** Paths of the pages this page links. */
+  linksTo?: string[];
   fetchUrl?: string;
   contentDigest?: string;
   contentMarkdown?: string;
@@ -63,6 +65,7 @@ function page(path: string, options: PageOptions = {}): GeneratorPage {
       firstLinkPosition: options.firstLinkPosition ?? null,
     },
     markdownVariantUrl: options.markdownVariantUrl ?? null,
+    outboundLinkUrls: (options.linksTo ?? []).map((path) => `${ORIGIN}${path}`),
   };
 }
 
@@ -468,6 +471,45 @@ describe('generateLlmsTxt', () => {
       pages: [homepage, page('/licenses/gpl.html'), page('/licenses/gpl.dbk'), page('/licenses/fdl.xml'), page('/licenses/gpl.texi')],
     });
     expect(Object.values(sections(llmsTxt)).flat()).toEqual([`${ORIGIN}/licenses/gpl.html`]);
+  });
+
+  describe('a listed index page that links many more pages than were crawled', () => {
+    const packagePaths = Array.from({ length: 200 }, (_unused, index) => `/software/package-${index}`);
+    const softwareIndex = (options: PageOptions = {}) => page('/software', { title: 'Software', linksTo: packagePaths, ...options });
+
+    it('stands for the few that were crawled, which are a sample', () => {
+      // gnu.org: the crawl read a dozen of several hundred packages before its time limit.
+      const crawled = packagePaths.slice(0, 5).map((path) => page(path));
+      const llmsTxt = generate({ pages: [homepage, softwareIndex(), ...crawled, page('/about')] });
+      expect(Object.values(sections(llmsTxt)).flat().sort()).toEqual([`${ORIGIN}/about`, `${ORIGIN}/software`]);
+    });
+
+    it('keeps the pages when a fair share of what the index links was crawled', () => {
+      // An index of 200 essays of which the crawl read 20: curated, not sampled.
+      const crawled = packagePaths.slice(0, 20).map((path) => page(path));
+      const llmsTxt = generate({ pages: [homepage, softwareIndex(), ...crawled] });
+      expect(Object.values(sections(llmsTxt)).flat()).toHaveLength(21);
+    });
+
+    it('keeps a sampled page the navigation links, since the site chose it', () => {
+      const crawled = [page(packagePaths[0]!, { isInSiteNavigation: true }), ...packagePaths.slice(1, 5).map((path) => page(path))];
+      const llmsTxt = generate({ pages: [homepage, softwareIndex(), ...crawled] });
+      expect(Object.values(sections(llmsTxt)).flat().sort()).toEqual([`${ORIGIN}/software`, `${ORIGIN}/software/package-0`]);
+    });
+
+    it('keeps the pages when the index is not listed, as nothing would stand for them', () => {
+      const crawled = packagePaths.slice(0, 5).map((path) => page(path));
+      const unlistedIndex = softwareIndex({ assessment: null });
+      const llmsTxt = generate({ pages: [homepage, unlistedIndex, ...crawled] });
+      expect(Object.values(sections(llmsTxt)).flat()).toHaveLength(5);
+    });
+
+    it('does not count a list of forty links as a family, such as an essay that links its translations', () => {
+      const translations = Array.from({ length: 40 }, (_unused, index) => `/essays/essay.lang-${index}.html`);
+      const essay = page('/essays/essay.html', { title: 'Essay', linksTo: [...translations, '/essays/another.html'] });
+      const llmsTxt = generate({ pages: [homepage, essay, page('/essays/another.html')] });
+      expect(Object.values(sections(llmsTxt)).flat().sort()).toEqual([`${ORIGIN}/essays/another.html`, `${ORIGIN}/essays/essay.html`]);
+    });
   });
 
   it('keeps pages at similar URLs when their content differs', () => {
