@@ -1,0 +1,112 @@
+{
+  "site": "https://euvetted.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "EU Vetted is a directory of EU and privacy-first SaaS alternatives to US software; each listing shows ownership signal, hosting country, sub-processors, CLOUD Act exposure and factual compliance signals as independent signals",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "family",
+      "description": "Category pages listing EU/privacy-first SaaS tools by software type (password managers, VPN, CRM, web analytics, etc., 26 categories)",
+      "urls": [
+        "https://euvetted.com/category/password-managers",
+        "https://euvetted.com/category/crm",
+        "https://euvetted.com/category/web-analytics"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "page",
+      "description": "Alternatives to US tools: side-by-side comparisons of European alternatives with factual compliance signals",
+      "urls": [
+        "https://euvetted.com/alternatives"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "page",
+      "description": "Scoring methodology explaining how compliance signals and CLOUD Act exposure tiers are assigned",
+      "urls": [
+        "https://euvetted.com/how-we-score"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "resource",
+      "description": "llms-full.txt single-file full content dump for LLMs",
+      "urls": [
+        "https://euvetted.com/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "fact",
+      "description": "Ownership signal values: eu_owned, eu_hq_us_funded, eu_subsidiary_us_parent, us_owned, other; compliance signals (EU/adequacy hosting, EU ownership, CLOUD Act exposure, public DPA, sub-processor disclosure, E2E encryption, third-party certifications) are each marked verified / not / not-assessed",
+      "urls": []
+    },
+    {
+      "id": "k7",
+      "kind": "fact",
+      "description": "CLOUD Act exposure tiers: direct (US-incorporated), material (EU entity with US parent or US hyperscaler primary storage), minor (EU-hosted with one or two transient US sub-processors like Cloudflare CDN or Stripe, no data at rest), none (no US sub-processors of consequence)",
+      "urls": []
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "Funding transparency page: how the site is funded, what money cannot buy, and current affiliate partnerships",
+      "urls": [
+        "https://euvetted.com/transparency"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "Editorial standards: what is editorial vs paid and how conflicts of interest are handled",
+      "urls": [
+        "https://euvetted.com/editorial"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "fact",
+      "description": "Featured listings are paid placements, but compliance signals are independent of payment and never paid for",
+      "urls": []
+    },
+    {
+      "id": "k11",
+      "kind": "fact",
+      "description": "Hosting country is determined by data-center IP ASN, not corporate HQ; Cloudflare US in front of an EU SaaS counts as US exposure for plain HTTP; sub-processors are weighted heavily",
+      "urls": []
+    },
+    {
+      "id": "k12",
+      "kind": "fact",
+      "description": "A DPA must be publicly linked; DPAs only available on enterprise plans are marked not publicly available",
+      "urls": []
+    },
+    {
+      "id": "k13",
+      "kind": "fact",
+      "description": "Listings are re-verified quarterly and show a visible 'last verified' timestamp",
+      "urls": []
+    },
+    {
+      "id": "k14",
+      "kind": "fact",
+      "description": "Site is available in English (default, no prefix), German (/de/) and French (/fr/)",
+      "urls": []
+    },
+    {
+      "id": "k15",
+      "kind": "resource",
+      "description": "XML sitemap",
+      "urls": [
+        "https://euvetted.com/sitemap.xml"
+      ]
+    }
+  ]
+}

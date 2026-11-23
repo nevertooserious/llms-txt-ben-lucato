@@ -1,0 +1,131 @@
+{
+  "site": "https://www.idatam.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "iDatam is an infrastructure provider of bare-metal/dedicated servers (GPU, storage, colocation, gaming-optimized hardware) aimed at enterprises, gaming networks and AI researchers, avoiding the resource contention of shared/virtualized hosting",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "page",
+      "description": "All dedicated servers overview page listing the full range of dedicated hosting",
+      "urls": [
+        "https://www.idatam.com/dedicated-servers/"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "page",
+      "description": "GPU dedicated servers for AI, rendering and data processing",
+      "urls": [
+        "https://www.idatam.com/gpu-servers/"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "family",
+      "description": "Dedicated server product pages by workload or processor type (storage, AI/ML, Intel, AMD EPYC/Ryzen, database, media streaming, blockchain)",
+      "urls": [
+        "https://www.idatam.com/storage-dedicated-servers/",
+        "https://www.idatam.com/amd-dedicated-servers/",
+        "https://www.idatam.com/dedicated-ai-ml-servers/"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "family",
+      "description": "High-bandwidth dedicated server pages by port speed (1Gbps, 10Gbps, 20Gbps, 40Gbps, 100Gbps, unmetered)",
+      "urls": [
+        "https://www.idatam.com/10gbps-dedicated-servers/",
+        "https://www.idatam.com/100gbps-dedicated-servers/",
+        "https://www.idatam.com/unmetered-dedicated-servers/"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "family",
+      "description": "Game server hosting pages per game or use (Minecraft, Rust, Counter-Strike, game development & rendering)",
+      "urls": [
+        "https://www.idatam.com/game-servers/",
+        "https://www.idatam.com/game-servers/minecraft/",
+        "https://www.idatam.com/game-servers/rust/"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "Colocation services: high-density space for customers' own hardware",
+      "urls": [
+        "https://www.idatam.com/colocation/"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "Data center locations map and details of global points of presence",
+      "urls": [
+        "https://www.idatam.com/datacenter-location/"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "Global data centers overview of facilities",
+      "urls": [
+        "https://www.idatam.com/data-center/"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "page",
+      "description": "Network overview: global BGP network and routing details",
+      "urls": [
+        "https://www.idatam.com/network-overview/"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "page",
+      "description": "DDoS protection for dedicated servers and colocation",
+      "urls": [
+        "https://www.idatam.com/ddos-server-protection/"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "page",
+      "description": "Meet Me Room: carrier-neutral cross-connect facilities",
+      "urls": [
+        "https://www.idatam.com/meet-me-room/"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "page",
+      "description": "Server Finder tool to match hardware requirements to available dedicated inventory",
+      "urls": [
+        "https://www.idatam.com/server-finder/"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "page",
+      "description": "Contact support ticket portal on the billing site",
+      "urls": [
+        "https://billing.idatam.com/submitticket.php?step=2&deptid=6"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "family",
+      "description": "Content hubs: tutorials for dedicated server management and blog with news and hardware insights",
+      "urls": [
+        "https://www.idatam.com/tutorials/",
+        "https://www.idatam.com/blogs/"
+      ]
+    }
+  ]
+}

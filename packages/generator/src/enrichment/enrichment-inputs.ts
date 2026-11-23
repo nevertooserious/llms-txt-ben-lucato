@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { GeneratorPage } from '@llms-txt/contracts';
 import { entryTitle } from '../naming';
-import { homepageOf, listingCandidates, OPTIONAL_SECTION_NAME, selectPages } from '../selection';
+import { homepageOf, listingCandidates, OPTIONAL_SECTION_NAME, selectPages, type SelectedPage } from '../selection';
 import { PAGE_ASSESSMENT_MODEL, SITE_SUMMARY_MODEL, type PageAssessmentInput, type SiteSummaryInput } from './llm-client';
 import { PAGE_ASSESSMENT_PROMPT_VERSION, SITE_SUMMARY_PROMPT_VERSION } from './prompts';
 
@@ -43,7 +43,8 @@ export function pagesToAssess(pages: readonly GeneratorPage[]): GeneratorPage[] 
  */
 export function siteSummarySourceHash(siteTitle: string, pages: readonly GeneratorPage[]): string {
   const homepage = homepageOf(pages);
-  const navigationTitles = selectPages(pages, [])
+  const selected = selectPages(pages, []);
+  const navigationTitles = selected
     .filter((entry) => entry.page.crawlSignals.isInSiteNavigation)
     .map((entry) => entryTitle(entry.page, siteTitle))
     .sort();
@@ -54,7 +55,28 @@ export function siteSummarySourceHash(siteTitle: string, pages: readonly Generat
     homepage?.record.title ?? null,
     homepage?.record.description ?? null,
     navigationTitles,
+    // The notes state facts from these pages, so a changed price must reach the file.
+    factPagesOf(selected).map((page) => [page.record.normalisedUrl, page.record.contentDigest]),
   ]);
+}
+
+/** Most pages whose text the summary call reads besides the homepage's. */
+const MAXIMUM_FACT_PAGES = 4;
+const MAXIMUM_FACT_PAGE_CONTENT_LENGTH = 6_000;
+
+/**
+ * The listed pages a site's facts are on: its pricing page and its about page, then the
+ * highest-ranked navigation pages that are the entry point to an area. Few, to bound what
+ * the call costs, and of the navigation so that a new page elsewhere leaves the summary alone.
+ */
+function factPagesOf(selected: readonly SelectedPage[]): GeneratorPage[] {
+  const listed = selected.filter((entry) => entry.sectionName !== OPTIONAL_SECTION_NAME).map((entry) => entry.page);
+  const ofType = (pageType: string) => listed.find((page) => page.assessment?.pageType === pageType);
+  const named = [ofType('pricing'), ofType('about')].filter((page) => page !== undefined);
+  const broad = listed.filter(
+    (page) => page.assessment?.scope === 'broad' && page.crawlSignals.isInSiteNavigation && !named.includes(page),
+  );
+  return [...named, ...broad].slice(0, MAXIMUM_FACT_PAGES);
 }
 
 export function buildSiteSummaryInput(
@@ -63,18 +85,23 @@ export function buildSiteSummaryInput(
   previous: { summary: string | null; notes: string[]; siteName: string | null },
 ): SiteSummaryInput {
   const homepage = homepageOf(pages);
+  const selected = selectPages(pages, []);
   return {
     siteTitle,
     host: homepage === undefined ? '' : new URL(homepage.record.normalisedUrl).host,
     homepageDescription: homepage?.record.description ?? null,
     homepageContentMarkdown: homepage?.record.contentMarkdown ?? '',
-    listedPages: selectPages(pages, [])
+    listedPages: selected
       .filter((entry) => entry.sectionName !== OPTIONAL_SECTION_NAME)
       .map((entry) => ({
         title: entryTitle(entry.page, siteTitle),
         description: entry.page.assessment?.description || null,
         sectionName: entry.sectionName,
       })),
+    factPages: factPagesOf(selected).map((page) => ({
+      title: entryTitle(page, siteTitle),
+      contentMarkdown: page.record.contentMarkdown.slice(0, MAXIMUM_FACT_PAGE_CONTENT_LENGTH),
+    })),
     previousSummary: previous.summary,
     previousNotes: previous.notes,
     previousSiteName: previous.siteName,

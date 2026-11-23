@@ -1,0 +1,127 @@
+{
+  "site": "https://ai-sdk.dev",
+  "referenceWasDigested": true,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "AI SDK is a TypeScript toolkit for building AI applications and agents, aimed at JavaScript and TypeScript developers; common uses are generating text and structured data, building agents and chat interfaces, and integrating language model providers.",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "resource",
+      "description": "llms.txt documentation index listing all AI SDK docs pages",
+      "urls": [
+        "https://ai-sdk.dev/llms.txt"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "resource",
+      "description": "sitemap.md: a semantic overview of all documentation",
+      "urls": [
+        "https://ai-sdk.dev/sitemap.md"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "resource",
+      "description": "agents.md: agent-facing discovery file describing the API and MCP surfaces",
+      "urls": [
+        "https://ai-sdk.dev/agents.md"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "AI SDK Core overview, covering the core functions generateText and streamText, structured data and tool usage",
+      "urls": [
+        "https://ai-sdk.dev/docs/ai-sdk-core/overview"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "AI SDK UI overview, covering framework-agnostic hooks (useChat, useCompletion, useObject) and framework support",
+      "urls": [
+        "https://ai-sdk.dev/docs/ai-sdk-ui/overview"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "Agents overview, covering the ToolLoopAgent and HarnessAgent classes, workflows and agent frameworks",
+      "urls": [
+        "https://ai-sdk.dev/docs/agents/overview"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "AI SDK Core API reference",
+      "urls": [
+        "https://ai-sdk.dev/docs/reference/ai-sdk-core"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "Tools and tool calling guide, covering multi-step calls with stopWhen, tool approval, dynamic tools and tool call repair",
+      "urls": [
+        "https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "page",
+      "description": "MCP tools guide, covering MCP client initialization, HTTP/SSE/stdio transports, OAuth, resources, prompts and elicitation",
+      "urls": [
+        "https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "page",
+      "description": "AI SDK RSC overview: React Server Components API (streamUI, createAI, useUIState, useAIState); there is a separate guide for migrating from RSC to AI SDK UI",
+      "urls": [
+        "https://ai-sdk.dev/docs/ai-sdk-rsc/overview",
+        "https://ai-sdk.dev/docs/ai-sdk-rsc/migrating-to-ui"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "family",
+      "description": "Provider pages for individual model providers (OpenAI, Anthropic, Google, xAI, AI Gateway, etc.) plus OpenAI-compatible and community providers",
+      "urls": [
+        "https://ai-sdk.dev/providers/ai-sdk-providers",
+        "https://ai-sdk.dev/providers/ai-sdk-providers/openai",
+        "https://ai-sdk.dev/providers/ai-sdk-providers/anthropic",
+        "https://ai-sdk.dev/providers/ai-sdk-providers/ai-gateway"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "family",
+      "description": "Advanced topic guides (backpressure, caching, stopping streams, Vercel deployment, rate limiting, secure URL fetching, model as router)",
+      "urls": [
+        "https://ai-sdk.dev/docs/advanced",
+        "https://ai-sdk.dev/docs/advanced/caching",
+        "https://ai-sdk.dev/docs/advanced/backpressure",
+        "https://ai-sdk.dev/docs/advanced/vercel-deployment-guide"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "fact",
+      "description": "Vercel AI Gateway is the default global provider, so models can be selected by string (e.g. \"anthropic/...\"); AI SDK UI supports React, Svelte, Vue.js, Angular and SolidJS (community).",
+      "urls": []
+    },
+    {
+      "id": "k15",
+      "kind": "fact",
+      "description": "On Vercel, request cancellation is supported only in the Node.js runtime and must be enabled per function with supportsCancellation in vercel.json; without it, stop() closes the client stream but does not cancel the function or model request.",
+      "urls": []
+    }
+  ]
+}

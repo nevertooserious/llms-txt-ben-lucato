@@ -18,6 +18,11 @@
       "ignore": [
         "fixture-sites/**/*.js"
       ]
+    },
+    "apps/worker": {
+      "entry": [
+        "src/render-stored-sites.ts"
+      ]
     }
   }
 }

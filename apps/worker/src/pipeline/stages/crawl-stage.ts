@@ -54,6 +54,7 @@ export async function crawlStage(
   const crawl = await dependencies.crawl({
     rootUrl: site.rootUrl,
     pageBudget: settings.crawlPageBudget,
+    readsExistingLlmsTxt: settings.readsExistingLlmsTxt,
     requiresHeadlessRendering: site.requiresHeadlessRendering,
     knownPages: [...storedPages.values()].map(knownPageFrom),
     sitemapLastModifiedIsTrusted: site.sitemapLastModifiedIsTrusted,
@@ -179,6 +180,7 @@ function knownPageFrom(stored: StoredPage): KnownPage {
     fetchUrl: stored.fetchUrl,
     crawlDepth: stored.crawlDepth,
     discoveredVia: stored.discoveredVia,
+    languageCode: stored.languageCode,
     httpEtag: stored.httpEtag,
     httpLastModified: stored.httpLastModified,
     sitemapLastModifiedAt: stored.sitemapLastModifiedAt,

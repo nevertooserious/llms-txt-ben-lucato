@@ -1,0 +1,120 @@
+{
+  "site": "https://electronics.semaf.at",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Semaf Electronics is an electronics retailer in Vienna (shop at Alserbachstraße 10, 1090 Wien) with about 2,000 products (Raspberry Pi, ESP32, Arduino, sensors, components, soldering). It ships to Austria and Germany and offers in-store pickup. Customers are makers, schools, developers and industry.",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "resource",
+      "description": "Read-only MCP server (JSON-RPC 2.0 over POST, no auth) with tools search_products, get_product, list_categories, get_category; recommended cheapest way to find products",
+      "urls": [
+        "https://electronics.semaf.at/mcp"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "fact",
+      "description": "Any page (product, category, manufacturer, guide) is available as clean Markdown by appending .md to the canonical URL, and as structured data (price, availability, Schema.org) by appending .json",
+      "urls": []
+    },
+    {
+      "id": "k4",
+      "kind": "resource",
+      "description": "Compact catalog JSON (~1.4 MB) with sku, name, short description, brand, price, availability, delivery time, category, image",
+      "urls": [
+        "https://electronics.semaf.at/llms-catalog-mini.json"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "resource",
+      "description": "Full catalog JSON (~5.5 MB) including specifications, images and reviews for all products",
+      "urls": [
+        "https://electronics.semaf.at/llms-catalog.json"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "resource",
+      "description": "Product feed in JSON Lines, one product per line, paginated via /feed-2.jsonl etc.",
+      "urls": [
+        "https://electronics.semaf.at/feed.jsonl"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "resource",
+      "description": "llms-full.txt with all product texts in one file",
+      "urls": [
+        "https://electronics.semaf.at/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "fact",
+      "description": "Shipping: Austria from €6.00 (GLS up to 1 kg) or €9.00 (up to 31.5 kg), free shipping over €99 with GLS Austria, 1–3 business days; Germany from €10.00 (2–5 days); other EU €13–157; UK/Switzerland/Liechtenstein/Serbia/Montenegro via UPS from €25; self-pickup in Vienna",
+      "urls": []
+    },
+    {
+      "id": "k9",
+      "kind": "fact",
+      "description": "Prices are gross prices in EUR including VAT, plus shipping; availability values in_stock, out_of_stock, on_demand (orderable but procured, much longer delivery time—always mention it)",
+      "urls": []
+    },
+    {
+      "id": "k10",
+      "kind": "fact",
+      "description": "Payment options: prepayment by bank transfer, Stripe (Mastercard/VISA, Apple Pay, Google Pay, Link, iDEAL, Przelewy24), cash or Bankomat in store, invoice for approved business customers, e-invoice for federal agencies",
+      "urls": []
+    },
+    {
+      "id": "k11",
+      "kind": "fact",
+      "description": "14-day right of withdrawal from receipt of goods; custom-made items and unsealed software excluded",
+      "urls": [
+        "https://electronics.semaf.at/Widerrufsrecht"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "fact",
+      "description": "Contact: phone +43 1 22 677 22, WhatsApp +436802300079; operator Fatih Orhan, VAT ID ATU62413837",
+      "urls": [
+        "https://electronics.semaf.at/kontakt"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "page",
+      "description": "Shipping and payment information page",
+      "urls": [
+        "https://electronics.semaf.at/Versand-und-Zahlungsart"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "family",
+      "description": "Product category pages (Markdown) such as Raspberry Pi, ESP32, Arduino, sensors, soldering, components, cables etc.",
+      "urls": [
+        "https://electronics.semaf.at/raspberry-pi-computers.md",
+        "https://electronics.semaf.at/Espressif-ESP32.md",
+        "https://electronics.semaf.at/sensoren-module.md"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "family",
+      "description": "Manufacturer/brand pages (Markdown) such as Waveshare, Adafruit, Raspberry Pi, Pimoroni, Sparkfun",
+      "urls": [
+        "https://electronics.semaf.at/Waveshare.md",
+        "https://electronics.semaf.at/Adafruit.md",
+        "https://electronics.semaf.at/raspberry-pi.md"
+      ]
+    }
+  ]
+}

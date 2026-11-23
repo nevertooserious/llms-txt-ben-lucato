@@ -1,0 +1,131 @@
+{
+  "site": "https://athenahq.ai",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "AthenaHQ is a generative engine optimization (GEO/AEO) platform that helps brands monitor, measure, and improve their visibility in AI search engines such as ChatGPT, Google AI Overviews & Gemini, Perplexity, and Claude",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "The platform combines AI search monitoring/citation tracking, share-of-voice analytics, AI query volume estimation (Query Volume Estimation Model, QVEM), autonomous content agents (Athena Citation Engine, ACE), and revenue attribution",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "fact",
+      "description": "Plans span self-serve, growth, agency, and enterprise tiers, with credit-based usage for monitoring",
+      "urls": []
+    },
+    {
+      "id": "k4",
+      "kind": "fact",
+      "description": "Built by a team with backgrounds at Google Search and DeepMind",
+      "urls": []
+    },
+    {
+      "id": "k5",
+      "kind": "resource",
+      "description": "llms-full.txt with the full text of key pages and articles",
+      "urls": [
+        "https://athenahq.ai/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Platform page: monitoring, citation tracking, prompt/demand intelligence, content agents",
+      "urls": [
+        "https://athenahq.ai/platform/"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "Plans / pricing page",
+      "urls": [
+        "https://athenahq.ai/plans/"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "Self-serve pricing page",
+      "urls": [
+        "https://athenahq.ai/self-serve-pricing/"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "Credit calculator for estimating monitoring credit usage",
+      "urls": [
+        "https://athenahq.ai/credit-calculator/"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "page",
+      "description": "Enterprise offering page (security, scale, support)",
+      "urls": [
+        "https://athenahq.ai/enterprise/"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "page",
+      "description": "Agency offering page and free AI visibility report",
+      "urls": [
+        "https://athenahq.ai/agency/",
+        "https://athenahq.ai/report/"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "family",
+      "description": "Comparison pages: AthenaHQ vs competitors (Profound, Peec AI, Scrunch, Ahrefs, Semrush, Conductor, BrightEdge, etc.)",
+      "urls": [
+        "https://athenahq.ai/comparison/",
+        "https://athenahq.ai/comparison/profound/",
+        "https://athenahq.ai/comparison/peec/",
+        "https://athenahq.ai/comparison/semrush/"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "family",
+      "description": "Customer case studies (e.g., Rootly, AutoRFP, Gruns) with AI search results",
+      "urls": [
+        "https://athenahq.ai/case-studies/",
+        "https://athenahq.ai/case-studies/10x-citation-rate-rootly-geo-case-study/",
+        "https://athenahq.ai/case-studies/10x-chatgpt-traffic-autorfp-success-story/",
+        "https://athenahq.ai/case-studies/10-6pp-sov-gruns-ai-search-case-study/"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "family",
+      "description": "Industry solution pages (software, ecommerce, CPG, finance, healthcare, etc.)",
+      "urls": [
+        "https://athenahq.ai/industry/",
+        "https://athenahq.ai/industry/software/",
+        "https://athenahq.ai/industry/ecommerce/",
+        "https://athenahq.ai/industry/healthcare/"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "family",
+      "description": "Articles, guides and blog posts on GEO, AEO, and AI search (e.g., QVEM methodology, ACE announcement)",
+      "urls": [
+        "https://athenahq.ai/articles/",
+        "https://athenahq.ai/blog/",
+        "https://athenahq.ai/articles/generative-ai-search-query-volume-estimation-model/",
+        "https://athenahq.ai/blog/announcing-athena-citation-engine-ace/"
+      ]
+    }
+  ]
+}

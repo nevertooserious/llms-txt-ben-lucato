@@ -1,0 +1,116 @@
+{
+  "site": "https://lmdec.co.uk",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "LMDEC LTD is a family-run residential building and renovation contractor based in South Croydon serving South and South West London (within ~30 minutes of the office); not an architect, estate agent or supplier, and does not work outside this area",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "Business model: fixed-price contracts, one project manager per client with weekly meetings, in-house trades, maximum three concurrent projects; free site visit and written fixed-price quote within 48 hours",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "fact",
+      "description": "Gas and electrical work is done by individually qualified Gas Safe registered and NICEIC certified subcontractors; LMDEC itself does not hold these registrations",
+      "urls": []
+    },
+    {
+      "id": "k4",
+      "kind": "fact",
+      "description": "Company history: founder Lukasz Mazurek has ~two decades of trade experience, traded as sole trader from 2014, incorporated LMDEC LTD in 2018 (company no. 11635394); these dates are not contradictory",
+      "urls": []
+    },
+    {
+      "id": "k5",
+      "kind": "fact",
+      "description": "All published prices exclude VAT; typical ranges e.g. kitchen £15k–£80k+, bathroom £6k–£35k+, loft conversions rooflight £40k–£65k to mansard £90k+, single-storey extension £80k–£180k; professional fees separate and inner London 10–20% higher",
+      "urls": []
+    },
+    {
+      "id": "k6",
+      "kind": "fact",
+      "description": "Warranty and insurance: 2-year written workmanship warranty with 6-month return visit, 10-year waterproofing guarantee on wet rooms/tanked floors, £2m public liability insurance",
+      "urls": []
+    },
+    {
+      "id": "k7",
+      "kind": "fact",
+      "description": "Contact: Suite 173, Capital Business Centre, 22 Carlton Road, South Croydon CR2 0BS; phone 0204 577 2001 / 07472 883 901; info@lmdec.co.uk; open Mon–Fri 08:00–18:00, Sat 09:00–14:00",
+      "urls": []
+    },
+    {
+      "id": "k8",
+      "kind": "fact",
+      "description": "Reviews: 54 verified five-star reviews aggregated across Google, Trustindex, Trustpilot and Yell (not Google-only); Best of Houzz 2026 award",
+      "urls": []
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "Full pricing and service charges page — canonical tiered (Compact/Standard/Luxury) price list for all services, excluding VAT",
+      "urls": [
+        "https://lmdec.co.uk/services/lmdec-ltd-london-service-charges/"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "page",
+      "description": "Loft conversions hub with conversion types and canonical cost table by type",
+      "urls": [
+        "https://lmdec.co.uk/loft-conversions/"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "family",
+      "description": "Loft conversion area pages per borough/area with council-verified planning research (conservation areas, Article 4 directions)",
+      "urls": [
+        "https://lmdec.co.uk/loft-conversions/wandsworth/",
+        "https://lmdec.co.uk/loft-conversions/dulwich/",
+        "https://lmdec.co.uk/loft-conversions/croydon-cr0/"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "family",
+      "description": "Service pages (kitchens, bathrooms, extensions, refurbishment, electrical, plumbing, flooring, tanking, landlord maintenance)",
+      "urls": [
+        "https://lmdec.co.uk/services/",
+        "https://lmdec.co.uk/services/our-kitchen-projects/",
+        "https://lmdec.co.uk/services/home-extensions-loft-conversions-south-london/"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "page",
+      "description": "Prestige Client Portal page — free private project portal on every project with live Gantt schedule, document vault, one-click variation approvals; a key differentiator",
+      "urls": [
+        "https://lmdec.co.uk/client-portal/"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "family",
+      "description": "Area renovation pages for South London boroughs and towns served",
+      "urls": [
+        "https://lmdec.co.uk/renovation-near-me-south-london-expert-builders-lmdec-ltd/",
+        "https://lmdec.co.uk/renovations/renovations-wandsworth/",
+        "https://lmdec.co.uk/renovations/bromley/"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "resource",
+      "description": "llms-full.txt detailed reference file with expanded facts, pricing tables and FAQs",
+      "urls": [
+        "https://lmdec.co.uk/llms-full.txt"
+      ]
+    }
+  ]
+}

@@ -260,6 +260,14 @@ describe('generateLlmsTxt', () => {
     expect(generate({ pages: [homepage], siteSummary: 'A cached\nsummary.' })).toContain('> A cached summary.\n');
   });
 
+  it('keeps a summary of three sentences whole, and cuts only one far longer', () => {
+    const threeSentences = 'Example makes examples for people who need them. '.repeat(8).trim();
+    expect(generate({ pages: [homepage], siteSummary: threeSentences })).toContain(`> ${threeSentences}\n`);
+    const summaryLine = generate({ pages: [homepage], siteSummary: 'word '.repeat(400) }).split('\n')[2]!;
+    expect(summaryLine.length).toBeLessThanOrEqual(702);
+    expect(summaryLine.endsWith('…')).toBe(true);
+  });
+
   it('puts the notes between the summary and the first section, one line each', () => {
     const llmsTxt = generate({
       pages: [homepage, page('/docs', { pageType: 'docs' })],
@@ -675,6 +683,28 @@ describe('generateLlmsTxt', () => {
       ],
     });
     expect(Object.values(sections(llmsTxt)).flat()).toEqual([`${ORIGIN}/docs`]);
+  });
+
+  it('leaves out a page that is another page again under a locale directory, whatever language it declares', () => {
+    const llmsTxt = generate({
+      pages: [
+        page('/', { title: 'Example', languageCode: 'en' }),
+        page('/pricing', { title: 'Pricing', languageCode: 'en' }),
+        page('/jp/pricing', { title: '料金', languageCode: 'en' }),
+        page('/cat/pricing', { title: 'Preus', languageCode: null }),
+        // No page stands at /hub, so this is a section and not a copy.
+        page('/cat/hub', { title: 'Cat hub', languageCode: 'en' }),
+      ],
+    });
+    expect(Object.values(sections(llmsTxt)).flat()).toEqual([`${ORIGIN}/pricing`, `${ORIGIN}/cat/hub`]);
+  });
+
+  it('lets a broad page named as a file stand for the narrow pages in the directory of that name', () => {
+    const narrow: StoredPageAssessment = { description: 'A branch.', listingValue: 'primary', exclusionReason: null, scope: 'narrow', pageType: 'other', sourceHash: 'source' };
+    const llmsTxt = generate({
+      pages: [homepage, page('/branches.html', { title: 'Branches' }), page('/branches/rome.html', { title: 'Rome branch', assessment: narrow })],
+    });
+    expect(Object.values(sections(llmsTxt)).flat()).toEqual([`${ORIGIN}/branches.html`]);
   });
 
   it('escapes brackets in titles, encodes parentheses in URLs and keeps each entry on one line', () => {

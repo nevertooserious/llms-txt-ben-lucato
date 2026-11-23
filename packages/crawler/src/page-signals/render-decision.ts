@@ -19,6 +19,14 @@ const MIN_EXTRA_TEXT_CHARACTERS = 200;
 /** ...and at least this multiple of the plain text, to count as gaining content. */
 const MIN_TEXT_GROWTH_FACTOR = 1.5;
 /**
+ * A plain page with at least this much text is already a page to read. Scripts add much
+ * the same text to every page of such a site (a menu, a consent notice, a chat widget),
+ * which on a short page is more than half as much again...
+ */
+const SUBSTANTIAL_PLAIN_TEXT_CHARACTERS = 1000;
+/** ...so its text must grow by this multiple, as when only the navigation came from the server. */
+const MIN_TEXT_GROWTH_FACTOR_OF_SUBSTANTIAL_PAGE = 4;
+/**
  * Or this many pages of the site linked only after rendering, which catches menus and
  * link lists rendered by script...
  */
@@ -43,8 +51,9 @@ export function renderingAddsContent(
   isOnSite: (url: string) => boolean = () => true,
 ): boolean {
   const extraText = rendered.visibleTextLength - plain.visibleTextLength;
-  const textGrew =
-    extraText >= MIN_EXTRA_TEXT_CHARACTERS && rendered.visibleTextLength >= plain.visibleTextLength * MIN_TEXT_GROWTH_FACTOR;
+  const growthFactor =
+    plain.visibleTextLength >= SUBSTANTIAL_PLAIN_TEXT_CHARACTERS ? MIN_TEXT_GROWTH_FACTOR_OF_SUBSTANTIAL_PAGE : MIN_TEXT_GROWTH_FACTOR;
+  const textGrew = extraText >= MIN_EXTRA_TEXT_CHARACTERS && rendered.visibleTextLength >= plain.visibleTextLength * growthFactor;
 
   const plainPages = sitePagesLinkedBy(plain, isOnSite);
   const extraPages = [...sitePagesLinkedBy(rendered, isOnSite)].filter((url) => !plainPages.has(url)).length;

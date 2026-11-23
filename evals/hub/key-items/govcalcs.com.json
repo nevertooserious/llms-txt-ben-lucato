@@ -1,0 +1,124 @@
+{
+  "site": "https://govcalcs.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "GovCalcs is a free, no-signup site of calculators for US government money rules (taxes, pay, retirement, benefits); no login, no paywall, no personal data collected",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "Every figure is sourced to a public IRS, SSA, DOL, or Treasury release, and figures are for the 2026 tax year unless stated; the cited federal release is the source of truth",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "family",
+      "description": "Individual calculators for US tax, pay and benefit rules (paycheck take-home, income tax, salary conversion, hourly to salary, overtime, self-employment tax, 1099 tax, property tax, capital gains, child tax credit, RMD, Social Security)",
+      "urls": [
+        "https://govcalcs.com/paycheck-calculator",
+        "https://govcalcs.com/income-tax-calculator",
+        "https://govcalcs.com/capital-gains"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "page",
+      "description": "Paycheck calculator: take-home pay after federal tax, state tax, Social Security and Medicare by state and salary",
+      "urls": [
+        "https://govcalcs.com/paycheck-calculator"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Income tax calculator: 2026 federal and state income tax by income, state, and filing status",
+      "urls": [
+        "https://govcalcs.com/income-tax-calculator"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Retirement hub: RMDs, Social Security, and retirement-account rules",
+      "urls": [
+        "https://govcalcs.com/retirement"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "Work hub: paychecks, withholding, overtime, and self-employment tax",
+      "urls": [
+        "https://govcalcs.com/work"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "Benefits hub: federal benefit programs and eligibility figures",
+      "urls": [
+        "https://govcalcs.com/benefits"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "Passport hub: passport fees and processing",
+      "urls": [
+        "https://govcalcs.com/passport"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "page",
+      "description": "Guides: explanations of how the government money rules work, sourced to the agency",
+      "urls": [
+        "https://govcalcs.com/guides"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "page",
+      "description": "Glossary of plain-English definitions of government money terms",
+      "urls": [
+        "https://govcalcs.com/glossary"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "page",
+      "description": "Social Security calculator: benefit by claim age from 62 to 70",
+      "urls": [
+        "https://govcalcs.com/social-security"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "page",
+      "description": "RMD calculator: required minimum distribution using the IRS Uniform Lifetime Table",
+      "urls": [
+        "https://govcalcs.com/rmd"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "page",
+      "description": "Child tax credit calculator: CTC, refundable ACTC, and EITC by filing status, number of children, and income",
+      "urls": [
+        "https://govcalcs.com/child-tax-credit"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "page",
+      "description": "Self-employment tax calculator: 15.3% SE tax on net profit with the deductible half",
+      "urls": [
+        "https://govcalcs.com/self-employment-tax-calculator"
+      ]
+    }
+  ]
+}

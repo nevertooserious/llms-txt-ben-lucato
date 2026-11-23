@@ -1,0 +1,131 @@
+{
+  "site": "https://newtqnia.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "NewTqnia is an independent bilingual (English and Arabic) technology newsroom covering AI, cybersecurity, developer tools, science and global innovation.",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "Localized canonical article pages are the authoritative source; article dates are in UTC; users should cite NewTqnia and link to the canonical article.",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "page",
+      "description": "English newsroom homepage with latest English technology coverage",
+      "urls": [
+        "https://newtqnia.com/en"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "page",
+      "description": "Arabic newsroom homepage with latest Arabic technology coverage",
+      "urls": [
+        "https://newtqnia.com/ar"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "resource",
+      "description": "llms-full.txt expanded AI index with recent bilingual article summaries and machine-readable links",
+      "urls": [
+        "https://newtqnia.com/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "family",
+      "description": "News articles (English, markdown versions) on science, AI, cybersecurity, space, health and policy, under /en/news/",
+      "urls": [
+        "https://newtqnia.com/en/news/364-flexible-brainstem-electrodes-preserved-frequency-maps-for-136-days-in-rats.md",
+        "https://newtqnia.com/en/news/359-five-nginx-memory-flaws-open-different-paths-to-remote-code-execution.md",
+        "https://newtqnia.com/en/news/349-us-rule-extends-advanced-chip-controls-to-remote-compute-and-five-transit-hubs.md"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "resource",
+      "description": "MCP server (Streamable HTTP) for AI agents; readers authenticate with a personal API key for read-only single-locale summaries; editors use OAuth 2.1 with PKCE for full bilingual records and drafting",
+      "urls": [
+        "https://newtqnia.com/mcp"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "Developer API page: public read-only JSON news API at https://api.newtqnia.com/v1, no API key required in initial release",
+      "urls": [
+        "https://newtqnia.com/en/developers"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "resource",
+      "description": "OpenAPI specification for the Developer API",
+      "urls": [
+        "https://newtqnia.com/openapi.yaml"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "page",
+      "description": "Connect an AI assistant: how to link ChatGPT, Claude or other MCP clients using a personal API key",
+      "urls": [
+        "https://newtqnia.com/en/connect"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "resource",
+      "description": "RSS feeds of latest articles in English and Arabic",
+      "urls": [
+        "https://newtqnia.com/en/feed.xml",
+        "https://newtqnia.com/ar/feed.xml"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "resource",
+      "description": "XML sitemap of all public pages and Google News sitemap of articles from the last 48 hours",
+      "urls": [
+        "https://newtqnia.com/sitemap.xml",
+        "https://newtqnia.com/news-sitemap.xml"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "family",
+      "description": "Topic category pages (e.g. Artificial Intelligence, Space, Health, Robotics, Technology Policy) with Arabic names",
+      "urls": [
+        "https://newtqnia.com/en/categories/artificial-intelligence",
+        "https://newtqnia.com/en/categories/space",
+        "https://newtqnia.com/en/categories/technology-policy"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "page",
+      "description": "Reference sections: bilingual technology glossary, explainers, and dated story timelines",
+      "urls": [
+        "https://newtqnia.com/en/terminology",
+        "https://newtqnia.com/en/explainers",
+        "https://newtqnia.com/en/timelines"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "page",
+      "description": "About page (editorial purpose and coverage) and Contact page (corrections and editorial contact)",
+      "urls": [
+        "https://newtqnia.com/en/about",
+        "https://newtqnia.com/en/contact"
+      ]
+    }
+  ]
+}

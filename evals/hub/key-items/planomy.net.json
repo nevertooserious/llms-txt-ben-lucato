@@ -1,0 +1,128 @@
+{
+  "site": "https://planomy.net",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Planomy is a free, local-first US personal-finance and retirement planner whose browser tools model year-by-year cash flow, federal/state tax, Social Security, Medicare/IRMAA, RMDs, Roth conversions, Monte Carlo and historical returns, with no account required",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "Planomy is educational planning software, not financial, tax or investment advice",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "fact",
+      "description": "The core planner and all calculators are free; plan data stays on the user's device unless the user opts into an account and cloud sync (paid Plus tier exists)",
+      "urls": []
+    },
+    {
+      "id": "k4",
+      "kind": "page",
+      "description": "Retirement planner web app for building a detailed US retirement plan in the browser",
+      "urls": [
+        "https://planomy.net/app/"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Pricing page comparing Free and Plus features with monthly and annual prices",
+      "urls": [
+        "https://planomy.net/pricing"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Home/overview page explaining what the planner models and how local-first storage works",
+      "urls": [
+        "https://planomy.net/"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "family",
+      "description": "37 free, no-sign-up financial calculators (401(k) match, state 529 plans, RMD, Roth conversion, Social Security, IRMAA, take-home pay, etc.)",
+      "urls": [
+        "https://planomy.net/calculators/",
+        "https://planomy.net/calculators/rmd",
+        "https://planomy.net/calculators/roth-conversion",
+        "https://planomy.net/calculators/medicare-irmaa"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "family",
+      "description": "37 plain-English guides on retirement, tax and personal-finance questions (RMD rules, safe withdrawal rate, Social Security timing, backdoor Roth, etc.)",
+      "urls": [
+        "https://planomy.net/guides/",
+        "https://planomy.net/guides/safe-withdrawal-rate",
+        "https://planomy.net/guides/rmd-rules-and-deadlines",
+        "https://planomy.net/guides/when-to-take-social-security"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "family",
+      "description": "Comparison guides of Planomy versus competing planners (Boldin, Empower, ProjectionLab)",
+      "urls": [
+        "https://planomy.net/guides/planomy-vs-boldin",
+        "https://planomy.net/guides/planomy-vs-empower",
+        "https://planomy.net/guides/planomy-vs-projectionlab"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "page",
+      "description": "2026 retirement and tax data page with dated, source-attributed IRS, SSA and CMS figures",
+      "urls": [
+        "https://planomy.net/data/"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "resource",
+      "description": "Machine-readable 2026 US federal tax, contribution limit, Social Security, Medicare and RMD figures in JSON with source metadata",
+      "urls": [
+        "https://planomy.net/tax-data/2026.json"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "resource",
+      "description": "Manifest JSON listing available versioned tax-data years",
+      "urls": [
+        "https://planomy.net/tax-data/index.json"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "resource",
+      "description": "llms-full.txt containing the full text of all guides and calculators with canonical URLs",
+      "urls": [
+        "https://planomy.net/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "resource",
+      "description": "RSS feed of all published guides",
+      "urls": [
+        "https://planomy.net/feed.xml"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "page",
+      "description": "Privacy policy describing what is stored locally, what optional cloud sync changes, and third-party services",
+      "urls": [
+        "https://planomy.net/legal/privacy"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "site": "https://plym.io",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "plym is a zero-maintenance hosted blogging platform positioned as a WordPress alternative; it renders posts to static files, scores 100/100 PageSpeed, attaches to your site (e.g. yoursite.com/blog), and serves an AI-friendly version of every page for SEO and GEO (ranking in Google, citation in ChatGPT)",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "Pricing: plym Cloud is fully managed, from $49/month, four plans, 7-day free trial with no credit card required; the base plan includes five members and unlimited posts at a flat price",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "page",
+      "description": "Pricing page for plym Cloud plans",
+      "urls": [
+        "https://plym.io/pricing"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "page",
+      "description": "Homepage of plym",
+      "urls": [
+        "https://plym.io/"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "resource",
+      "description": "llms-full.txt containing every page of the site as Markdown",
+      "urls": [
+        "https://plym.io/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "resource",
+      "description": "Documentation llms.txt: full docs for setting up and running a plym blog",
+      "urls": [
+        "https://plym.io/docs/llms.txt"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "family",
+      "description": "Free SEO, GEO and Markdown web tools (e.g. llms.txt generator/validator, sitemap validator, SERP preview, UTM builder, HTML to Markdown), with a tools index page",
+      "urls": [
+        "https://plym.io/tools",
+        "https://plym.io/tools/llms-txt-validator",
+        "https://plym.io/tools/sitemap-validator",
+        "https://plym.io/tools/html-to-markdown"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "family",
+      "description": "Competitor comparison pages: plym vs WordPress, Medium, Framer CMS, DropInBlog, Ghost",
+      "urls": [
+        "https://plym.io/vs/wordpress",
+        "https://plym.io/vs/ghost",
+        "https://plym.io/vs/dropinblog"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "FAQ covering cost, speed, templates, domains, migrations and data ownership",
+      "urls": [
+        "https://plym.io/faq"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "page",
+      "description": "Templates gallery of production-ready blog designs switchable from the admin portal",
+      "urls": [
+        "https://plym.io/templates"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "page",
+      "description": "About page: the company, who builds plym and contact",
+      "urls": [
+        "https://plym.io/about"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "page",
+      "description": "Plain-language summary of what plym is",
+      "urls": [
+        "https://plym.io/plain"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "resource",
+      "description": "Blog llms.txt listing posts about plym and the AI-native web",
+      "urls": [
+        "https://plym.io/blog/llms.txt"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "page",
+      "description": "The Search Times: curated one-line SEO & GEO news updates",
+      "urls": [
+        "https://plym.io/buzz"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "resource",
+      "description": "Feed for The Search Times SEO/GEO updates",
+      "urls": [
+        "https://plym.io/buzz/feed.xml"
+      ]
+    }
+  ]
+}

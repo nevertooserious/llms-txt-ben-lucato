@@ -20,6 +20,11 @@ describe('readWorkerConfig', () => {
     expect(readWorkerConfig(environment)).toMatchObject({ pipelineRunConcurrency: 3, crawlPageBudget: 50 });
   });
 
+  it('reads a site’s own llms.txt unless told to ignore it', () => {
+    expect(readWorkerConfig({ DATABASE_URL, LLM_CLIENT: 'stub' }).readsExistingLlmsTxt).toBe(true);
+    expect(readWorkerConfig({ DATABASE_URL, LLM_CLIENT: 'stub', IGNORE_EXISTING_LLMS_TXT: 'true' }).readsExistingLlmsTxt).toBe(false);
+  });
+
   it('uses the stub only when asked, even with an API key', () => {
     expect(readWorkerConfig({ DATABASE_URL, LLM_CLIENT: 'stub', ANTHROPIC_API_KEY: 'key' }).llmClient).toEqual({ kind: 'stub' });
   });

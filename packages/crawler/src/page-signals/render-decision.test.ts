@@ -12,6 +12,7 @@ const signals = (overrides: Partial<PageSignals>): PageSignals => ({
   linkUrls: [],
   navigationLinks: [],
   metaRefreshUrl: null,
+  languageCode: null,
   visibleTextLength: 0,
   hasJavaScriptShellMarker: false,
   hasScripts: true,
@@ -22,6 +23,13 @@ const signals = (overrides: Partial<PageSignals>): PageSignals => ({
 const links = (count: number) => Array.from({ length: count }, (_unused, index) => `https://example.com/${index}`);
 
 describe('renderingAddsContent', () => {
+
+  it('does not count the text scripts add to every page of a site that is already there to read', () => {
+    // A menu or a consent notice doubles a short page and is still not its content.
+    expect(renderingAddsContent(signals({ visibleTextLength: 3100 }), signals({ visibleTextLength: 6400 }))).toBe(false);
+    expect(renderingAddsContent(signals({ visibleTextLength: 1200 }), signals({ visibleTextLength: 6000 }))).toBe(true);
+    expect(renderingAddsContent(signals({ visibleTextLength: 400 }), signals({ visibleTextLength: 700 }))).toBe(true);
+  });
   it('is true when rendering turns an empty shell into a page', () => {
     expect(renderingAddsContent(signals({}), signals({ visibleTextLength: 800, linkUrls: links(4) }))).toBe(true);
   });

@@ -64,7 +64,7 @@ export interface GenerateLlmsTxtInput {
  */
 export function generateLlmsTxt(input: GenerateLlmsTxtInput): string {
   const siteTitle = singleLine(input.siteTitle);
-  const summary = truncate(singleLine(input.siteSummary ?? homepageOf(input.pages)?.record.description ?? ''));
+  const summary = truncate(singleLine(input.siteSummary ?? homepageOf(input.pages)?.record.description ?? ''), MAXIMUM_SUMMARY_LENGTH);
   const selected = selectPages(input.pages, input.overrides);
   const context = buildNamingContext(siteTitle, input.pages);
   const homepageEntry = homepageEntryOf(input, context, summary);
@@ -87,6 +87,9 @@ export function generateLlmsTxt(input: GenerateLlmsTxtInput): string {
   if (!validation.isValid) throw new Error(`generated llms.txt breaks the spec: ${validation.problems.join('; ')}`);
   return llmsTxt;
 }
+
+/** Room for the three sentences the summary call is asked for: cut at an entry's length, it ended mid-sentence. */
+const MAXIMUM_SUMMARY_LENGTH = 700;
 
 interface Section {
   sectionName: string;

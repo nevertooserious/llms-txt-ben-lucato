@@ -1,0 +1,130 @@
+{
+  "site": "https://www.epyhost.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "EPY Host is an infrastructure provider specializing exclusively in dedicated (bare-metal) servers and colocation, with no shared hosting, serving enterprises, gaming networks and AI researchers",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "EPY Host claims a global presence of over 250 data center locations",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "page",
+      "description": "All Dedicated Servers: the full portfolio of dedicated bare-metal servers",
+      "urls": [
+        "https://www.epyhost.com/all-dedicated-servers/"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "family",
+      "description": "Dedicated server product pages by use case or hardware (GPU, AI/ML & big data, storage, Intel, AMD, database, media streaming, blockchain, gaming)",
+      "urls": [
+        "https://www.epyhost.com/gpu-dedicated-servers/",
+        "https://www.epyhost.com/ai-ml-big-data-dedicated-servers/",
+        "https://www.epyhost.com/amd-dedicated-servers/"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "family",
+      "description": "High-bandwidth dedicated server pages by port speed (1, 10, 20, 40, 100 Gbps) plus unmetered bandwidth servers",
+      "urls": [
+        "https://www.epyhost.com/10gbps-dedicated-servers/",
+        "https://www.epyhost.com/100gbps-dedicated-servers/",
+        "https://www.epyhost.com/unmetered-dedicated-servers/"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Colocation services: enterprise facility space for customers' own hardware",
+      "urls": [
+        "https://www.epyhost.com/colocation/"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "Global data centers overview of the 250+ locations",
+      "urls": [
+        "https://www.epyhost.com/data-center/"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "family",
+      "description": "Regional data center pages (North America, Europe, Asia, Australia, South America, Africa)",
+      "urls": [
+        "https://www.epyhost.com/north-america-data-center/",
+        "https://www.epyhost.com/europe-data-center/",
+        "https://www.epyhost.com/asia-data-center/"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "DDoS protected dedicated servers with Layer 1-6 mitigation",
+      "urls": [
+        "https://www.epyhost.com/ddos-dedicated-servers/"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "page",
+      "description": "Network overview: global BGP network and routing capacity",
+      "urls": [
+        "https://www.epyhost.com/network/"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "page",
+      "description": "FAQ about the dedicated hosting platforms",
+      "urls": [
+        "https://www.epyhost.com/faq/"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "page",
+      "description": "About Us page on company vision and infrastructure capabilities (also available as markdown)",
+      "urls": [
+        "https://www.epyhost.com/about/",
+        "https://www.epyhost.com/about/index.md"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "page",
+      "description": "Terms of Service including SLA and acceptable use policy (also as markdown)",
+      "urls": [
+        "https://www.epyhost.com/terms-of-service/",
+        "https://www.epyhost.com/terms-of-service/index.md"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "page",
+      "description": "Tutorials: step-by-step guides for dedicated server management",
+      "urls": [
+        "https://www.epyhost.com/tutorials/"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "page",
+      "description": "Blog with industry news, company updates and hardware insights",
+      "urls": [
+        "https://www.epyhost.com/blogs/"
+      ]
+    }
+  ]
+}

@@ -195,6 +195,7 @@ function isOtherLanguage(
   if (language !== null && language !== siteLanguage) return true;
 
   const url = new URL(page.record.normalisedUrl);
+  if (isUnderLocaleDirectoryOfAnotherPage(url, siteLanguage, pagesByUrl)) return true;
   const directory = url.pathname.slice(0, url.pathname.lastIndexOf('/') + 1);
   const fileName = LANGUAGE_FILE_NAME.exec(url.pathname.slice(directory.length));
   if (fileName === null || primarySubtag(fileName[2]!) === siteLanguage) return false;
@@ -202,6 +203,26 @@ function isOtherLanguage(
   return [`${name}${extension}`, `${name}.${siteLanguage}${extension}`].some((sibling) =>
     pagesByUrl.has(`${url.origin}${directory}${sibling}`),
   );
+}
+
+/** A site's own name for a language or a country: `/jp/`, `/cat/`, `/pt-br/`. */
+const LOCALE_DIRECTORY = /^[a-z]{2,3}(?:[-_][a-z]{2,4})?$/i;
+
+/**
+ * `/jp/pricing` beside `/pricing`: the page again under a short first directory, which
+ * is how sites file translations, whatever language the copy declares. The directory is
+ * not the site's own language, and the page without it must exist.
+ */
+function isUnderLocaleDirectoryOfAnotherPage(
+  url: URL,
+  siteLanguage: string,
+  pagesByUrl: ReadonlyMap<string, GeneratorPage>,
+): boolean {
+  const [firstSegment, ...rest] = url.pathname.split('/').filter(Boolean);
+  if (firstSegment === undefined || rest.length === 0 || !LOCALE_DIRECTORY.test(firstSegment)) return false;
+  if (primarySubtag(firstSegment) === siteLanguage) return false;
+  const withoutDirectory = `${url.origin}/${rest.join('/')}`;
+  return pagesByUrl.has(withoutDirectory) || pagesByUrl.has(`${withoutDirectory}/`);
 }
 
 function primarySubtag(languageCode: string | null): string | null {

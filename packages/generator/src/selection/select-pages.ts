@@ -5,6 +5,7 @@ import { listingCandidates } from './listing-candidates';
 import { homepageOf } from './page-kinds';
 import { withoutReferenceFamilies } from './reference-families';
 import { pagesSampledFromListedIndex } from './sampled-pages';
+import { pagesBeyondAddressFamilySample, pagesBeyondTemplateFamilySample } from './template-families';
 import { scorePage } from './score-page';
 import { areaSectionNamesOf, SECTION_NAMES, sectionNameOf } from './sections';
 import { canonicalKey, compareText } from './url-paths';
@@ -23,7 +24,8 @@ export interface SelectedPage {
  * assessed yet, pages the user excluded and pages the assessment judged not useful, minus
  * the rest of a folder most of whose pages are reference entries; keeps one page per
  * canonical URL; and drops narrow pages that a listed broader page stands for, and pages
- * that are a sample of the many a listed index page links. On a blog, the posts its
+ * that are a sample of the many a listed index page links, and all but a few of the pages
+ * a site builds from one template. On a blog, the posts its
  * homepage links are listed although the assessment leaves single posts out, under Blog. The score
  * only orders the entries of a section. Pages that score the same keep the order of the
  * site's navigation, then the order the crawl first saw links to them, then of their
@@ -50,9 +52,8 @@ export function selectPages(pages: readonly GeneratorPage[], overrides: readonly
       (page) => !isKept(page),
     ),
   );
-  const listedPages = candidates.filter((page) => !coveredPages.has(page));
-
-  const ranked = listedPages
+  const allRanked = candidates
+    .filter((page) => !coveredPages.has(page))
     .map((page) => ({ page, score: scorePage(page) }))
     .sort(
       (a, b) =>
@@ -61,6 +62,12 @@ export function selectPages(pages: readonly GeneratorPage[], overrides: readonly
         linkOrderOf(a.page) - linkOrderOf(b.page) ||
         compareText(a.page.record.normalisedUrl, b.page.record.normalisedUrl),
     );
+  const rankedPages = allRanked.map((entry) => entry.page);
+  const beyondFamilySample = new Set([
+    ...pagesBeyondTemplateFamilySample(rankedPages),
+    ...pagesBeyondAddressFamilySample(rankedPages),
+  ]);
+  const ranked = allRanked.filter((entry) => !beyondFamilySample.has(entry.page) || isKept(entry.page));
   const homepage = homepageOf(pages);
   const areaSectionNames = areaSectionNamesOf(
     ranked.map((entry) => entry.page).filter((page) => !homepagePosts.has(page)),

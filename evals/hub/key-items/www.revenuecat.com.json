@@ -1,0 +1,125 @@
+{
+  "site": "https://www.revenuecat.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "RevenueCat is an app monetization platform for mobile and web apps: backend infrastructure for subscriptions, one-time purchases, virtual currencies, web purchases and ad revenue across Apple App Store, Google Play and web, plus no-code paywalls, A/B testing, analytics and integrations",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "Pricing: free to start; paid plan applies once an app earns over $2,500/month in tracked revenue, at 1% of tracked revenue; Enterprise custom pricing available",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "fact",
+      "description": "RevenueCat is not a payment processor — Apple, Google, Stripe and Paddle process payments; RevenueCat connects to them to manage access and revenue data",
+      "urls": []
+    },
+    {
+      "id": "k4",
+      "kind": "fact",
+      "description": "Supported stores/payment providers: Apple App Store, Google Play, Amazon Appstore, Roku, RevenueCat Web Billing, Stripe, Paddle; SDKs for iOS, Android, React Native, Expo, Flutter, Kotlin Multiplatform, Cordova, Capacitor, Unity, Web, Roku",
+      "urls": []
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Pricing and plans page",
+      "urls": [
+        "https://www.revenuecat.com/pricing"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Documentation overview: what RevenueCat is, how it works, core architecture (docs hub)",
+      "urls": [
+        "https://www.revenuecat.com/docs/welcome/overview.md"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "resource",
+      "description": "Docs llms.txt — LLM-optimised version of the full RevenueCat documentation",
+      "urls": [
+        "https://www.revenuecat.com/docs/assets/files/llms-b3277dc1a771ac4b43dc7cfb88ebd955.txt"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "REST API v2 reference",
+      "urls": [
+        "https://www.revenuecat.com/docs/api-v2"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "resource",
+      "description": "RevenueCat MCP server setup for AI agent integration",
+      "urls": [
+        "https://www.revenuecat.com/docs/tools/mcp/setup.md"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "resource",
+      "description": "Machine-readable product capabilities data (JSON, NDJSON, schema, capabilities index) and product knowledge manifest",
+      "urls": [
+        "https://www.revenuecat.com/product-knowledge/product-capabilities.json",
+        "https://www.revenuecat.com/.well-known/llms.txt",
+        "https://www.revenuecat.com/product-knowledge/capabilities-index.json"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "page",
+      "description": "SDK installation guides hub and quickstart for implementing a first purchase",
+      "urls": [
+        "https://www.revenuecat.com/docs/getting-started/installation.md",
+        "https://www.revenuecat.com/docs/getting-started/quickstart.md"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "family",
+      "description": "Product feature marketing pages (infrastructure, paywalls, experiments, targeting, customer center, refund control, charts, virtual currency, funnels, reliability)",
+      "urls": [
+        "https://www.revenuecat.com/feature/paywalls.md",
+        "https://www.revenuecat.com/feature/experiments.md",
+        "https://www.revenuecat.com/feature/charts.md"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "family",
+      "description": "Technical docs pages on features and concepts (entitlements, products/offerings, paywalls, customer center, webhooks, metrics, web billing, redemption links, refunds)",
+      "urls": [
+        "https://www.revenuecat.com/docs/getting-started/entitlements.md",
+        "https://www.revenuecat.com/docs/integrations/webhooks.md",
+        "https://www.revenuecat.com/docs/tools/paywalls.md"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "page",
+      "description": "Web Billing product page — selling on the web and unlocking access in the app",
+      "urls": [
+        "https://www.revenuecat.com/billing.md"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "page",
+      "description": "Integrations overview — connecting to Amplitude, Mixpanel, AppsFlyer, Braze and 30+ tools",
+      "urls": [
+        "https://www.revenuecat.com/docs/integrations/integrations.md"
+      ]
+    }
+  ]
+}

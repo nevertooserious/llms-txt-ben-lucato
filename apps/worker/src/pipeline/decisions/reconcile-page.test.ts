@@ -37,6 +37,7 @@ const storedPage = (fields: Partial<StoredPage> = {}): StoredPage => ({
   removedAt: null,
   contentDigest: 'digest',
   listingFieldsHash: 'hash',
+  languageCode: 'en',
   ...fields,
 });
 

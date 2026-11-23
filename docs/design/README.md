@@ -64,12 +64,12 @@ flowchart LR
 flowchart TD
   inputs(["<b>from the worker</b><br/>the site's root URL<br/>its rendering decision<br/>known pages, each with its ETag, Last-Modified,<br/>sitemap lastmod and stored links"])
   discover["<b>discover URLs</b><br/>robots.txt, sitemaps, the site's own llms.txt, homepage navigation"]
-  frontier["<b>frontier: prioritised, breadth first</b><br/>within a depth: navigation, llms.txt, sitemap, other links<br/>a URL family waits after 12 pages; documentation areas take turns"]
+  frontier["<b>frontier: prioritised, breadth first</b><br/>within a depth: navigation, llms.txt, sitemap, other links<br/>a URL family waits after 12 pages; documentation areas take turns;<br/>a translation of a page in the site's language is not fetched"]
   allowed{"<b>may it be requested?</b><br/>robots.txt rules, under the root URL,<br/>500 ms or Crawl-delay apart"}
   skipped(["<b>skipped</b><br/>disallowed by robots.txt, or out of scope"])
   needed{"<b>is a request needed?</b><br/>not for a known page whose trusted<br/>sitemap lastmod has not moved"}
   notRequested(["<b>not requested</b><br/>the stored page stands, and its links still count"])
-  fetch["<b>fetch the page</b><br/>plain HTTP, as a conditional GET when validators are stored<br/>headless Chromium if the site needs rendering or the HTML is empty<br/>then a probe for a .md version of the page"]
+  fetch["<b>fetch the page</b><br/>plain HTTP, as a conditional GET when validators are stored<br/>headless Chromium if the site needs rendering or the HTML is empty;<br/>a homepage that needs it is confirmed on the next two pages<br/>then a probe for a .md version of the page"]
   guard["<b>SSRF guard</b><br/>every request, the browser's too: each resolved address is checked"]
   site(["<b>target website</b><br/>public addresses only; 15 s and 5 MB per fetch"])
   onPage["<b>onPage(RawPage)</b><br/>handed over as each page arrives, and waited for"]
@@ -131,15 +131,15 @@ flowchart LR
 ```mermaid
 flowchart TD
   inputs(["<b>from the database</b><br/>pages and their records<br/>page_overrides<br/>excluded_url_prefixes<br/>machine-readable files found"])
-  filters["<b>1 deterministic filters</b><br/>homepage, noindex, pagination, other languages, utility and<br/>archive URLs, duplicate content, large families of sibling pages"]
+  filters["<b>1 deterministic filters</b><br/>homepage, noindex, pagination, other languages, utility and<br/>archive URLs, duplicate content, copies under a locale directory,<br/>large families of sibling pages"]
   notCandidate(["<b>not a candidate</b><br/>never sent to the model"])
   assessment["<b>2 page assessment</b><br/>per page: would an assistant need it? is it broad or narrow?<br/>also a one-line description and a corrected page type"]
   haiku(["<b>Claude Haiku</b><br/>asked once per hash of a page's inputs"])
-  selection["<b>3 selection</b><br/>useful pages; a narrow page under a listed broad page is dropped;<br/>the user's kept pages and exclusions; one page per canonical URL"]
+  selection["<b>3 selection</b><br/>useful pages; a narrow page under a listed broad page is dropped;<br/>three pages stand for a family built from one template;<br/>the user's kept pages and exclusions; one page per canonical URL"]
   userEdit(["<b>a user's edit</b><br/>renders again from the stored pages:<br/>no fetch, no LLM call"])
   leftOut(["<b>left out</b><br/>still stored, so the user can keep it"])
   sections["<b>4 order and sections</b><br/>score: navigation, depth, inbound links, the site's own llms.txt<br/>H2 by page type: Docs, API, Guides … Blog, areas, Pages, Optional"]
-  summary["<b>5 site name, summary, notes</b><br/>from the homepage and the listed pages, in one request;<br/>the previous wording is passed back and kept unless wrong"]
+  summary["<b>5 site name, summary, notes</b><br/>from the homepage, the listed pages and the text of the few pages<br/>that hold the site's facts (pricing, about), in one request;<br/>the previous wording is passed back and kept unless wrong"]
   opus(["<b>Claude Opus</b><br/>asked once per hash of its inputs"])
   render["<b>6 render</b><br/>H1, blockquote summary, notes, H2 sections of one-line entries"]
   validate{"<b>7 validate against the spec</b><br/>H1 and H2 only, one line per entry,<br/>an H2 named exactly Optional"}

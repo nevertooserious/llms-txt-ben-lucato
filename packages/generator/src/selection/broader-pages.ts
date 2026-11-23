@@ -22,7 +22,11 @@ function hasPathAbove(page: GeneratorPage, pathKeys: ReadonlySet<string>): boole
   return false;
 }
 
+/** A page's place in the URL tree. `/branches.html` stands at `/branches`, above `/branches/rome.html`. */
 export function pathKeyOf(page: GeneratorPage): string {
   const url = page.record.normalisedUrl;
-  return JSON.stringify([new URL(url).origin, pagePathSegmentsOf(url)]);
+  const segments = pagePathSegmentsOf(url);
+  const lastSegment = segments.at(-1);
+  const path = lastSegment === undefined ? segments : [...segments.slice(0, -1), lastSegment.replace(/\.html?$/i, '')];
+  return JSON.stringify([new URL(url).origin, path]);
 }

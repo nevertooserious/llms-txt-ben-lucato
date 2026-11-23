@@ -79,6 +79,8 @@ export interface KnownPage {
   fetchUrl: string;
   crawlDepth: number;
   discoveredVia: DiscoverySource;
+  /** The language the page declared when last read. The homepage's tells a crawl the site's when it answers 304. */
+  languageCode?: string | null;
   /** Conditional GET validators from the last fetch. */
   httpEtag: string | null;
   httpLastModified: string | null;

@@ -1,0 +1,99 @@
+{
+  "site": "https://kevinharries.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Kevin Harries is a professional male voice over actor offering broadcast-ready commercial, corporate, narration, IVR, eLearning and animation voice overs",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "page",
+      "description": "Home page of Kevin Harries, voice actor for commercial and corporate work",
+      "urls": [
+        "https://kevinharries.com/"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "page",
+      "description": "Voice over demo reels: commercial, corporate, narration, animation, e-learning, IVR, explainers",
+      "urls": [
+        "https://kevinharries.com/demos.html"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "page",
+      "description": "Contact page for custom voice auditions, sound design projects and inquiries",
+      "urls": [
+        "https://kevinharries.com/contact.html"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "About page describing Kevin Harries and his voice over and audio production services",
+      "urls": [
+        "https://kevinharries.com/about.html"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Selected work: finished voice over projects for global brands (commercials, corporate, e-learning, animation)",
+      "urls": [
+        "https://kevinharries.com/selectedwork.html"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "Sound design services and demos: audio editing, Foley, mixing, soundscapes for film, games, commercials and branded media",
+      "urls": [
+        "https://kevinharries.com/sounddesign.html"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "Client testimonials page",
+      "urls": [
+        "https://kevinharries.com/testimonials.html"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "family",
+      "description": "Blog articles on voice over and sound design topics (corporate VO, documentaries, video games, VR, marketing, e-learning, accessibility), with a blog index page",
+      "urls": [
+        "https://kevinharries.com/blog.html",
+        "https://kevinharries.com/blog/voice-over-for-corporate-video-what-actually-works.html",
+        "https://kevinharries.com/blog/Documentary_Voice_Over_Specialist_Professional_Narration.html",
+        "https://kevinharries.com/blog/how-to-choose-the-right-voice-actor-for-your-project.html"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "fact",
+      "description": "Kevin Harries has documentary narration experience including true crime, nature, history and a 26-episode TV documentary series",
+      "urls": []
+    },
+    {
+      "id": "k11",
+      "kind": "fact",
+      "description": "Besides voice acting, Kevin Harries offers sound design services (Foley, mixing, audio editing, soundscapes)",
+      "urls": []
+    },
+    {
+      "id": "k12",
+      "kind": "fact",
+      "description": "The blog post 'The Marvellous Benefits of AI Voice Overs' is satire comparing AI voices to human voice actors and should not be read literally",
+      "urls": [
+        "https://kevinharries.com/blog/The_Marvelous_Benefits_of_AI_Voice_Overs_Why_Human_Voices_Are_So_Last_Century.html"
+      ]
+    }
+  ]
+}

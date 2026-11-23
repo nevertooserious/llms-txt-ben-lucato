@@ -8,6 +8,8 @@ export interface PipelineSettings {
   crawlPageBudget: number;
   /** Above this share of failed fetches the run fails and nothing is published. */
   maxFailedFetchShare: number;
+  /** False for the eval: a site's own llms.txt is then not read for pages to crawl. */
+  readsExistingLlmsTxt: boolean;
 }
 
 /** What the stages need. The crawler and the renderer are passed in, so tests can stand in for them. */

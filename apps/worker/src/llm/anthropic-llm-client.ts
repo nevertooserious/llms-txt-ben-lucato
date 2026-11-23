@@ -14,6 +14,8 @@ import {
 // server errors and dropped connections itself.
 
 const REQUEST_TIMEOUT_MS = 120_000;
+/** More than the SDK's two: a crawl of 200 pages sends its assessments in a burst, and a rate limit that outlasts the retries fails the whole run. */
+const MAX_RETRIES = 6;
 const PAGE_ASSESSMENT_MAX_TOKENS = 2_000;
 const SITE_SUMMARY_MAX_TOKENS = 6_000;
 
@@ -32,7 +34,7 @@ export function answerText(response: LlmResponse): string {
 }
 
 export function createAnthropicLlmClient(apiKey: string): LlmClient {
-  const client = new Anthropic({ apiKey, timeout: REQUEST_TIMEOUT_MS });
+  const client = new Anthropic({ apiKey, timeout: REQUEST_TIMEOUT_MS, maxRetries: MAX_RETRIES });
   return {
     async assessPage(input) {
       const prompt = buildPageAssessmentPrompt(input);

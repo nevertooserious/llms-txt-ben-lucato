@@ -1,0 +1,126 @@
+{
+  "site": "https://glotier.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Glotier is an AI visibility tool: it checks whether ChatGPT, Gemini and Perplexity name your product when buyers ask for the best tool in your category, shows which competitors were named instead and the source pages each answer was built from, and gives one concrete fix.",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "Free report (no signup) is deterministic and asks no AI model: it reads your own pages (robots.txt agent access, retrievability, quotable sentences, figures with sources). The paid measurement runs live web searches per buyer question and has ChatGPT, Gemini and Perplexity answer, recording who is named; users can connect their own ChatGPT or Claude API key.",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "fact",
+      "description": "Pricing: free to start, no card. Fast $9.99/month (1 product, daily check on ChatGPT and Gemini), Solo $39/month (3 products, 150 tracked questions, adds Perplexity and Citation Agent), Studio $99/month (15 products, unlimited questions), Agency $249/month (50 products). Cancel any time; full refund within 7 days of a charge.",
+      "urls": []
+    },
+    {
+      "id": "k4",
+      "kind": "page",
+      "description": "Pricing page",
+      "urls": [
+        "https://glotier.com/pricing"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "How Glotier works — the authoritative, current description of the product",
+      "urls": [
+        "https://glotier.com/how-it-works"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Homepage / free site check: paste a link and get the free report on what stops assistants quoting your pages",
+      "urls": [
+        "https://glotier.com"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "family",
+      "description": "Free public tools (no signup): AI Recommendation Decoder, AI Visibility Check, Site Visibility Audit with 0-100 AI-readiness score, and meta description/title tag/schema markup generators",
+      "urls": [
+        "https://glotier.com/why",
+        "https://glotier.com/audit",
+        "https://glotier.com/tools/schema-markup"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "family",
+      "description": "Glotier vs competitor comparison pages (Profound, Otterly.AI, Peec AI, Scrunch AI, Semrush, Ahrefs Brand Radar, etc.)",
+      "urls": [
+        "https://glotier.com/compare/profound",
+        "https://glotier.com/compare/otterly",
+        "https://glotier.com/compare/semrush"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "family",
+      "description": "Glotier as alternative to specific competitors pages",
+      "urls": [
+        "https://glotier.com/alternatives/profound",
+        "https://glotier.com/alternatives/peec-ai",
+        "https://glotier.com/alternatives/scrunch-ai"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "family",
+      "description": "Guides on AI visibility and GEO, including a 40-question study of what sources AI cites and a ChatGPT citations case study",
+      "urls": [
+        "https://glotier.com/guides/what-sources-ai-cites",
+        "https://glotier.com/guides/generative-engine-optimization",
+        "https://glotier.com/guides/google-ai-overview-case-study"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "page",
+      "description": "Best AI visibility tools roundup",
+      "urls": [
+        "https://glotier.com/best-ai-visibility-tools"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "family",
+      "description": "Buyer/use-case landing pages: per-assistant brand monitoring (ChatGPT, Gemini, Perplexity), Shopify and SaaS visibility, GEO/AEO tool, best-price comparison",
+      "urls": [
+        "https://glotier.com/gemini-brand-monitoring",
+        "https://glotier.com/ai-visibility-for-shopify",
+        "https://glotier.com/best-price-ai-visibility-tools"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "fact",
+      "description": "Competitor entry prices (verified 2026-07-17): Otterly.AI $29/month, Peec AI $95/month, Profound $99/month Starter and $399 Growth, Scrunch AI from $250/month.",
+      "urls": []
+    },
+    {
+      "id": "k14",
+      "kind": "fact",
+      "description": "Glotier is not a broad SEO suite or enterprise brand-monitoring platform; App Store/ASO tracking is only an optional side-tool. Built in public by founder Oğuzhan Tüsen (@oguzhanglotier); runs on Cloudflare Pages + D1.",
+      "urls": []
+    },
+    {
+      "id": "k15",
+      "kind": "page",
+      "description": "Refund policy",
+      "urls": [
+        "https://glotier.com/refund"
+      ]
+    }
+  ]
+}

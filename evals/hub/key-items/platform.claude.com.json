@@ -1,0 +1,137 @@
+{
+  "site": "https://platform.claude.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "The site is Anthropic's developer documentation for the Claude API / Claude Developer Platform; the root platform.claude.com is the Console, which requires login",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "resource",
+      "description": "llms-full.txt with the complete documentation content",
+      "urls": [
+        "https://platform.claude.com/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "resource",
+      "description": "Docs MCP server (Streamable HTTP transport) for searching and reading the docs, plus its server card",
+      "urls": [
+        "https://platform.claude.com/docs/mcp",
+        "https://platform.claude.com/docs/mcp/server-card"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "resource",
+      "description": "JSON file listing the latest version of each Anthropic SDK and the ant CLI",
+      "urls": [
+        "https://platform.claude.com/docs/sdk-versions.json"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "fact",
+      "description": "Docs are available in English (936 pages, /docs/en) and 11 other languages (de, es, fr, it, ja, ko, pt-BR, ru, zh-CN, zh-TW, id) with about 342 pages each under /docs/<lang>; only English content is indexed in the file",
+      "urls": []
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Get started / quickstart guide for Claude API",
+      "urls": [
+        "https://platform.claude.com/docs/en/get-started.md"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "Models overview page comparing Claude models",
+      "urls": [
+        "https://platform.claude.com/docs/en/models/overview.md"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "Pricing page for the Claude API",
+      "urls": [
+        "https://platform.claude.com/docs/en/about-claude/pricing.md"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "Messages API reference (Create a Message endpoint)",
+      "urls": [
+        "https://platform.claude.com/docs/en/api/messages/create.md",
+        "https://platform.claude.com/docs/en/api/messages.md"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "family",
+      "description": "API reference operation pages (Messages, Batches, Files, Models, Skills, Admin/organization, Compliance, and beta Managed Agents endpoints like sessions, agents, vaults), often in paired GA and Beta versions",
+      "urls": [
+        "https://platform.claude.com/docs/en/api/overview.md",
+        "https://platform.claude.com/docs/en/api/messages/batches/create.md",
+        "https://platform.claude.com/docs/en/api/beta/sessions/create.md",
+        "https://platform.claude.com/docs/en/api/organization/workspaces/list.md"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "family",
+      "description": "Tool use guides covering defining and handling tools and built-in tools (web search, web fetch, code execution, computer use, bash, memory, text editor)",
+      "urls": [
+        "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview.md",
+        "https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool.md",
+        "https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool.md"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "family",
+      "description": "Build-with-Claude feature guides (prompt caching, extended/preserved thinking, streaming, batch processing, structured outputs, vision, compaction, citations)",
+      "urls": [
+        "https://platform.claude.com/docs/en/build-with-claude/overview.md",
+        "https://platform.claude.com/docs/en/build-with-claude/prompt-caching.md",
+        "https://platform.claude.com/docs/en/build-with-claude/structured-outputs.md"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "family",
+      "description": "Claude Managed Agents docs (hosted and self-hosted agent sessions, environments, vaults, memory, webhooks)",
+      "urls": [
+        "https://platform.claude.com/docs/en/managed-agents/overview.md",
+        "https://platform.claude.com/docs/en/managed-agents/quickstart.md",
+        "https://platform.claude.com/docs/en/managed-agents/sessions.md"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "family",
+      "description": "SDK and CLI docs per language (Python, TypeScript, Go, Java, Ruby, PHP, C#) and the ant CLI",
+      "urls": [
+        "https://platform.claude.com/docs/en/cli-sdks-libraries/overview.md",
+        "https://platform.claude.com/docs/en/cli-sdks-libraries/sdks/python.md",
+        "https://platform.claude.com/docs/en/cli-sdks-libraries/sdks/typescript.md"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "family",
+      "description": "Per-model overview pages and per-model system prompt release notes, plus migration guides and deprecations",
+      "urls": [
+        "https://platform.claude.com/docs/en/models/opus-5-5/overview.md",
+        "https://platform.claude.com/docs/en/release-notes/system-prompts/overview.md",
+        "https://platform.claude.com/docs/en/about-claude/model-deprecations.md"
+      ]
+    }
+  ]
+}

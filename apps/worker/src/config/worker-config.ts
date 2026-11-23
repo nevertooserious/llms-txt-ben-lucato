@@ -19,6 +19,8 @@ export interface WorkerConfig {
   crawlPageBudget: number;
   /** Above this share of failed fetches a run fails and publishes nothing. A starting value. */
   maxFailedFetchShare: number;
+  /** Whether a site's own llms.txt is read for pages to crawl. Off only for the eval. */
+  readsExistingLlmsTxt: boolean;
   llmClient: LlmClientConfig;
 }
 
@@ -36,6 +38,7 @@ export function readWorkerConfig(environment: Environment = process.env): Worker
     maxMonitorChecksPerTick: 100,
     crawlPageBudget: positiveInteger(environment, 'CRAWL_PAGE_BUDGET', DEFAULT_CRAWL_PAGE_BUDGET),
     maxFailedFetchShare: 0.5,
+    readsExistingLlmsTxt: optionalString(environment, 'IGNORE_EXISTING_LLMS_TXT') !== 'true',
     llmClient: llmClientConfig(environment),
   };
 }

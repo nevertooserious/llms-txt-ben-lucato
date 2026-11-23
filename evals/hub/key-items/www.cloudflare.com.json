@@ -1,0 +1,126 @@
+{
+  "site": "https://www.cloudflare.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Cloudflare is a global cloud connectivity company offering one platform spanning developer infrastructure (serverless compute, storage, AI inference), application security (WAF, DDoS, bot management, API Shield), Zero Trust/SASE (Cloudflare One), and network services (CDN, DNS, load balancing, Magic Transit); it serves developers, security teams and enterprise IT",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "cloudflare.com is the marketing/product site; technical documentation lives at developers.cloudflare.com",
+      "urls": [
+        "https://developers.cloudflare.com/"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "fact",
+      "description": "Every page on cloudflare.com is available as markdown by appending .md to its URL",
+      "urls": []
+    },
+    {
+      "id": "k4",
+      "kind": "resource",
+      "description": "llms-full.txt: expanded version with all product content inline",
+      "urls": [
+        "https://www.cloudflare.com/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Pricing hub, including usage-based pricing for developer platform services (Workers, storage, AI, media)",
+      "urls": [
+        "https://www.cloudflare.com/plans.md"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Network & CDN pricing: Free, Pro, Business and Contract domain plans with feature comparisons and add-ons",
+      "urls": [
+        "https://www.cloudflare.com/plans/network-cdn.md"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "SASE / Zero Trust pricing: Free, pay-as-you-go and Contract seat-based plans",
+      "urls": [
+        "https://www.cloudflare.com/plans/sase-zero-trust.md"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "family",
+      "description": "Developer platform product pages (compute, storage, AI, media): Workers, Containers, Durable Objects, R2, D1, KV, Workers AI, Agents, AI Gateway, Vectorize, Images, Stream, etc.",
+      "urls": [
+        "https://www.cloudflare.com/products/workers.md",
+        "https://www.cloudflare.com/products/r2.md",
+        "https://www.cloudflare.com/products/workers-ai.md"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "family",
+      "description": "Application security product pages: WAF, DDoS Protection, Bot Management, Turnstile, API Shield, Rate Limiting, SSL, Spectrum, etc.",
+      "urls": [
+        "https://www.cloudflare.com/products/waf.md",
+        "https://www.cloudflare.com/products/ddos.md",
+        "https://www.cloudflare.com/products/bot-management.md"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "family",
+      "description": "Zero Trust / SASE (Cloudflare One) product pages: Access (ZTNA), Gateway (SWG), Browser Isolation, DLP, CASB, Email Security, Magic Transit, Magic WAN, Network Firewall",
+      "urls": [
+        "https://www.cloudflare.com/products/access.md",
+        "https://www.cloudflare.com/products/gateway.md",
+        "https://www.cloudflare.com/sase/products/casb.md"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "family",
+      "description": "Network & performance product pages: CDN, DNS, Load Balancing, Argo Smart Routing, Analytics, China Network, Email Routing, etc.",
+      "urls": [
+        "https://www.cloudflare.com/products/cdn.md",
+        "https://www.cloudflare.com/products/dns.md",
+        "https://www.cloudflare.com/products/load-balancing.md"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "family",
+      "description": "Solution pages by use case and industry (AI, Security, Network, Platforms, Financial Services, Healthcare, Public Sector, Retail)",
+      "urls": [
+        "https://www.cloudflare.com/solutions/ai.md",
+        "https://www.cloudflare.com/solutions/security.md",
+        "https://www.cloudflare.com/solutions/financial-services.md"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "fact",
+      "description": "Network scale: 335+ cities in 125+ countries, 500 Tbps capacity, 13,000+ interconnected networks, within 50 ms of 95% of Internet users, GPUs in 220+ cities; handles ~20% of web traffic",
+      "urls": []
+    },
+    {
+      "id": "k14",
+      "kind": "fact",
+      "description": "Company facts: founded 2010, public since 2019 (NYSE: NET); 42% of Fortune 500 are paying customers; largest DDoS mitigated 31.4 Tbps (Nov 2025)",
+      "urls": []
+    },
+    {
+      "id": "k15",
+      "kind": "fact",
+      "description": "Free offerings include Turnstile (CAPTCHA replacement), SSL certificates, DNS, Email Routing; R2 has zero egress fees; Workers run on V8 isolates with zero cold starts and deploy globally, not to regions",
+      "urls": []
+    }
+  ]
+}

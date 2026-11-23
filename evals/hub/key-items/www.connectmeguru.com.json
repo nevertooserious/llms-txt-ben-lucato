@@ -1,0 +1,126 @@
+{
+  "site": "https://www.connectmeguru.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "ConnectMeGuru (CMG) sells instant-activation international travel eSIM data plans covering 190+ countries and regions, with pre-funded wallet checkout and 24/7 digital delivery; about 2,900+ active data packages",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "page",
+      "description": "Homepage",
+      "urls": [
+        "https://www.connectmeguru.com"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "resource",
+      "description": "eSIM product catalog search API: query plans by country code or keyword; returns package codes, data volume, duration, USD retail price and coverage",
+      "urls": [
+        "https://www.connectmeguru.com/api/products/search?country=JAPAN"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "resource",
+      "description": "OpenAPI 3.1 specification for the MCP/agent API",
+      "urls": [
+        "https://www.connectmeguru.com/api/mcp/openapi.json"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "resource",
+      "description": "llms-full.txt with the full catalog and device compatibility matrix",
+      "urls": [
+        "https://www.connectmeguru.com/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "fact",
+      "description": "MCP server 'connectmeguru-mcp' offers 14 tools for catalog lookup, wallet balance, OTP authentication and in-chat eSIM ordering; WebMCP manifest at /.well-known/webmcp.json",
+      "urls": []
+    },
+    {
+      "id": "k7",
+      "kind": "resource",
+      "description": "Agent manifests (agent.json, including the .well-known version) and the ChatGPT plugin manifest ai-plugin.json",
+      "urls": [
+        "https://www.connectmeguru.com/agent.json",
+        "https://www.connectmeguru.com/.well-known/agent.json",
+        "https://www.connectmeguru.com/.well-known/ai-plugin.json"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "Travel eSIM destinations listing",
+      "urls": [
+        "https://www.connectmeguru.com/destinations"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "Hub of 198+ curated travel itineraries with day-by-day schedules and matched eSIM recommendations; has its own itineraries XML sitemap",
+      "urls": [
+        "https://www.connectmeguru.com/itineraries",
+        "https://www.connectmeguru.com/sitemap-itineraries.xml"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "page",
+      "description": "Interactive plans catalog and rates explorer for filtering and comparing all data packages",
+      "urls": [
+        "https://www.connectmeguru.com/tools/plans-catalog"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "family",
+      "description": "Per-device eSIM setup guides (iPhone, Samsung Galaxy, Google Pixel)",
+      "urls": [
+        "https://www.connectmeguru.com/device/iphone",
+        "https://www.connectmeguru.com/device/samsung",
+        "https://www.connectmeguru.com/device/pixel"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "family",
+      "description": "Comparison pages against competitors and best-eSIM roundups (e.g. vs Airalo, best Europe eSIM)",
+      "urls": [
+        "https://www.connectmeguru.com/vs/airalo",
+        "https://www.connectmeguru.com/vs/best-europe-esim"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "page",
+      "description": "Refund policy: refunds or replacements depend on terms such as unused eSIM status",
+      "urls": [
+        "https://www.connectmeguru.com/pages/refund-policy"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "fact",
+      "description": "Support is available 24/7 by email at support@connectmeguru.com or by WhatsApp; data usage alerts are sent at 50%, 75% and 90% consumption, with 1-click top-up in the dashboard",
+      "urls": []
+    },
+    {
+      "id": "k15",
+      "kind": "page",
+      "description": "Free multi-currency travel expense tracker tool (works offline)",
+      "urls": [
+        "https://www.connectmeguru.com/tools/expense-tracker"
+      ]
+    }
+  ]
+}

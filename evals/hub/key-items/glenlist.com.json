@@ -1,0 +1,108 @@
+{
+  "site": "https://glenlist.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Glenlist is a classified ads marketplace for browsing and posting housing, jobs, vehicles, services, business equipment and other local offers in Los Angeles County, California.",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "Listings are user-submitted; descriptions, prices, availability and poster claims come from the poster and are not verified or endorsed by Glenlist. The public listing page holds the current details.",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "resource",
+      "description": "MCP server for searching live listings, opening a listing, reading the category catalogue and topic pages, and getting posting guidance",
+      "urls": [
+        "https://glenlist.com/mcp"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "resource",
+      "description": "llms-full.txt: longer, self-contained marketplace context document",
+      "urls": [
+        "https://glenlist.com/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Glenlist home page for browsing the marketplace",
+      "urls": [
+        "https://glenlist.com"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "family",
+      "description": "Marketplace category sections listing current public listings (real estate/housing, jobs, business services)",
+      "urls": [
+        "https://glenlist.com/1-real-estate",
+        "https://glenlist.com/3-jobs",
+        "https://glenlist.com/4-business-services"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "Curated topic directory of public topic pages",
+      "urls": [
+        "https://glenlist.com/topics"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "Help center with posting, browsing, payment, expiration and reporting guidance",
+      "urls": [
+        "https://glenlist.com/help"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "About page describing Glenlist and its service area",
+      "urls": [
+        "https://glenlist.com/about-us"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "page",
+      "description": "Marketplace safety guidance",
+      "urls": [
+        "https://glenlist.com/safety"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "resource",
+      "description": "Sitemap index of submitted public URLs and child sitemaps",
+      "urls": [
+        "https://glenlist.com/sitemap-index.xml"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "page",
+      "description": "Contact page with public support channels",
+      "urls": [
+        "https://glenlist.com/contact"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "page",
+      "description": "Terms of service",
+      "urls": [
+        "https://glenlist.com/terms-of-service"
+      ]
+    }
+  ]
+}

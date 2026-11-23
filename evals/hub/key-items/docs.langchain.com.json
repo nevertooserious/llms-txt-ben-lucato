@@ -1,0 +1,117 @@
+{
+  "site": "https://docs.langchain.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Docs by LangChain covers LangSmith, Fleet, and LangChain's open source packages (LangChain, LangGraph, Deep Agents), organized around an agent development lifecycle: Build, Test, Deploy, Monitor",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "page",
+      "description": "Agent development lifecycle documentation area (about 1540 pages): Home, Build, Test, Deploy, Monitor",
+      "urls": [
+        "https://docs.langchain.com/_llms/agent-development-lifecycle.txt"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "page",
+      "description": "Build docs, Python: building agents with the open source packages Deep Agents, Managed Deep Agents, LangChain, LangGraph and OpenWiki, plus integrations, learning material, reference and contributing",
+      "urls": [
+        "https://docs.langchain.com/_llms/agent-development-lifecycle/build/python.txt"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "page",
+      "description": "Build docs, TypeScript/JavaScript: Deep Agents, Managed Deep Agents, LangChain, LangGraph, plus integrations, learning material, reference and contributing",
+      "urls": [
+        "https://docs.langchain.com/_llms/agent-development-lifecycle/build/type-script.txt"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Deploy docs: shipping agents to production, covering deployment components, develop and test, frameworks and platforms, and reference",
+      "urls": [
+        "https://docs.langchain.com/_llms/agent-development-lifecycle/deploy.txt",
+        "https://docs.langchain.com/_llms/agent-development-lifecycle/deploy/get-started.txt"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Monitor docs: tracing, debugging and observing agents with LangSmith",
+      "urls": [
+        "https://docs.langchain.com/_llms/agent-development-lifecycle/monitor.txt"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "family",
+      "description": "LangSmith REST API reference: one page per API operation, grouped as tracing, datasets, evaluation, feedback, prompts, administration (workspaces, orgs, SSO, API keys, usage limits), sandboxes, LLM Gateway, threads and more",
+      "urls": [
+        "https://docs.langchain.com/_llms/agent-development-lifecycle/monitor/reference/lang-smith-rest-api.txt",
+        "https://docs.langchain.com/_llms/agent-development-lifecycle/monitor/reference/lang-smith-rest-api/administration.txt",
+        "https://docs.langchain.com/_llms/agent-development-lifecycle/monitor/reference/lang-smith-rest-api/sandboxes.txt"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "Products and setup docs: LangSmith setup, LLM Gateway, Tool Gateway, no-code agents, Engine, Deep Agents Code",
+      "urls": [
+        "https://docs.langchain.com/_llms/products-and-setup.txt"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "LangSmith setup docs: hosting and administration",
+      "urls": [
+        "https://docs.langchain.com/_llms/products-and-setup/lang-smith-setup.txt"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "resource",
+      "description": "LangSmith platform OpenAPI spec",
+      "urls": [
+        "https://docs.langchain.com/langsmith/langsmith-platform-openapi.json"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "resource",
+      "description": "Agent Server OpenAPI spec",
+      "urls": [
+        "https://docs.langchain.com/langsmith/agent-server-openapi.json"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "resource",
+      "description": "Tool Gateway OpenAPI spec",
+      "urls": [
+        "https://docs.langchain.com/langsmith/tool-gateway-openapi.json"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "resource",
+      "description": "Hosted API OpenAPI spec at api.host.langchain.com",
+      "urls": [
+        "https://api.host.langchain.com/openapi.json"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "fact",
+      "description": "The documentation is indexed through nested /_llms/ index files, which must be followed recursively to reach the actual documentation pages",
+      "urls": []
+    }
+  ]
+}

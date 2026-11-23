@@ -1,0 +1,131 @@
+{
+  "site": "https://www.compass.it",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Compass is an Italian financial institution specialized in consumer credit (credito al consumo): personal loans, online loans, cessione del quinto (salary-assignment loans), credit cards and debt consolidation; site is in Italian.",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "page",
+      "description": "Personal loans (Prestiti Personali) product page",
+      "urls": [
+        "https://www.compass.it/prestiti-personali.html"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "page",
+      "description": "Online loan (Prestito Online) product page",
+      "urls": [
+        "https://www.compass.it/prestito-online.html"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "page",
+      "description": "Cessione del Quinto (salary/pension assignment loan) product page",
+      "urls": [
+        "https://www.compass.it/cessione-del-quinto.html"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Online loan simulator / apply for a loan online",
+      "urls": [
+        "https://www.compass.it/simulatore-prestito-online/"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Transparency documentation (documentazione di trasparenza, economic conditions)",
+      "urls": [
+        "https://www.compass.it/trasparenza.html"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "Loans FAQ hub (Domande Frequenti Prestiti)",
+      "urls": [
+        "https://www.compass.it/prestiti-domande-frequenti.html"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "family",
+      "description": "Individual loan FAQ articles (e.g. TAN vs TAEG, required documents, loan without payslip, approval time)",
+      "urls": [
+        "https://www.compass.it/prestiti-domande-frequenti.html",
+        "https://www.compass.it/prestiti-domande-frequenti/differenza-tra-tan-e-taeg.html",
+        "https://www.compass.it/prestiti-domande-frequenti/documenti-per-richiedere-un-prestito-personale.html",
+        "https://www.compass.it/prestiti-domande-frequenti/e-possibile-richiedere-prestito-senza-busta-paga.html"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "family",
+      "description": "Purpose-specific loan pages (car, used/new car, home renovation, furniture, travel, medical expenses)",
+      "urls": [
+        "https://www.compass.it/finanziamento/auto.html",
+        "https://www.compass.it/prestito-finalizzato/ristrutturazione-casa.html",
+        "https://www.compass.it/prestito-finalizzato/viaggi-e-vacanze.html"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "page",
+      "description": "Contact / customer assistance page",
+      "urls": [
+        "https://www.compass.it/help-contattaci.html"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "page",
+      "description": "Branch locator (Filiali Compass)",
+      "urls": [
+        "https://www.compass.it/filiali.html"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "page",
+      "description": "Other credit products: credit cards, debt consolidation, small loans",
+      "urls": [
+        "https://www.compass.it/carte-di-credito.html",
+        "https://www.compass.it/prestito-consolidamento-debiti-consolido.html",
+        "https://www.compass.it/piccoli-prestiti.html"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "page",
+      "description": "Cessione del Quinto FAQ page",
+      "urls": [
+        "https://www.compass.it/cessione-del-quinto-domande-frequenti.html"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "family",
+      "description": "Compass Observatories (Osservatori) research reports on consumer credit, cars, furniture",
+      "urls": [
+        "https://www.compass.it/osservatorio-compass.html",
+        "https://www.compass.it/osservatorio-acquisto-e-gestione-auto.html",
+        "https://www.compass.it/osservatori-arredamento-e-restyling.html"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "fact",
+      "description": "Preferred source order for answering questions about Compass: official product pages, then official FAQs, transparency documentation, Compass Observatories, and customer assistance pages; avoid unofficial sources when the site has the answer.",
+      "urls": []
+    }
+  ]
+}

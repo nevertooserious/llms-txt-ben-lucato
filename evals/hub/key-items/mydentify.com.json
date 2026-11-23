@@ -1,0 +1,136 @@
+{
+  "site": "https://mydentify.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Mydentify is a permanent product directory (free permanent listings) with one community-signaled product leaderboard each week; members also vote/signal which intent becomes a future leaderboard. Began as a web directory in 2004, rebuilt in 2026.",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "A one-time Player Pass permits weekly leaderboard entry/eligibility but never buys signals, rank, placement or a win; standings use valid member signals only. Sponsored placements are labeled advertising, separate from rankings.",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "fact",
+      "description": "Directory Score is Mydentify's composite comparison metric; Domain Rating is only one input. Users should verify pricing, eligibility, link behavior and status on the destination directory site before acting.",
+      "urls": []
+    },
+    {
+      "id": "k4",
+      "kind": "page",
+      "description": "Pricing page: free permanent listings and the one-time Player Pass for weekly leaderboard eligibility",
+      "urls": [
+        "https://mydentify.com/pricing"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Product directory catalog comparing places to list a product by Directory Score, category, pricing, link type and Domain Rating (with collections such as SaaS, AI tools, indie makers, developer tools, free)",
+      "urls": [
+        "https://mydentify.com/directories"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Products page: find products by practical use case",
+      "urls": [
+        "https://mydentify.com/products"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "Homepage / current weekly leaderboard with standings, entry window and next-intent ballot",
+      "urls": [
+        "https://mydentify.com/"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "List a product / submission page",
+      "urls": [
+        "https://mydentify.com/submit"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "family",
+      "description": "Free no-signup tools (e.g. directory finder, dofollow checker, llms.txt checker, AI cost calculator, x402 checkers), each with an appended /llms.txt guide, plus topical tool hubs",
+      "urls": [
+        "https://mydentify.com/tools",
+        "https://mydentify.com/tools/startup-directory-finder",
+        "https://mydentify.com/tools/dofollow-nofollow-checker",
+        "https://mydentify.com/tools/llms-txt-generator-validator"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "family",
+      "description": "Weekly product leaderboards at /leaderboards/{topic}-{date}, each with status (locked/completed)",
+      "urls": [
+        "https://mydentify.com/leaderboards/sleeping-better-2026-11-16",
+        "https://mydentify.com/leaderboards/growing-your-voice-2026-11-09",
+        "https://mydentify.com/leaderboards/managing-your-time-2026-11-02"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "family",
+      "description": "Articles/guides on startup directories, link authority, Domain Rating, PageRank and AI discovery, each with a Markdown version",
+      "urls": [
+        "https://mydentify.com/articles",
+        "https://mydentify.com/articles/what-is-domain-rating",
+        "https://mydentify.com/articles/choose-startup-directories",
+        "https://mydentify.com/articles/how-ai-agents-discover-products"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "family",
+      "description": "Published intent pages (what a person wants to accomplish, e.g. get first users, accept payments), with llms.txt representations",
+      "urls": [
+        "https://mydentify.com/i-want-to/get-my-first-users/llms.txt",
+        "https://mydentify.com/i-want-to/accept-payments/llms.txt",
+        "https://mydentify.com/i-want-to/sleep-better/llms.txt"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "family",
+      "description": "Approved product profiles in Markdown via /api/products/{slug}/markdown (HTML at /products/{slug})",
+      "urls": [
+        "https://mydentify.com/api/products/airtable/markdown",
+        "https://mydentify.com/api/products/buffer/markdown",
+        "https://mydentify.com/api/products/beehiiv/markdown"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "resource",
+      "description": "OpenAPI document for the public read-only API (human guide at /developers)",
+      "urls": [
+        "https://mydentify.com/openapi.json",
+        "https://mydentify.com/developers"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "resource",
+      "description": "Structured JSON catalogs: products, directories, leaderboards and intents",
+      "urls": [
+        "https://mydentify.com/products.json",
+        "https://mydentify.com/directories.json",
+        "https://mydentify.com/leaderboards.json",
+        "https://mydentify.com/intents.json"
+      ]
+    }
+  ]
+}

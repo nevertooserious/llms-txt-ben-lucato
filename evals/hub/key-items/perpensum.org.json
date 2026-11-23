@@ -1,0 +1,108 @@
+{
+  "site": "https://perpensum.org",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Perpensum is a buyer-side Collective Experience Network (CEN) and Decision Engine for AI agents that buy digital products and services: the agent asks before purchase, records its Choice, and reports typed Outcomes afterwards; Perpensum gives bounded evidence, may abstain, and does not execute purchases",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "page",
+      "description": "Product documentation: the three-call loop, CEN and Decision Engine roles, decision limits, data boundary, and Claude Code connection",
+      "urls": [
+        "https://perpensum.org/docs"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "resource",
+      "description": "Production MCP endpoint, private and organization-scoped; tools ask_purchase_advice, record_purchase_choice, report_purchase_outcome, withdraw_purchase_outcome, get_purchase_episode",
+      "urls": [
+        "https://api.perpensum.org/v1/mcp"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "page",
+      "description": "Private buyer pilot: one free 30-day design-partner place for three natural machine purchases",
+      "urls": [
+        "https://perpensum.org/alpha"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Private Console where approved participants sign in, accept participation terms, generate an MCP key, and view their lifecycle and CEN status",
+      "urls": [
+        "https://api.perpensum.org/"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Home page: current product, data boundary, and first-buyer status",
+      "urls": [
+        "https://perpensum.org/"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "Contact page with email hello@perpensum.org and publisher information",
+      "urls": [
+        "https://perpensum.org/contact"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "fact",
+      "description": "Data boundary: never send provider or payment credentials, raw prompts, inputs/outputs, source documents, customer records, receipt bodies or private artifacts; collective use requires explicit consent, a server-owned Share Profile and evidence gates",
+      "urls": []
+    },
+    {
+      "id": "k9",
+      "kind": "fact",
+      "description": "The only implemented participation profile is structured invoice extraction through Replicate; other paid models, APIs, agents and services need a separately registered, validated profile and are not plug-and-play",
+      "urls": []
+    },
+    {
+      "id": "k10",
+      "kind": "fact",
+      "description": "In the first pilot cross-buyer price sharing is disabled and Perpensum publishes no named-seller scores; current evidence is internal from one independent control and cannot establish cross-buyer reliability",
+      "urls": []
+    },
+    {
+      "id": "k11",
+      "kind": "fact",
+      "description": "Thin, stale, incomparable, conflicted or incomplete cohorts normally return collect_more or abstain; Perpensum makes no claims of a universal best provider, quality score, causal improvement, price benchmark or automatic purchasing",
+      "urls": []
+    },
+    {
+      "id": "k12",
+      "kind": "fact",
+      "description": "Analogical transfer, prediction, bounded policy and Contextual Bandit production gates remain closed; immediate goal is one external buyer completing three natural Ask → Choice → Outcome loops",
+      "urls": []
+    },
+    {
+      "id": "k13",
+      "kind": "family",
+      "description": "Archived research pages (APQV proposal, synthetic playground, Agent-Directed Manipulation definition, conformance suite) that are research history, not the current product contract",
+      "urls": [
+        "https://perpensum.org/apqv",
+        "https://perpensum.org/playground",
+        "https://perpensum.org/definition.json"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "resource",
+      "description": "GitHub source history for the archived Agent-Directed Manipulation research",
+      "urls": [
+        "https://github.com/perpensum/agent-directed-manipulation"
+      ]
+    }
+  ]
+}

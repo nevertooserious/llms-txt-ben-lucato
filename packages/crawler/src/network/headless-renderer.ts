@@ -8,6 +8,7 @@ import {
 } from 'playwright';
 import { Agent, request } from 'undici';
 import { DEFAULT_USER_AGENT } from './http-fetcher';
+import { decodeContentEncoding } from './decode-content-encoding';
 import { readCapped, ResponseTooLargeError } from './read-capped';
 import {
   BlockedAddressError,
@@ -355,7 +356,7 @@ export class HeadlessRenderer {
         }
 
         const maxBytes = browserRequest.resourceType() === 'script' ? this.maxScriptBytes : this.maxResponseBytes;
-        const responseBody = await readCapped(countedAgainstRender(response.body, navigation), maxBytes);
+        const responseBody = await bodyForBrowser(response, navigation, maxBytes);
         await route.fulfill({
           status: response.statusCode,
           headers: forwardableResponseHeaders(response.headers),
@@ -372,6 +373,17 @@ export class HeadlessRenderer {
       await route.abort(error instanceof ResponseTooLargeError ? 'failed' : 'connectionfailed').catch(() => undefined);
     }
   }
+}
+
+/** The body as the browser is to read it: capped, and decoded, since a server may compress one that was asked for plain. */
+async function bodyForBrowser(
+  response: { body: AsyncIterable<Buffer> & { destroy(): void }; headers: Record<string, string | string[] | undefined> },
+  navigation: NavigationState,
+  maxBytes: number,
+): Promise<Buffer> {
+  const contentEncoding = response.headers['content-encoding'];
+  const body = await readCapped(countedAgainstRender(response.body, navigation), maxBytes);
+  return decodeContentEncoding(body, typeof contentEncoding === 'string' ? contentEncoding : undefined, maxBytes);
 }
 
 /**

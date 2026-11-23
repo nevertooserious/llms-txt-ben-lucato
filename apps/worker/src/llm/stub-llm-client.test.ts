@@ -30,6 +30,7 @@ describe('createStubLlmClient', () => {
       homepageDescription: 'Acme makes things.',
       homepageContentMarkdown: '',
       listedPages: [],
+      factPages: [],
       previousSummary: null,
       previousSiteName: null,
       previousNotes: [],

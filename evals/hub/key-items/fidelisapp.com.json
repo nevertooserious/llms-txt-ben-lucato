@@ -1,0 +1,121 @@
+{
+  "site": "https://fidelisapp.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Fidelis is a digital platform for local businesses (restaurants, bars, shops) to run loyalty programs, publish digital menus, and manage online reservations; customers collect and redeem points via the Fidelis mobile app.",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "page",
+      "description": "English pricing page for loyalty, digital menu, reservations and bundle plans; source of truth for current prices, trial, billing and cancellation",
+      "urls": [
+        "https://fidelisapp.com/en/pricing"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "fact",
+      "description": "Pricing in EUR: 30-day free trial; Loyalty EUR 30/month or EUR 240/year; Loyalty + digital menu EUR 35/month or EUR 240/year; Loyalty + reservations EUR 60/month or EUR 480/year; Full suite EUR 65/month or EUR 540/year; standalone digital menu EUR 10/month or EUR 84/year; standalone reservations EUR 40/month or EUR 360/year.",
+      "urls": []
+    },
+    {
+      "id": "k4",
+      "kind": "fact",
+      "description": "Points and rewards are valid only at the business that issued them and cannot be redeemed at another participating business, though customers use the same app and digital card across businesses; each business controls its own loyalty program.",
+      "urls": []
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "English home/overview page for Fidelis digital loyalty programs",
+      "urls": [
+        "https://fidelisapp.com/en"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "fact",
+      "description": "No physical loyalty cards or dedicated hardware are needed, but an internet connection is required; businesses can configure optional birthday reward campaigns.",
+      "urls": []
+    },
+    {
+      "id": "k7",
+      "kind": "fact",
+      "description": "The consumer app is available in Italian, English and Dutch; public commercial site information is in English and Italian.",
+      "urls": []
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "Digital menu product page: publish and maintain online PDF menus in multiple languages",
+      "urls": [
+        "https://fidelisapp.com/en/menu"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "Reservations product page: online bookings, availability, shifts, cancellations and no-shows",
+      "urls": [
+        "https://fidelisapp.com/en/reservations"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "page",
+      "description": "Loyalty program ROI simulator/calculator estimating revenue, profit, cost, ROI and break-even",
+      "urls": [
+        "https://fidelisapp.com/en/loyalty-roi-calculator"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "page",
+      "description": "Consumer guide to accessing Fidelis and redeeming loyalty points",
+      "urls": [
+        "https://fidelisapp.com/en/redeem-points"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "family",
+      "description": "Italian-language versions of the main site pages (overview, pricing, menu, reservations, simulator, redeem points, affiliate, referral)",
+      "urls": [
+        "https://fidelisapp.com/it",
+        "https://fidelisapp.com/it/pricing",
+        "https://fidelisapp.com/it/menu"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "family",
+      "description": "Official mobile app store listings (Apple App Store and Google Play), source of truth for app availability and compatibility",
+      "urls": [
+        "https://apps.apple.com/app/fidelis/id6501961857",
+        "https://play.google.com/store/apps/details?id=com.casettalab.fidelis"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "page",
+      "description": "Fidelis public support site",
+      "urls": [
+        "https://support.fidelisapp.com/"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "family",
+      "description": "Growth programs: affiliate program for referring businesses, merchant refer-a-friend program, and referral program terms",
+      "urls": [
+        "https://fidelisapp.com/en/affiliate",
+        "https://fidelisapp.com/en/refer-a-friend",
+        "https://fidelisapp.com/en/legal/referral-program-terms"
+      ]
+    }
+  ]
+}

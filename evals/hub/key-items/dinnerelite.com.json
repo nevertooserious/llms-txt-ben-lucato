@@ -1,0 +1,123 @@
+{
+  "site": "https://dinnerelite.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "DinnerElite is an NYC restaurant reservation monitoring/watchlist service: it watches Resy and OpenTable for cancellations and newly released tables and alerts members by email (and iOS push) matching their dates, times and party size; it is not a booking platform",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "No auto-booking: users book the table themselves; the only booking DinnerElite performs is a human concierge on the Expert plan; it holds no platform credentials and guarantees no table",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "fact",
+      "description": "Pricing: all plans start with a free 3-day trial (card required, not charged during trial); Premium $10/month or $100/year with unlimited watched restaurants; Expert $29/month or $290/year adding concierge booking; accounts created before 2026-08-21 keep a grandfathered free plan with 1 watched restaurant",
+      "urls": []
+    },
+    {
+      "id": "k4",
+      "kind": "fact",
+      "description": "Coverage: 224 tracked restaurants, 223 in New York City and 1 in Chicago (Bavette's); only Resy and OpenTable are monitored for alerts (5 SevenRooms and 1 DoorDash restaurants are in the catalog but not monitored); 91.5% of the catalog books on Resy",
+      "urls": []
+    },
+    {
+      "id": "k5",
+      "kind": "fact",
+      "description": "Opt-in reservation resale marketplace: buy/sell tables diners can't use, payment held until transfer confirmed with full refund if it falls through; buyer fees 15% without plan, 5% Premium, 0% Expert; sellers keep 80% without plan; New York listings only where the restaurant gave written consent under NY's Restaurant Reservation Anti-Piracy Act",
+      "urls": [
+        "https://dinnerelite.com/marketplace"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "fact",
+      "description": "Markdown mirrors: restaurant, article and neighborhood pages (plus homepage index.md and developers.md) have a .md twin at the same path; also served via Accept: text/markdown content negotiation; comparison, plan, tools, /marketplace and /resources pages have no .md twin (they 404) and their text is in llms-full.txt; there is no public API",
+      "urls": [
+        "https://dinnerelite.com/index.md",
+        "https://dinnerelite.com/sitemap-md.xml"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "fact",
+      "description": "Data provenance: booking lead times are DinnerElite estimates modeled from price tier and neighborhood, except 28 restaurants where the restaurant's own published release window is quoted with its source surface; rankings are informed orderings, not observed data",
+      "urls": []
+    },
+    {
+      "id": "k8",
+      "kind": "resource",
+      "description": "llms-full.txt: full corpus with every article, restaurant page, all 18 service comparisons with FAQs, and per-restaurant booking intel",
+      "urls": [
+        "https://dinnerelite.com/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "family",
+      "description": "Per-restaurant reservation drop-time pages (224) giving release window, drop time, booking platform, and alert signup for each tracked restaurant, with an index/directory page",
+      "urls": [
+        "https://dinnerelite.com/reservations",
+        "https://dinnerelite.com/reservations/6194",
+        "https://dinnerelite.com/reservations/1387"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "family",
+      "description": "Comparison pages of DinnerElite versus 18 other reservation services (TablePass, Dorsia, Resy Notify, OpenTable, Appointment Trader, Mise, Snatchd, etc.) plus a category roundup",
+      "urls": [
+        "https://dinnerelite.com/compare",
+        "https://dinnerelite.com/compare/dinnerelite-vs-resy-notify",
+        "https://dinnerelite.com/compare/dinnerelite-vs-dorsia"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "family",
+      "description": "Blog guides and articles on NYC reservations: hardest reservations by cuisine/neighborhood, alternatives to specific restaurants, drop-time tables, restaurant-specific booking guides",
+      "urls": [
+        "https://dinnerelite.com/blog/nyc-restaurant-reservation-drop-times",
+        "https://dinnerelite.com/blog/hardest-reservations-west-village",
+        "https://dinnerelite.com/blog/alternatives-to-carbone"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "page",
+      "description": "Hardest restaurant reservations in NYC ranking, based on booking-window estimates, refreshed daily",
+      "urls": [
+        "https://dinnerelite.com/hardest-restaurant-reservations-nyc"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "page",
+      "description": "Premium plans/subscription page",
+      "urls": [
+        "https://dinnerelite.com/premium"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "page",
+      "description": "Developers and AI agents guide: markdown mirrors, content negotiation, sitemaps, embeddable widget, why no public API",
+      "urls": [
+        "https://dinnerelite.com/developers"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "page",
+      "description": "Start page to begin the free 3-day trial",
+      "urls": [
+        "https://dinnerelite.com/start"
+      ]
+    }
+  ]
+}

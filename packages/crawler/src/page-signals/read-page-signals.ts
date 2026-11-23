@@ -24,6 +24,8 @@ export interface PageSignals {
    * HTML. Null when there is none.
    */
   metaRefreshUrl: string | null;
+  /** The language `<html lang>` declares, lowercased (`en-us`); null when it declares none. */
+  languageCode: string | null;
   /** A robots directive for this crawler forbids following the page's links. */
   isNofollow: boolean;
   /** A robots directive for this crawler asks that the page not be indexed or listed. */
@@ -101,6 +103,7 @@ export function readPageSignals(html: string, pageUrl: string, headers: Record<s
     visibleTextLength,
     hasJavaScriptShellMarker: hasEmptyAppRoot || ENABLE_JAVASCRIPT_PATTERN.test(noscriptText),
     hasScripts,
+    languageCode: $('html').attr('lang')?.trim().toLowerCase() || null,
     isNofollow: directives.has('nofollow') || directives.has('none'),
     isNoindex: directives.has('noindex') || directives.has('none'),
   };

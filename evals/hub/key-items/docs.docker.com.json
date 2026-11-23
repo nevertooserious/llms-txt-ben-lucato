@@ -1,0 +1,132 @@
+{
+  "site": "https://docs.docker.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Docker Documentation is the official Docker library of manuals, guides and references for containerizing applications with Docker products (Desktop, Engine, Build, Compose, Hub, Scout, AI tools, etc.)",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "resource",
+      "description": "llms-full.txt: complete documentation corpus / full page index for offline indexing",
+      "urls": [
+        "https://docs.docker.com/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "resource",
+      "description": "MCP endpoint for structured AI agent access to Docker docs",
+      "urls": [
+        "https://ai-backend-service.docker.com/mcp"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "fact",
+      "description": "Every docs page has a clean markdown version available by appending .md to the page path (e.g. /engine/install.md)",
+      "urls": []
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Get Docker: choose and install Docker Desktop, Docker Sandboxes, or Docker Engine and verify the install",
+      "urls": [
+        "https://docs.docker.com/get-docker/"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Reference hub for Docker APIs, CLIs and file formats",
+      "urls": [
+        "https://docs.docker.com/reference/"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "family",
+      "description": "Product documentation landing pages for Docker products (Desktop, Engine, Build, Compose, Hub, Scout, Hardened Images, Build Cloud, Offload, Testcontainers, Extensions)",
+      "urls": [
+        "https://docs.docker.com/desktop/",
+        "https://docs.docker.com/engine/",
+        "https://docs.docker.com/compose/"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "family",
+      "description": "AI & agents product docs: Docker Sandboxes, Sandboxes API/SDK, Agentic Platform, AI governance, Model Runner, Docker Agent, Gordon assistant",
+      "urls": [
+        "https://docs.docker.com/ai/sandboxes/",
+        "https://docs.docker.com/ai/model-runner/",
+        "https://docs.docker.com/ai/gordon/"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "Docker Skills: official skills giving AI coding agents guidance for Docker tasks",
+      "urls": [
+        "https://docs.docker.com/ai/skills/"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "family",
+      "description": "CLI command references (docker, docker compose, docker buildx, docker scout, docker model, docker mcp, dockerd, sbx, etc.)",
+      "urls": [
+        "https://docs.docker.com/reference/cli/docker/",
+        "https://docs.docker.com/reference/cli/docker/compose/",
+        "https://docs.docker.com/reference/cli/dockerd/"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "family",
+      "description": "HTTP API references (Docker Engine API, Docker Hub API, Registry API, Sandboxes API, AI Governance API, DVP Data API, Extensions API)",
+      "urls": [
+        "https://docs.docker.com/reference/api/engine/",
+        "https://docs.docker.com/reference/api/hub/latest/",
+        "https://docs.docker.com/reference/api/registry/latest/"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "page",
+      "description": "Dockerfile reference",
+      "urls": [
+        "https://docs.docker.com/reference/dockerfile/"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "page",
+      "description": "Compose file reference (Compose file format specification)",
+      "urls": [
+        "https://docs.docker.com/reference/compose-file/"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "family",
+      "description": "Accounts & admin docs: accounts/organizations, subscriptions & billing, security, FAQs, support, release notes, release lifecycle, deprecated products",
+      "urls": [
+        "https://docs.docker.com/subscription-billing/",
+        "https://docs.docker.com/accounts/",
+        "https://docs.docker.com/support/"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "page",
+      "description": "Docker Learn: tutorials and learning paths",
+      "urls": [
+        "https://docs.docker.com/learn/"
+      ]
+    }
+  ]
+}

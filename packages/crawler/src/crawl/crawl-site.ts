@@ -18,6 +18,7 @@ import { cleanUrlForFetch, isInScope, isOnRelatedHost, normaliseUrl } from '../d
 import { parseSitemap } from '../discovery/parse-sitemap';
 import { computeLinkGraphSignals } from './link-graph';
 import { documentationAreaKeyOf, pageFamilyKeyOf } from './page-family';
+import { isTranslation, pageLocaleOf, type PageLocale } from './page-locale';
 import { readPageSignals, readVisibleTextBlocks, type PageSignals } from '../page-signals/read-page-signals';
 import {
   fragmentRouteLinksOf,
@@ -82,6 +83,11 @@ export interface CrawlSiteOptions {
    */
   sitemapLastModifiedIsTrusted?: boolean;
   /**
+   * Whether an llms.txt the site already has is read for pages to crawl. On unless false.
+   * The eval turns it off, so a site's own file cannot shape the one scored against it.
+   */
+  readsExistingLlmsTxt?: boolean;
+  /**
    * sites.machine_readable_resource_urls from earlier crawls. Each is checked again, so a
    * file found through a page that answers 304 this time is not lost with the link to it.
    */
@@ -128,6 +134,10 @@ const MAX_MACHINE_READABLE_RESOURCE_CHECKS = 20;
  * is, and when nothing else is waiting the rest of it is fetched as before.
  */
 const FAMILY_PAGES_FETCHED_BEFORE_OTHERS = 12;
+/** Pages after the homepage that must also gain from rendering for the whole site to be rendered. */
+const PAGES_THAT_CONFIRM_RENDERING = 2;
+/** After the time limit, how long the site's machine-readable files are still looked for. */
+const MACHINE_READABLE_RESOURCE_GRACE_MS = 30_000;
 /** Routes rendered to confirm that a homepage linking routes of itself is a hash-routed site. */
 const FRAGMENT_ROUTES_OPENED_TO_CONFIRM = 2;
 /** Enough to learn that such a file is there; its content is not read. */
@@ -154,6 +164,8 @@ interface FrontierEntry {
   familyKey: string | null;
   /** The area of the documentation whose turn this page takes; null when it is not documentation. */
   documentationAreaKey: string | null;
+  /** The language the URL names in its path, if any (see pageLocaleOf). */
+  locale: PageLocale | null;
   /**
    * On another host of the same site (docs.example.com), which the homepage navigation
    * links. Fetched as one page under that host's robots.txt; its links are not followed.
@@ -206,6 +218,12 @@ class SiteCrawl {
   private readonly pagesTakenByFamily = new Map<string, number>();
   /** How many pages of each area of the documentation have been taken from the frontier. */
   private readonly pagesTakenByDocumentationArea = new Map<string, number>();
+  /** The languages URLs name at each place in the path, to tell a translation from a section (see isTranslation). */
+  private readonly languagesBySlot = new Map<string, Set<string>>();
+  /** The homepage's language: pages in another are translations. Null until the homepage is read. */
+  private siteLanguage: string | null = null;
+  /** Pages left on which a homepage's need for rendering is checked before it holds for the site. */
+  private pagesLeftToConfirmRendering = 0;
   private readonly fetchedUrls = new Set<string>();
   /** The links of each page read in this crawl, in page order. */
   private readonly outboundLinksRead = new Map<string, string[]>();
@@ -234,7 +252,7 @@ class SiteCrawl {
   private markdownVariantsFound = false;
   private insertionOrder = 0;
   private readonly fetchRootUrl: string;
-  private readonly deadline: number;
+  private deadline: number;
   /** robots.txt disallows the homepage or a redirect on the way to it. */
   private homepageIsDisallowedByRobots = false;
 
@@ -264,7 +282,9 @@ class SiteCrawl {
       if (!(error instanceof CrawlDeadlineReached)) throw error;
       stopReason = 'time_limit';
     }
-    if (stopReason !== 'time_limit' && stopReason !== 'robots_txt_unreachable') {
+    if (stopReason !== 'robots_txt_unreachable') {
+      // These few small files are worth a little more time: without them a slow site loses its llms-full.txt.
+      if (stopReason === 'time_limit') this.deadline = Date.now() + MACHINE_READABLE_RESOURCE_GRACE_MS;
       this.machineReadableResourceUrls = await this.findMachineReadableResources();
     }
     return this.result(stopReason, decidedBefore);
@@ -276,7 +296,7 @@ class SiteCrawl {
 
     if (!this.addToFrontier(this.fetchRootUrl, 0, 'navigation', null)) this.homepageIsDisallowedByRobots = true;
     await this.seedFromSitemaps();
-    await this.seedFromExistingLlmsTxt();
+    if (this.options.readsExistingLlmsTxt !== false) await this.seedFromExistingLlmsTxt();
     this.seedFromKnownPages();
 
     for (;;) {
@@ -507,6 +527,9 @@ class SiteCrawl {
         allowRelatedHost: true,
       });
     }
+    // The site's language until the homepage is read, which it is not when it answers 304.
+    const knownHomepage = [...this.knownPages.values()].find((knownPage) => knownPage.crawlDepth === 0);
+    this.siteLanguage = knownHomepage?.languageCode?.split(/[-_]/)[0]?.toLowerCase() || null;
     // The links of a page that answers 304 are not read again, so they are queued here.
     for (const knownPage of this.knownPages.values()) {
       if (knownPage.isRemoved) continue;
@@ -572,6 +595,11 @@ class SiteCrawl {
       }
       return false;
     }
+    const locale = isRelated ? null : pageLocaleOf(url, this.rootUrl);
+    if (locale !== null) {
+      const languages = this.languagesBySlot.get(locale.slotKey) ?? new Set<string>();
+      this.languagesBySlot.set(locale.slotKey, languages.add(locale.language));
+    }
     this.frontier.set(url, {
       url,
       fetchUrl,
@@ -581,6 +609,7 @@ class SiteCrawl {
       order: order ?? this.insertionOrder++,
       familyKey: isRelated ? null : pageFamilyKeyOf(url, this.rootUrl),
       documentationAreaKey: isRelated ? null : documentationAreaKeyOf(url, this.rootUrl),
+      locale,
       isOnRelatedHost: isRelated,
     });
     this.pending.add(url);
@@ -603,6 +632,7 @@ class SiteCrawl {
     let bestIsHeldBack = false;
     for (const url of this.pending) {
       const entry = this.frontier.get(url)!;
+      if (this.isTranslation(entry)) continue;
       const isHeldBack = this.isHeldBack(entry);
       const isBetter =
         best === undefined || (isHeldBack !== bestIsHeldBack ? bestIsHeldBack : compareEntries(entry, best) < 0);
@@ -622,6 +652,21 @@ class SiteCrawl {
       this.pagesTakenByFamily.set(best.familyKey, (this.pagesTakenByFamily.get(best.familyKey) ?? 0) + 1);
     }
     return best;
+  }
+
+  /** The homepage's language is the site's. */
+  private noteSiteLanguage(entry: FrontierEntry, signals: PageSignals): void {
+    if (entry.crawlDepth === 0 && signals.languageCode !== null) this.siteLanguage = signals.languageCode.split(/[-_]/)[0]!;
+  }
+
+  /** A translation of a page in the site's language is never fetched: the file lists a page once. */
+  private isTranslation(entry: FrontierEntry): boolean {
+    // A page stored by an earlier crawl is checked again whatever its language.
+    if (entry.locale === null || entry.crawlDepth === 0 || this.knownPages.has(entry.url)) return false;
+    return isTranslation(entry.locale, this.siteLanguage, {
+      languagesAtSlot: this.languagesBySlot.get(entry.locale.slotKey)!,
+      hasPage: (url) => this.frontier.has(this.pageUrlOf(url) ?? url),
+    });
   }
 
   /**
@@ -655,6 +700,7 @@ class SiteCrawl {
     for (const url of this.pending) {
       const entry = this.frontier.get(url)!;
       if (entry.crawlDepth !== next.crawlDepth || !this.takesTurnsByDocumentationArea(entry)) continue;
+      if (this.isTranslation(entry)) continue;
       if (this.isHeldBack(entry) !== this.isHeldBack(next)) continue;
       if ((takenOf(entry) - takenOf(best) || compareEntries(entry, best)) < 0) best = entry;
     }
@@ -698,6 +744,7 @@ class SiteCrawl {
     let markdownVariantUrl: string | null = null;
     if (isSuccess) {
       const signals = readPageSignals(page.html, page.finalUrl, page.headers);
+      this.noteSiteLanguage(entry, signals);
       if (entry.crawlDepth === 0 && page.fetchMethod === 'headless_browser' && !this.routesOnUrlFragment) {
         this.routesOnUrlFragment = await this.homepageRoutesOnUrlFragment(page, signals);
       }
@@ -762,7 +809,8 @@ class SiteCrawl {
 
   /** Fetches one page the way the site needs. Null when there is nothing to keep. */
   private async fetchPage(entry: FrontierEntry): Promise<FetchedPage | null> {
-    if (this.requiresHeadlessRendering === true) {
+    const isConfirmingRendering = this.pagesLeftToConfirmRendering > 0 && entry.crawlDepth > 0;
+    if (this.requiresHeadlessRendering === true && !isConfirmingRendering) {
       return this.renderPage(entry.fetchUrl, { isHomepage: entry.crawlDepth === 0 });
     }
 
@@ -796,6 +844,7 @@ class SiteCrawl {
     }
 
     const plainSignals = readPageSignals(outcome.body, outcome.finalUrl, outcome.headers);
+    if (isConfirmingRendering) return this.confirmRendering(entry, plainPage, plainSignals);
     if (!plainSignals.hasScripts) {
       // Without scripts, rendering cannot add anything.
       this.requiresHeadlessRendering ??= false;
@@ -811,6 +860,7 @@ class SiteCrawl {
       }
       const renderedSignals = readPageSignals(renderedPage.html, renderedPage.finalUrl, renderedPage.headers);
       this.requiresHeadlessRendering = renderingAddsContent(plainSignals, renderedSignals, (url) => isInScope(url, this.rootUrl));
+      if (this.requiresHeadlessRendering) this.pagesLeftToConfirmRendering = PAGES_THAT_CONFIRM_RENDERING;
       return this.requiresHeadlessRendering ? renderedPage : plainPage;
     }
 
@@ -822,6 +872,33 @@ class SiteCrawl {
         ? renderedPage
         : plainPage;
     }
+    return plainPage;
+  }
+
+  /** Rendering gives a page text or links it lacked, or fills a page that was an empty shell, however little it holds. */
+  private renderedPageAddsContent(plainSignals: PageSignals, renderedPage: FetchedPage): boolean {
+    const renderedSignals = readPageSignals(renderedPage.html, renderedPage.finalUrl, renderedPage.headers);
+    return (
+      renderingAddsContent(plainSignals, renderedSignals, (url) => isInScope(url, this.rootUrl)) ||
+      (looksLikeJavaScriptShell(plainSignals) && renderedPageIsBetter(plainSignals, renderedSignals))
+    );
+  }
+
+  /**
+   * A homepage is often the one page of a site that scripts build (a landing page over
+   * server-rendered documentation), and rendering every page costs ten times the crawl.
+   * So the first pages after a homepage that needed rendering are fetched both ways: if
+   * rendering adds nothing to any of them, the rest of the site is fetched plain.
+   */
+  private async confirmRendering(entry: FrontierEntry, plainPage: FetchedPage, plainSignals: PageSignals): Promise<FetchedPage> {
+    const renderedPage = plainSignals.hasScripts ? await this.renderPage(entry.fetchUrl, { recordFailure: false }) : null;
+    const addsContent = renderedPage !== null && this.renderedPageAddsContent(plainSignals, renderedPage);
+    if (addsContent) {
+      this.pagesLeftToConfirmRendering = 0;
+      return renderedPage;
+    }
+    this.pagesLeftToConfirmRendering -= 1;
+    if (this.pagesLeftToConfirmRendering === 0) this.requiresHeadlessRendering = false;
     return plainPage;
   }
 

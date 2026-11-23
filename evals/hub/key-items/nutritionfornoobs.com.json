@@ -1,0 +1,96 @@
+{
+  "site": "https://nutritionfornoobs.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Nutrition for Noobs is a podcast hosted by Kevin Harries and Michelle Pierce-Hamilton offering accessible, science-based discussions about food, nutrition and healthy living (with a strong plant-based / whole-food leaning)",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "page",
+      "description": "Home page of the Nutrition for Noobs podcast",
+      "urls": [
+        "https://nutritionfornoobs.com/"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "page",
+      "description": "Episode archive listing all past Nutrition for Noobs episodes",
+      "urls": [
+        "https://nutritionfornoobs.com/episode-archive.html"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "page",
+      "description": "Start Here page with episodes curated by broad topic for newcomers",
+      "urls": [
+        "https://nutritionfornoobs.com/starthere.html"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "About page introducing the two co-hosts",
+      "urls": [
+        "https://nutritionfornoobs.com/about.html"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Contact page for listener questions, sponsorship enquiries, guest requests and email sign-up",
+      "urls": [
+        "https://nutritionfornoobs.com/contact.html"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "family",
+      "description": "Individual numbered podcast episode pages (about 72 episodes) on nutrition topics such as protein, gut health, fibre, plant-based diets, food additives, longevity, and recipes",
+      "urls": [
+        "https://nutritionfornoobs.com/1-pleased-to-meet-us-a-fun-deep-dive-into-nutritional-myths-foundations.html",
+        "https://nutritionfornoobs.com/5-gut-health-explained-microbiome-myths-fermented-foods-probiotic-truths.html",
+        "https://nutritionfornoobs.com/72-the-benefits-of-eating-local-and-in-season.html"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "family",
+      "description": "Episodes featuring guest experts (e.g., Dr. Zahra Kassam on cancer, Dr. Matthew Nagra on U.S. dietary guidelines, Dr. Deborah Keil on PFAS, Dr. Marianne Trevorrow on menopause)",
+      "urls": [
+        "https://nutritionfornoobs.com/64-nutrition-cancer-prevention-treatment-the-power-of-a-plant-based-plate-with-dr-zahra-kassam.html",
+        "https://nutritionfornoobs.com/59-the-inverted-food-pyramid-explained-what-the-2025-2030-u.s.-dietary-guidelines-get-wrong-with-dr.-matt-nagra.html",
+        "https://nutritionfornoobs.com/68-perimenopause-menopause-demystified-hormones-lifestyle-and-what-actually-works.html"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "family",
+      "description": "Recipe episodes (\"Recipes for Noobs\") with plant-based recipes such as vegan Caesar dressing, gazpacho, oil-free chocolate cake and bang bang cauliflower",
+      "urls": [
+        "https://nutritionfornoobs.com/67-gazpacho-recipes-tomato-vibes-vs-pea-power.html",
+        "https://nutritionfornoobs.com/48-plant-based-chocolate-cake-no-eggs-no-oil-easy-healthy-dessert-recipe.html",
+        "https://nutritionfornoobs.com/62-bang-bang-cauliflower-recipe-the-power-of-cruciferous-veggies.html"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "fact",
+      "description": "Episode page URLs follow the pattern /<episode number>-<slug>.html; there is a special half-numbered episode 49.5 celebrating 50 episodes (bloopers/outtakes)",
+      "urls": [
+        "https://nutritionfornoobs.com/49andahalf-celebrating-50-episodes-behind-the-scenes-bloopers-outtakes-crickets-nutrition-for-noobs-unplugged.html"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "fact",
+      "description": "The show is Canadian-oriented, with episodes covering Canada's 2019 Food Guide and Canada's alcohol guidelines",
+      "urls": []
+    }
+  ]
+}

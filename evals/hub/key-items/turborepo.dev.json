@@ -1,0 +1,141 @@
+{
+  "site": "https://turborepo.dev",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Turborepo is a build system (positioned as 'the build system for coding agents') for JavaScript/TypeScript monorepos, providing incremental task running, local and remote caching, and parallel execution; audience is JS/TS developers, monorepo maintainers, and platform/DX teams",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "Tasks/pipelines are configured in a turbo.json file and run via the `turbo` CLI; `turbo prune` produces lightweight monorepo subsets for deploys",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "page",
+      "description": "Documentation introduction / home page",
+      "urls": [
+        "https://turborepo.dev/docs/index.md"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "page",
+      "description": "Installation guide for getting started with Turborepo",
+      "urls": [
+        "https://turborepo.dev/docs/getting-started/installation.md"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Configuring turbo.json reference",
+      "urls": [
+        "https://turborepo.dev/docs/reference/configuration.md"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "family",
+      "description": "turbo CLI command API reference pages (run, prune, watch, login, link, ls, query, boundaries, etc.)",
+      "urls": [
+        "https://turborepo.dev/docs/reference.md",
+        "https://turborepo.dev/docs/reference/run.md",
+        "https://turborepo.dev/docs/reference/prune.md",
+        "https://turborepo.dev/docs/reference/watch.md"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "Remote Caching core concept page (sharing cache artifacts across machines)",
+      "urls": [
+        "https://turborepo.dev/docs/core-concepts/remote-caching.md"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "family",
+      "description": "Remote Cache API (OpenAPI spec for self-hosted Remote Cache servers) endpoint pages: upload, download, check exists, query artifacts, record events, status",
+      "urls": [
+        "https://turborepo.dev/docs/openapi.md",
+        "https://turborepo.dev/docs/openapi/artifacts/upload-artifact.md",
+        "https://turborepo.dev/docs/openapi/artifacts/download-artifact.md",
+        "https://turborepo.dev/docs/openapi/artifacts/status.md"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "family",
+      "description": "'Crafting your repository' guides on caching, configuring tasks, running tasks, CI, environment variables, dependencies, upgrading",
+      "urls": [
+        "https://turborepo.dev/docs/crafting-your-repository.md",
+        "https://turborepo.dev/docs/crafting-your-repository/caching.md",
+        "https://turborepo.dev/docs/crafting-your-repository/configuring-tasks.md",
+        "https://turborepo.dev/docs/crafting-your-repository/using-environment-variables.md"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "family",
+      "description": "Core concepts pages (package and task graphs, internal packages, package types)",
+      "urls": [
+        "https://turborepo.dev/docs/core-concepts.md",
+        "https://turborepo.dev/docs/core-concepts/package-and-task-graph.md",
+        "https://turborepo.dev/docs/core-concepts/internal-packages.md"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "family",
+      "description": "CI vendor guides (GitHub Actions, GitLab CI, CircleCI, Buildkite, Travis CI, Vercel)",
+      "urls": [
+        "https://turborepo.dev/docs/guides/ci-vendors.md",
+        "https://turborepo.dev/docs/guides/ci-vendors/github-actions.md",
+        "https://turborepo.dev/docs/guides/ci-vendors/vercel.md"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "family",
+      "description": "Framework integration guides (Next.js, Nuxt, SvelteKit, Vite, Rsbuild)",
+      "urls": [
+        "https://turborepo.dev/docs/guides/frameworks.md",
+        "https://turborepo.dev/docs/guides/frameworks/nextjs.md",
+        "https://turborepo.dev/docs/guides/frameworks/vite.md"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "family",
+      "description": "Tool integration guides (Docker, ESLint, TypeScript, Jest, Vitest, Tailwind, Prisma, Storybook, Biome, and experimental Go, Python/uv, Rust/Cargo workspace support)",
+      "urls": [
+        "https://turborepo.dev/docs/guides/tools.md",
+        "https://turborepo.dev/docs/guides/tools/docker.md",
+        "https://turborepo.dev/docs/guides/tools/typescript.md"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "page",
+      "description": "Using AI coding assistants with Turborepo guide",
+      "urls": [
+        "https://turborepo.dev/docs/guides/ai.md"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "family",
+      "description": "Error message explanation pages (e.g. invalid env prefix, missing root task, recursive turbo invocations)",
+      "urls": [
+        "https://turborepo.dev/docs/messages/invalid-env-prefix.md",
+        "https://turborepo.dev/docs/messages/recursive-turbo-invocations.md",
+        "https://turborepo.dev/docs/messages/missing-root-task-in-turbo-json.md"
+      ]
+    }
+  ]
+}

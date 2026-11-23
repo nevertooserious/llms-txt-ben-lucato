@@ -1,0 +1,127 @@
+{
+  "site": "https://www.lingachat.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "Linga Chat is a language exchange app for speaking practice with native speakers, combining partner matching, instant translation, live audio/video rooms and a 24/7 AI language partner",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "Linga Chat is made by EGEROBOT (based in İzmir, Turkey); contact info@lingachat.com",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "fact",
+      "description": "Available on iOS, iPadOS, macOS, Android and Windows; free to start",
+      "urls": []
+    },
+    {
+      "id": "k4",
+      "kind": "fact",
+      "description": "Supports chat and instant translation in 41 languages; also offers lessons with real human teachers, word games and daily quests",
+      "urls": []
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Plans & pricing (subscription) page",
+      "urls": [
+        "https://www.lingachat.com/en/subscription.html"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Home page / overview of Linga Chat",
+      "urls": [
+        "https://www.lingachat.com/en/index.html"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "family",
+      "description": "Q&A answer pages, one question per page, covering the app's features, pricing, safety, games, lessons, translation, travel and events",
+      "urls": [
+        "https://www.lingachat.com/en/answers.html",
+        "https://www.lingachat.com/en/answer/what-is-lingachat",
+        "https://www.lingachat.com/en/answer/is-lingachat-free",
+        "https://www.lingachat.com/en/answer/is-lingachat-a-dating-app"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "family",
+      "description": "Feature pages: language-partner matching, instant translation, live audio/video rooms, AI language partner",
+      "urls": [
+        "https://www.lingachat.com/en/feature-matching.html",
+        "https://www.lingachat.com/en/feature-translation.html",
+        "https://www.lingachat.com/en/feature-ai-partner.html"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "family",
+      "description": "Subscription tier pages: Plus, Premium and Gold",
+      "urls": [
+        "https://www.lingachat.com/en/subscription-plus.html",
+        "https://www.lingachat.com/en/subscription-premium.html",
+        "https://www.lingachat.com/en/subscription-gold.html"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "resource",
+      "description": "llms-full.txt full-text version of the site for LLMs",
+      "urls": [
+        "https://www.lingachat.com/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "page",
+      "description": "FAQ page",
+      "urls": [
+        "https://www.lingachat.com/en/faq.html"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "page",
+      "description": "About Linga Chat & EGEROBOT",
+      "urls": [
+        "https://www.lingachat.com/en/about.html"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "page",
+      "description": "Support & contact page",
+      "urls": [
+        "https://www.lingachat.com/en/support.html"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "page",
+      "description": "Community blog with posts written by members",
+      "urls": [
+        "https://www.lingachat.com/en/blog/"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "family",
+      "description": "Per-language versions of the llms.txt file (e.g. Turkish, German, Spanish)",
+      "urls": [
+        "https://www.lingachat.com/llms-tr.txt",
+        "https://www.lingachat.com/llms-de.txt",
+        "https://www.lingachat.com/llms-es.txt"
+      ]
+    }
+  ]
+}

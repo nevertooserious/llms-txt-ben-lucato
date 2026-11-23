@@ -1,0 +1,141 @@
+{
+  "site": "https://cursor.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "page",
+      "description": "Cursor documentation home / overview",
+      "urls": [
+        "https://cursor.com/docs.md"
+      ]
+    },
+    {
+      "id": "k2",
+      "kind": "page",
+      "description": "Quickstart guide for getting started with Cursor",
+      "urls": [
+        "https://cursor.com/docs/get-started/quickstart.md"
+      ]
+    },
+    {
+      "id": "k3",
+      "kind": "page",
+      "description": "Models and pricing overview page",
+      "urls": [
+        "https://cursor.com/docs/models-and-pricing.md"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "family",
+      "description": "Per-model documentation pages for the AI models available in Cursor (Claude, Gemini, GPT, Grok, Composer)",
+      "urls": [
+        "https://cursor.com/docs/models/claude-sonnet-5-5.md",
+        "https://cursor.com/docs/models/gpt-5-6-sol.md",
+        "https://cursor.com/docs/models/cursor-composer-2-5.md"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Agent overview documentation (Cursor's AI coding agent in the editor)",
+      "urls": [
+        "https://cursor.com/docs/agent/overview.md"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Cloud agents documentation hub",
+      "urls": [
+        "https://cursor.com/docs/cloud-agent.md"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "family",
+      "description": "Cloud Agents API reference: endpoints for agents, runs, projects, environments, secrets, automations, workers and pools, plus webhooks",
+      "urls": [
+        "https://cursor.com/docs/cloud-agent/api/endpoints.md",
+        "https://cursor.com/docs/cloud-agent/api/webhooks.md",
+        "https://cursor.com/docs/cloud-agent/api/endpoints.md#create-an-agent"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "API overview covering authentication, rate limits and best practices",
+      "urls": [
+        "https://cursor.com/docs/api.md"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "family",
+      "description": "Team and organization Admin API, Analytics API and AI Code Tracking API references",
+      "urls": [
+        "https://cursor.com/docs/account/teams/admin-api.md",
+        "https://cursor.com/docs/account/teams/analytics-api.md",
+        "https://cursor.com/docs/account/teams/ai-code-tracking-api.md"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "resource",
+      "description": "Origin API machine-readable files: OpenAPI spec, llms.txt and llms-full.txt for Origin, plus Origin MCP server docs",
+      "urls": [
+        "https://cursor.com/docs/api/origin/openapi.yaml",
+        "https://cursor.com/docs/api/origin/llms-full.txt",
+        "https://cursor.com/docs/api/origin/llms.txt",
+        "https://cursor.com/docs/api/origin/mcp.md"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "family",
+      "description": "Cursor CLI documentation: overview, installation, headless mode, GitHub Actions, and reference (slash commands, parameters, auth, permissions, configuration)",
+      "urls": [
+        "https://cursor.com/docs/cli/overview.md",
+        "https://cursor.com/docs/cli/installation.md",
+        "https://cursor.com/docs/cli/headless.md"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "family",
+      "description": "Agent SDK documentation: overview, quickstart, guides and reference (agent config, tools, skills, HTTP API, limits); plus TypeScript and Python SDK pages",
+      "urls": [
+        "https://cursor.com/docs/agent-sdk.md",
+        "https://cursor.com/docs/agent-sdk/quickstart.md",
+        "https://cursor.com/docs/sdk/typescript.md"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "family",
+      "description": "Customization docs: rules, skills, subagents, hooks, plugins, MCP",
+      "urls": [
+        "https://cursor.com/docs/rules.md",
+        "https://cursor.com/docs/mcp.md",
+        "https://cursor.com/docs/customize-cursor.md"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "family",
+      "description": "Help Center articles on getting started, AI features, account and billing (pricing, refunds, cancel, student discount), security and troubleshooting",
+      "urls": [
+        "https://cursor.com/help/account-and-billing/pricing.md",
+        "https://cursor.com/help/getting-started/install.md",
+        "https://cursor.com/help/troubleshooting/agent-issues.md"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "fact",
+      "description": "All docs are available in other languages by prepending a language code to the path (e.g. https://cursor.com/es/docs/bugbot.md); available languages: cn, ru, ja, pt-BR, es",
+      "urls": []
+    }
+  ]
+}

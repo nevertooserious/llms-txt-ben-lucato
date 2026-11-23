@@ -7,8 +7,8 @@ import type { PageAssessment } from '@llms-txt/contracts';
 export const PAGE_ASSESSMENT_MODEL = 'claude-haiku-5-5';
 export const SITE_SUMMARY_MODEL = 'claude-opus-5-5';
 
-/** Notes are for the few things the links cannot say, so the file stays an index. */
-export const MAXIMUM_SITE_NOTES = 5;
+/** Notes are for the facts the links cannot say. Few, so the file stays an index. */
+export const MAXIMUM_SITE_NOTES = 8;
 
 /** The model declined, or returned something unusable. Asking again now would not help. */
 export class LlmOutputRejectedError extends Error {
@@ -36,6 +36,8 @@ export interface SiteSummaryInput {
   homepageDescription: string | null;
   homepageContentMarkdown: string;
   listedPages: { title: string; description: string | null; sectionName: string }[];
+  /** The text of the few listed pages that hold a site's facts: its prices, who is behind it, what it offers. */
+  factPages: { title: string; contentMarkdown: string }[];
   /** Kept unless it is now wrong, so a real change gives a small diff. */
   previousSummary: string | null;
   previousNotes: string[];

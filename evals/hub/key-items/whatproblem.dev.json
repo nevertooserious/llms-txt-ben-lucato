@@ -1,0 +1,118 @@
+{
+  "site": "https://whatproblem.dev",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "WhatProblem is a GitHub app that reads newly opened issues, restates the problem, and asks clarifying questions in the issue thread within a minute or two; clear issues get only the restatement; nothing to run or configure",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "Works only through GitHub issue comments; never touches pull requests and skips issues opened by bots",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "fact",
+      "description": "Billing: one issue costs one unit of the monthly allowance regardless of rounds; follow-ups and closing summary not charged; 10% grace band above the limit",
+      "urls": []
+    },
+    {
+      "id": "k4",
+      "kind": "fact",
+      "description": "Commands are `!whatproblem analyze` and `!whatproblem stop`, commented on an issue; stop applies to that issue only and is undone with analyze",
+      "urls": []
+    },
+    {
+      "id": "k5",
+      "kind": "fact",
+      "description": "Conversations run at most five rounds; no timers — a thread quiet for over a week gets a short note instead of a new round, resumed with `!whatproblem analyze`",
+      "urls": []
+    },
+    {
+      "id": "k6",
+      "kind": "fact",
+      "description": "Beta allowance is 150 clarified issues a month for the first 100 installations",
+      "urls": []
+    },
+    {
+      "id": "k7",
+      "kind": "fact",
+      "description": "Billing is via GitHub Marketplace, so refunds and cancellations are handled by GitHub, not WhatProblem",
+      "urls": []
+    },
+    {
+      "id": "k8",
+      "kind": "fact",
+      "description": "Support: general questions on the public GitHub tracker, account-specific issues to support@whatproblem.dev; operated by Williams Initiatives Ltd (UK company 14929985)",
+      "urls": []
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "How it works: what the bot does and when it stays quiet",
+      "urls": [
+        "https://whatproblem.dev/using-the-bot"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "page",
+      "description": "Commands reference: every command and what stopping applies to",
+      "urls": [
+        "https://whatproblem.dev/commands"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "page",
+      "description": "Plans and limits: pricing/allowance and what counts against it",
+      "urls": [
+        "https://whatproblem.dev/plans-and-limits"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "page",
+      "description": "Troubleshooting doc on GitHub for when the bot did not respond",
+      "urls": [
+        "https://github.com/williamsinitiativesltd/whatproblem/blob/main/docs/troubleshooting.md"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "family",
+      "description": "Undated reference guides on writing bug reports, feature requests, reproduction steps, issue titles, and triaging issues",
+      "urls": [
+        "https://whatproblem.dev/guides",
+        "https://whatproblem.dev/guides/how-to-write-a-bug-report",
+        "https://whatproblem.dev/guides/how-to-triage-an-issue-backlog",
+        "https://whatproblem.dev/guides/how-to-write-a-github-issue-for-an-ai-coding-agent"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "family",
+      "description": "Blog posts on issue clarity, triage, GitHub webhooks/bots, and bug reporting",
+      "urls": [
+        "https://whatproblem.dev/blog",
+        "https://whatproblem.dev/blog/does-github-retry-failed-webhooks",
+        "https://whatproblem.dev/blog/five-questions-that-turn-a-vague-issue-into-work",
+        "https://whatproblem.dev/blog/how-to-stop-a-github-bot-replying-to-its-own-comments"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "family",
+      "description": "Audience pages explaining the case for different roles (maintainers, product teams, QA, engineering managers, developers)",
+      "urls": [
+        "https://whatproblem.dev/for/maintainers",
+        "https://whatproblem.dev/for/engineering-managers",
+        "https://whatproblem.dev/for/every-issue"
+      ]
+    }
+  ]
+}

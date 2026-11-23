@@ -1,0 +1,129 @@
+{
+  "site": "https://cueframe.ai",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "CueFrame is a deterministic video composition API: you write the edit as data (e.g. JSON) and CueFrame renders it; the same input always renders the same video, and changing one line changes only that one thing.",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "Users can author their own components, including native 3D scenes that arrange their images and videos, rendered by the same API; CueFrame is usable over MCP, CLI and REST.",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "page",
+      "description": "Main documentation hub covering composing video over MCP, CLI and REST",
+      "urls": [
+        "https://docs.cueframe.ai/docs"
+      ]
+    },
+    {
+      "id": "k4",
+      "kind": "page",
+      "description": "Quickstart: intent to rendered video in three steps over MCP",
+      "urls": [
+        "https://docs.cueframe.ai/docs/quickstart"
+      ]
+    },
+    {
+      "id": "k5",
+      "kind": "resource",
+      "description": "OpenAPI specification for the CueFrame REST API",
+      "urls": [
+        "https://api.cueframe.ai/v1/openapi.json"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "resource",
+      "description": "Public MCP server (Streamable HTTP); initialize and tools/list are free, data operations require payment (x402 pay-per-call)",
+      "urls": [
+        "https://api.cueframe.ai/v1/mcp/x402"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "Pay-per-call docs: keyless way for agents to use CueFrame without an account or API key",
+      "urls": [
+        "https://docs.cueframe.ai/docs/pay-per-call"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "Pricing page: free desktop editing and usage-based cloud credits",
+      "urls": [
+        "https://cueframe.ai/pricing"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "API reference covering media, compositions, rendering, sessions, brand kits and webhooks",
+      "urls": [
+        "https://docs.cueframe.ai/docs/api"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "family",
+      "description": "Markdown quickstarts per interface (MCP, CLI, REST API) covering auth, first video, async jobs, retries and errors",
+      "urls": [
+        "https://cueframe.ai/mcp.md",
+        "https://cueframe.ai/cli.md",
+        "https://cueframe.ai/api.md"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "resource",
+      "description": "OAuth discovery metadata: authorization server (issuer, PKCE endpoints, scopes) and protected resource for hosted MCP",
+      "urls": [
+        "https://api.cueframe.ai/.well-known/oauth-authorization-server",
+        "https://api.cueframe.ai/.well-known/oauth-protected-resource"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "page",
+      "description": "API policies: authentication, least privilege, rate limits, versioning and onboarding",
+      "urls": [
+        "https://cueframe.ai/developers/policies"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "family",
+      "description": "Guides on video composition APIs, agentic video editing, captions, smart crop, JSON-to-video, pricing models and buyer comparisons",
+      "urls": [
+        "https://cueframe.ai/guides/video-composition-api",
+        "https://cueframe.ai/guides/render-video-from-json",
+        "https://cueframe.ai/guides/mcp-video-tools"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "page",
+      "description": "Free local desktop video editor for macOS and Windows",
+      "urls": [
+        "https://cueframe.ai/desktop"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "family",
+      "description": "Product pages for each interface and starting points: MCP, CLI, API, templates, first render, developer resources, web app",
+      "urls": [
+        "https://cueframe.ai/mcp",
+        "https://cueframe.ai/templates",
+        "https://cueframe.ai/developers"
+      ]
+    }
+  ]
+}

@@ -19,6 +19,8 @@ const SITE_NAMES = [
   'large-sitemap-site',
   'rate-limited-site',
   'hostile-site',
+  'translated-site',
+  'scripted-homepage-site',
 ] as const;
 type SiteName = (typeof SITE_NAMES)[number];
 
@@ -84,6 +86,21 @@ describe('rendering', () => {
     expect(result.pages.every((page) => page.fetchMethod === 'headless_browser')).toBe(true);
     expect(pageAt(result, site, '/features').html).toContain('Real-time charts');
     expect(pageAt(result, site, '/pricing').html).toContain('<title>Pricing | Shellfish Analytics</title>');
+  });
+
+  it('scripted homepage over server-rendered pages: only the homepage is rendered', async () => {
+    const site = sites['scripted-homepage-site'];
+    const result = await crawl('scripted-homepage-site');
+    expect(paths(result, site)).toEqual(['/', '/configure', '/deploy', '/install', '/reference', '/troubleshoot', '/upgrade']);
+    expect(pageAt(result, site, '/').fetchMethod).toBe('headless_browser');
+    expect(result.pages.filter((page) => page.fetchMethod === 'headless_browser')).toHaveLength(1);
+    expect(result.requiresHeadlessRendering).toBe(false);
+  });
+
+  it('renders a page whose server compressed it without being asked', async () => {
+    const outcome = await headlessRenderer.render(`${sites['hostile-site'].origin}/gzip-unasked`);
+    expect(outcome).toMatchObject({ kind: 'rendered' });
+    if (outcome.kind === 'rendered') expect(outcome.html).toContain('Gzipped anyway');
   });
 
   it('late-loaded content: waits past network idle, no loading placeholder', async () => {
@@ -308,6 +325,21 @@ describe('discovery', () => {
     const result = await crawl('markdown-site');
     expect(pageAt(result, site, '/guides/setup').crawlSignals.discoveredVia).toBe('existing_llms_txt');
     expect(result.pages.every((page) => page.normalisedUrl.startsWith(site.origin))).toBe(true);
+  });
+
+  it('does not read an existing llms.txt when told not to', async () => {
+    const site = sites['markdown-site'];
+    const requestsBefore = requestsFor(site, /^\/llms\.txt$/).length;
+    const result = await crawl('markdown-site', { readsExistingLlmsTxt: false });
+    expect(requestsFor(site, /^\/llms\.txt$/)).toHaveLength(requestsBefore);
+    expect(result.pages.some((page) => page.crawlSignals.discoveredVia === 'existing_llms_txt')).toBe(false);
+  });
+
+  it('does not fetch translations of the pages in the site’s language', async () => {
+    const site = sites['translated-site'];
+    const result = await crawl('translated-site');
+    expect(paths(result, site)).toEqual(['/', '/ai/agents', '/en/about', '/en/guide', '/en/pricing']);
+    expect(requestsFor(site, /^\/(de|fr)\//)).toEqual([]);
   });
 
   it('finds the site’s machine-readable files, and only those that are there', async () => {

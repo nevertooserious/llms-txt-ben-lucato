@@ -40,6 +40,8 @@ export interface StoredPage {
   removedAt: string | null;
   contentDigest: string | null;
   listingFieldsHash: string | null;
+  /** The language the page declared when it was last read. */
+  languageCode: string | null;
 }
 
 export async function loadStoredPages(database: Queryable, siteId: string): Promise<StoredPage[]> {
@@ -59,11 +61,12 @@ export async function loadStoredPages(database: Queryable, siteId: string): Prom
     removed_at: Date | null;
     content_digest: string | null;
     listing_fields_hash: string | null;
+    language_code: string | null;
   }>(
     `select normalised_url, fetch_url, http_status_code, http_etag, http_last_modified, fetch_method,
             crawl_depth, discovered_via, sitemap_last_modified_at, markdown_variant_url,
             outbound_link_urls, has_noindex_directive, removed_at, content_digest,
-            listing_fields_hash
+            listing_fields_hash, language_code
        from pages
       where site_id = $1`,
     [siteId],
@@ -84,6 +87,7 @@ export async function loadStoredPages(database: Queryable, siteId: string): Prom
     removedAt: row.removed_at?.toISOString() ?? null,
     contentDigest: row.content_digest,
     listingFieldsHash: row.listing_fields_hash,
+    languageCode: row.language_code,
   }));
 }
 

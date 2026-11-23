@@ -1,0 +1,132 @@
+{
+  "site": "https://routerplex.com",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "RouterPlex is a hosted prepaid LLM gateway: one API key for 86 AI models, OpenAI- and Anthropic-compatible, claiming up to 40% cost savings via a built-in optimizer and always-on reliability.",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "API base URL is https://api.routerplex.com/v1; supports OpenAI chat completions, Anthropic /v1/messages, and the Responses API (used by Codex CLI).",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "fact",
+      "description": "Pay as you go: top up from $5, pay per token at vendor list prices, $0 top-up fee, no RPM/TPM caps, credit never expires, balance cannot go negative (stops at zero). Crypto top-ups via NOWPayments with a $15 minimum.",
+      "urls": []
+    },
+    {
+      "id": "k4",
+      "kind": "fact",
+      "description": "Subscription plans: Plex Lite $10/month gives $11 credits; Plex Pro $30/month gives $35 credits; Plex Max $100/month gives $125 credits.",
+      "urls": []
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Pricing page (pay-as-you-go and Plex Lite/Pro/Max plans)",
+      "urls": [
+        "https://routerplex.com/pricing"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "resource",
+      "description": "Machine-readable pricing in Markdown (plan limits, credits, billing terms)",
+      "urls": [
+        "https://routerplex.com/pricing.md"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "resource",
+      "description": "Full documentation as one file (llms-full.txt)",
+      "urls": [
+        "https://docs.routerplex.com/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "page",
+      "description": "Documentation introduction / docs hub",
+      "urls": [
+        "https://docs.routerplex.com/"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "Quickstart: create a key and send the first request",
+      "urls": [
+        "https://docs.routerplex.com/quickstart"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "family",
+      "description": "Integration setup guides for editors and coding agents (Claude Code via ANTHROPIC_BASE_URL, Cursor, Codex CLI, OpenCode, Cline, Aider, Zed, etc.), plus the RouterPlex CLI (npx routerplex)",
+      "urls": [
+        "https://docs.routerplex.com/integrations",
+        "https://docs.routerplex.com/claude-code",
+        "https://docs.routerplex.com/cursor",
+        "https://docs.routerplex.com/cli"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "family",
+      "description": "API reference docs: authentication, chat completions, Anthropic Messages, streaming, image generation, decision models, models, errors & limits, keys & budgets, usage API, billing",
+      "urls": [
+        "https://docs.routerplex.com/chat-completions",
+        "https://docs.routerplex.com/anthropic-messages",
+        "https://docs.routerplex.com/errors",
+        "https://docs.routerplex.com/keys-budgets"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "page",
+      "description": "All model API pricing: live per-token prices and workload calculator for every model",
+      "urls": [
+        "https://routerplex.com/models"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "family",
+      "description": "Per-model and per-vendor pricing pages (price per 1M input/output tokens, context window)",
+      "urls": [
+        "https://routerplex.com/models/openai",
+        "https://routerplex.com/models/gpt-6-sol",
+        "https://routerplex.com/models/claude-opus-5",
+        "https://routerplex.com/models/cheapest"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "family",
+      "description": "Comparison pages of RouterPlex vs other gateways and hosts (OpenRouter, LLM Gateway, Vercel AI Gateway, Requesty, Fireworks, Together, Groq, LiteLLM, Portkey, Helicone), with sourced gateway fees data (JSON/CSV)",
+      "urls": [
+        "https://routerplex.com/vs",
+        "https://routerplex.com/vs/openrouter",
+        "https://routerplex.com/data/gateway-fees.json",
+        "https://routerplex.com/pay-with-crypto"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "family",
+      "description": "Blog guides on model API pricing/setup, coding agent configuration, and gateway pricing comparisons",
+      "urls": [
+        "https://routerplex.com/blog/openrouter-alternatives",
+        "https://routerplex.com/blog/gpt-6-astra-api-pricing-setup",
+        "https://routerplex.com/blog/claude-code-deepseek"
+      ]
+    }
+  ]
+}

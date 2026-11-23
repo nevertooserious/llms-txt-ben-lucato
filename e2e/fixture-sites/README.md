@@ -25,7 +25,9 @@ charset parameter, so a page's own `<meta charset>` decides its encoding.
 | `crawl-delay-site` | robots.txt sets `Crawl-delay: 1`, and every page links to another |
 | `changing-site` | Only scripted routes: a homepage linking to pages whose titles, descriptions, statuses and links a test changes between monitor checks |
 | `editable-site` | Like `changing-site`, but each served copy has its own state (keyed by port), so every test edits a fresh site: descriptions, body noise, new pages, 404s, 5xx, unlinked pages. ETags and 304s like a static server |
-| `hostile-site` | Only scripted routes: redirect chains and loops, open redirects, timeouts, oversized bodies, error statuses, non-HTML types, and a page whose scripts reach for private addresses |
+| `translated-site` | Only scripted routes: every page in English, German and French under `/en/`, `/de/` and `/fr/`, each linking its translations, and a section with a two-letter name that is not a language |
+| `scripted-homepage-site` | Only scripted routes: a homepage whose links a script writes, over pages the server renders in full |
+| `hostile-site` | Only scripted routes: redirect chains and loops, open redirects, timeouts, oversized bodies, error statuses, non-HTML types, bodies compressed without being asked, and a page whose scripts reach for private addresses |
 
 Tests reach these sites through `allowLoopbackPorts` in `e2e/support/local-network-policy.ts`,
 which opens exactly the fixture ports and nothing else. `../tests/crawler.test.ts`, `../tests/crawler-conventions.test.ts`

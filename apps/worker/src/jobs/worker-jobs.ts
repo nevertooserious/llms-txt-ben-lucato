@@ -43,7 +43,11 @@ export async function startWorkerJobs(dependencies: WorkerJobDependencies): Prom
         databasePool,
         logger: logger.child({ pipelineRunId: job.data.pipelineRunId, siteId: job.data.siteId }),
         heartbeatIntervalMs: config.heartbeatIntervalMs,
-        settings: { crawlPageBudget: config.crawlPageBudget, maxFailedFetchShare: config.maxFailedFetchShare },
+        settings: {
+          crawlPageBudget: config.crawlPageBudget,
+          maxFailedFetchShare: config.maxFailedFetchShare,
+          readsExistingLlmsTxt: config.readsExistingLlmsTxt,
+        },
         crawl: dependencies.crawl,
         resolveRootUrl: dependencies.resolveRootUrl,
         renderLlmsTxt: dependencies.renderLlmsTxt,

@@ -7,3 +7,6 @@ coverage/
 .env
 .env.*
 !.env.example
+
+# The hub eval writes its runs here (scripts/eval-hub.mjs).
+evals/hub/runs/

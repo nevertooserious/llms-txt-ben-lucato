@@ -117,7 +117,7 @@ const SHIPPED_SOURCE = ['apps/*/src/**/*.{ts,tsx}', 'packages/*/src/**/*.ts'];
 const SIZE_LIMITS = { complexity: 15, depth: 4, parameters: 4, functionLines: 80, fileLines: 400 };
 /** @type {Record<string, Partial<typeof SIZE_LIMITS>>} */
 const OVER_LIMIT_FILES = {
-  'packages/crawler/src/crawl/crawl-site.ts': { complexity: 26, depth: 5, parameters: 5, fileLines: 830 },
+  'packages/crawler/src/crawl/crawl-site.ts': { complexity: 26, depth: 5, parameters: 5, fileLines: 890 },
   'packages/crawler/src/network/http-fetcher.ts': { complexity: 31, functionLines: 100 },
   'packages/crawler/src/network/headless-renderer.ts': { complexity: 26, parameters: 6, functionLines: 82 },
   // One object literal: the OpenAPI description of every route.

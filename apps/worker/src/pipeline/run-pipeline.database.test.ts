@@ -120,7 +120,7 @@ async function run(
       databasePool: pool,
       logger: createLogger({ level: 'error', writeLine: () => {} }),
       heartbeatIntervalMs: 60_000,
-      settings: { crawlPageBudget: 50, maxFailedFetchShare: 0.5 },
+      settings: { crawlPageBudget: 50, maxFailedFetchShare: 0.5, readsExistingLlmsTxt: true },
       crawl,
       renderLlmsTxt: llmClient === null ? renderLlmsTxt : generateLlmsTxt,
       resolveRootUrl,

@@ -24,6 +24,7 @@ export function machineReadableResourceKindOf(url: string): MachineReadableResou
   // Sites name shorter versions as they like: `llms-small.txt`, `llms-medium.txt`, `llms-ctx.txt`.
   if (/^llms-[a-z0-9][a-z0-9._-]*\.txt$/.test(fileName)) return 'llms_text_variant';
   if (fileName === 'llms.txt') return 'llms_txt_index';
-  if (/^(openapi|swagger)\.(json|ya?ml)$/.test(fileName)) return 'openapi_description';
+  // Also one API's among several: `billing-openapi.json`, `openapi-v2.yaml`.
+  if (/^(?:[a-z0-9]+[-_.])*(?:openapi|swagger)(?:[-_.][a-z0-9]+)*\.(?:json|ya?ml)$/.test(fileName)) return 'openapi_description';
   return null;
 }

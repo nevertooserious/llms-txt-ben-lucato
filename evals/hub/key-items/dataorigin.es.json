@@ -1,0 +1,130 @@
+{
+  "site": "https://dataorigin.es",
+  "referenceWasDigested": false,
+  "items": [
+    {
+      "id": "k1",
+      "kind": "fact",
+      "description": "DataOrigin is a trade show prospecting / event intelligence platform for B2B sales teams: it provides exhibitor, attendee, speaker and sponsor lists of trade shows enriched with firmographic data and scores companies against the user's ICP; founded 2024, based in Valencia, Spain",
+      "urls": []
+    },
+    {
+      "id": "k2",
+      "kind": "fact",
+      "description": "Sign-up gives 150 free credits (1 credit = 1 EUR); trade shows are unlocked from the catalog with credits; credit packs and subscriptions are shown only inside the platform after signup, quotes via contact page",
+      "urls": []
+    },
+    {
+      "id": "k3",
+      "kind": "fact",
+      "description": "Not a generic B2B contact database (data organized around trade shows/events), does not cover B2C consumer fairs or individuals, and does not register users for events or sell tickets",
+      "urls": []
+    },
+    {
+      "id": "k4",
+      "kind": "fact",
+      "description": "Exports to CSV, Excel, Google Sheets and integrates with CRMs HubSpot, Zoho and Pipedrive; API connection for data export; finds decision-makers for email/LinkedIn outreach",
+      "urls": []
+    },
+    {
+      "id": "k5",
+      "kind": "page",
+      "description": "Solution page explaining how DataOrigin helps B2B sales teams identify and prioritize companies at each trade show using their ICP",
+      "urls": [
+        "https://dataorigin.es/en/more-sales-at-business-trade-shows/index.md"
+      ]
+    },
+    {
+      "id": "k6",
+      "kind": "page",
+      "description": "Signup page for the app (150 free credits)",
+      "urls": [
+        "https://dataorigin.es/app/signup"
+      ]
+    },
+    {
+      "id": "k7",
+      "kind": "page",
+      "description": "Contact page to request a demo, information or pricing quote",
+      "urls": [
+        "https://dataorigin.es/en/contact-us/index.md"
+      ]
+    },
+    {
+      "id": "k8",
+      "kind": "family",
+      "description": "Solutions by team pages (sales teams, B2B marketing, B2B software, trade show organizers, trade show suppliers), in English and Spanish",
+      "urls": [
+        "https://dataorigin.es/en/solutions/sales-teams/index.md",
+        "https://dataorigin.es/en/solutions/b2b-marketing/index.md",
+        "https://dataorigin.es/en/solutions/trade-show-organizers/index.md"
+      ]
+    },
+    {
+      "id": "k9",
+      "kind": "page",
+      "description": "Trade show calendar with dates, cities and sectors grouped by month, updated automatically",
+      "urls": [
+        "https://dataorigin.es/en/trade-show-calendar/index.md"
+      ]
+    },
+    {
+      "id": "k10",
+      "kind": "family",
+      "description": "Trade shows by industry sector listing pages (agriculture, cybersecurity, energy, pharma, etc.), in English and Spanish",
+      "urls": [
+        "https://dataorigin.es/en/blog/sectors/index.md",
+        "https://dataorigin.es/en/blog/events-agriculture-sector/index.md",
+        "https://dataorigin.es/en/blog/events-cybersecurity-sector/index.md",
+        "https://dataorigin.es/es/blog/eventos-sector-agricultura/index.md"
+      ]
+    },
+    {
+      "id": "k11",
+      "kind": "family",
+      "description": "Glossary of B2B trade show and event terms (trade show, exhibitor list, MICE, lead scoring, ICP, etc.), in English and Spanish",
+      "urls": [
+        "https://dataorigin.es/en/glossary/index.md",
+        "https://dataorigin.es/en/glossary/trade-show/index.md",
+        "https://dataorigin.es/en/glossary/exhibitor-list/index.md",
+        "https://dataorigin.es/es/glosario/mice/index.md"
+      ]
+    },
+    {
+      "id": "k12",
+      "kind": "family",
+      "description": "Event directory pages: upcoming trade shows and business events across Europe, and events by month",
+      "urls": [
+        "https://dataorigin.es/en/blog/events/index.md",
+        "https://dataorigin.es/en/blog/events-of-the-month/index.md",
+        "https://dataorigin.es/es/blog/eventos/index.md"
+      ]
+    },
+    {
+      "id": "k13",
+      "kind": "family",
+      "description": "Free tools and resources: trade show ROI calculator, B2B trade show statistics with sources, event budget template with downloadable CSV",
+      "urls": [
+        "https://dataorigin.es/en/tools/trade-show-roi-calculator/index.md",
+        "https://dataorigin.es/en/blog/b2b-trade-show-statistics/index.md",
+        "https://dataorigin.es/en/blog/event-budget-template/index.md"
+      ]
+    },
+    {
+      "id": "k14",
+      "kind": "resource",
+      "description": "llms-full.txt with expanded text of main pages",
+      "urls": [
+        "https://dataorigin.es/llms-full.txt"
+      ]
+    },
+    {
+      "id": "k15",
+      "kind": "page",
+      "description": "Browser extension for Chrome and Firefox to find company contacts while browsing",
+      "urls": [
+        "https://dataorigin.es/en/browser-extension/index.md"
+      ]
+    }
+  ]
+}

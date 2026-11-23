@@ -82,6 +82,11 @@ describe('siteSummarySourceHash', () => {
     expect(siteSummarySourceHash('Example', withNewPost)).toBe(siteSummarySourceHash('Example', base));
   });
 
+  it('changes when a page the notes take their facts from changes', () => {
+    const edited = [page('/'), withAssessment(page('/docs', { isInSiteNavigation: true, digest: 'edited' }))];
+    expect(siteSummarySourceHash('Example', edited)).not.toBe(siteSummarySourceHash('Example', base));
+  });
+
   it('changes when a navigation page is added', () => {
     const withNavigationPage = [...base, withAssessment(page('/pricing', { isInSiteNavigation: true }))];
     expect(siteSummarySourceHash('Example', withNavigationPage)).not.toBe(siteSummarySourceHash('Example', base));
@@ -158,6 +163,7 @@ describe('generated text', () => {
       homepageDescription: null,
       homepageContentMarkdown: 'TypeScript is JavaScript with syntax for types.',
       listedPages: [],
+      factPages: [],
       previousSummary: null,
       previousNotes: [],
       previousSiteName: null,
@@ -169,15 +175,10 @@ describe('generated text', () => {
     expect(siteNameIfOnSite('!!', input)).toBeNull();
   });
 
-  it('keeps at most five notes, and none that is empty or repeats the summary or another note', () => {
-    const notes = ['Acme makes things.', ' ', 'One.', 'one', 'Two.', 'Three.', 'Four.', 'Five.', 'Six.'];
-    expect(parseSiteSummary(JSON.stringify({ summary: 'Acme makes things.', notes })).notes).toEqual([
-      'One.',
-      'Two.',
-      'Three.',
-      'Four.',
-      'Five.',
-    ]);
+  it('keeps at most eight notes, and none that is empty or repeats the summary or another note', () => {
+    const numbered = ['One.', 'Two.', 'Three.', 'Four.', 'Five.', 'Six.', 'Seven.', 'Eight.', 'Nine.'];
+    const notes = ['Acme makes things.', ' ', 'One.', 'one', ...numbered.slice(1)];
+    expect(parseSiteSummary(JSON.stringify({ summary: 'Acme makes things.', notes })).notes).toEqual(numbered.slice(0, 8));
   });
 
   it('rejects a summary with no list of notes', () => {
