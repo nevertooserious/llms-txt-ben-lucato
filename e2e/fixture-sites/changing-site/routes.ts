@@ -54,7 +54,7 @@ export const routes: FixtureRoutes = {
   },
   '*': (_request, response, requestUrl) => {
     const page = changingSite.pages[requestUrl.pathname];
-    if (page === undefined || page.status !== 200) {
+    if (page?.status !== 200) {
       response.writeHead(page?.status ?? 404, { 'content-type': 'text/html' }).end('<!doctype html><title>Not found</title>');
       return;
     }

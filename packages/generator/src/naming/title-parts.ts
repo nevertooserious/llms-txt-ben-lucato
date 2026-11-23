@@ -9,7 +9,7 @@ export const MINIMUM_PAGES_SHARING_SITE_NAME = 2;
 export interface OwnTitle {
   title: string;
   /** The names taken off the end, outermost first, each with the separator before it. */
-  removedEndings: ReadonlyArray<{ separator: string; name: string }>;
+  removedEndings: readonly { separator: string; name: string }[];
 }
 
 /**
@@ -18,7 +18,7 @@ export interface OwnTitle {
  */
 export function withoutSiteNames(fullTitle: string, endingNames: readonly string[], siteTitle: string): OwnTitle {
   let title = fullTitle;
-  const removedEndings: Array<{ separator: string; name: string }> = [];
+  const removedEndings: { separator: string; name: string }[] = [];
   // Twice, for `Page | Area | Site`.
   for (let pass = 0; pass < 2; pass += 1) {
     for (const separator of TITLE_SEPARATORS) {

@@ -124,10 +124,10 @@ function labelOf(page: SitePageView, node: PathNode): string {
 }
 
 /** The nodes from the root down to a URL's own: its host if that is not the site's, then each path segment. */
-function stepsTo(url: string, rootHost: string | null): Array<{ key: string; label: string; urlPrefix: string }> {
+function stepsTo(url: string, rootHost: string | null): { key: string; label: string; urlPrefix: string }[] {
   const parsed = parseUrl(url);
   if (parsed === null) return [{ key: url, label: url, urlPrefix: url }];
-  const steps: Array<{ key: string; label: string; urlPrefix: string }> = [];
+  const steps: { key: string; label: string; urlPrefix: string }[] = [];
   let label = '';
   let urlPrefix = parsed.origin;
   if (parsed.host !== rootHost) {

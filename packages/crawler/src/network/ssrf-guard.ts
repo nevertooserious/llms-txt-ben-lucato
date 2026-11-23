@@ -27,7 +27,7 @@ export class BlockedAddressError extends Error {
 // IANA special-purpose registries, plus multicast and reserved space. Hosting platform
 // private networks fall inside these: Fly uses fdaa::/16 and Railway fd12::/16 (both in
 // fc00::/7), and both use 100.64.0.0/10 or RFC 1918 space for IPv4.
-const BLOCKED_IPV4_SUBNETS: Array<[string, number]> = [
+const BLOCKED_IPV4_SUBNETS: [string, number][] = [
   ['0.0.0.0', 8], // "this network"
   ['10.0.0.0', 8], // private
   ['100.64.0.0', 10], // carrier-grade NAT, also used by platform private networks
@@ -45,7 +45,7 @@ const BLOCKED_IPV4_SUBNETS: Array<[string, number]> = [
   ['240.0.0.0', 4], // reserved, including broadcast
 ];
 
-const BLOCKED_IPV6_SUBNETS: Array<[string, number]> = [
+const BLOCKED_IPV6_SUBNETS: [string, number][] = [
   ['::', 128], // unspecified
   ['::1', 128], // loopback
   ['::', 96], // IPv4-compatible (deprecated)
@@ -88,7 +88,7 @@ export const publicInternetOnly: NetworkPolicy = {
 export type HostnameResolver = (hostname: string) => Promise<string[]>;
 
 export const resolveWithSystemDns: HostnameResolver = async (hostname) => {
-  const answers = await lookup(hostname, { all: true, verbatim: true });
+  const answers = await lookup(hostname, { all: true, order: 'verbatim' });
   return answers.map((answer) => answer.address);
 };
 
@@ -148,7 +148,7 @@ export function buildGuardedConnector(options: GuardedConnectorOptions): buildCo
         const servername = isIP(hostname) === 0 ? hostname : undefined;
         connect({ ...connectOptions, hostname: address, servername: connectOptions.servername ?? servername }, callback);
       },
-      (error: Error) => callback(error, null),
+      (error: unknown) => callback(error instanceof Error ? error : new Error(String(error)), null),
     );
   };
 }

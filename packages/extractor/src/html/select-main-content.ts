@@ -1,4 +1,5 @@
 import type { Cheerio, CheerioAPI } from 'cheerio/slim';
+import { ElementType } from 'domelementtype';
 import type { AnyNode, Element } from 'domhandler';
 
 /** Never content: code, media, embeds and form controls. */
@@ -118,7 +119,7 @@ function findDensestContainer($: CheerioAPI, root: Cheerio<Element>): Cheerio<El
     const holdsTitle = titleAncestors.has(current);
     const next = current.children.find(
       (child): child is Element =>
-        child.type === 'tag' &&
+        child.type === ElementType.Tag &&
         (proseLengthByAncestor.get(child) ?? 0) >= DENSEST_CONTAINER_PROSE_SHARE * totalProseLength &&
         (!holdsTitle || titleAncestors.has(child)),
     );

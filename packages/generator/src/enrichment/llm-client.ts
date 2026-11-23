@@ -35,7 +35,7 @@ export interface SiteSummaryInput {
   host: string;
   homepageDescription: string | null;
   homepageContentMarkdown: string;
-  listedPages: Array<{ title: string; description: string | null; sectionName: string }>;
+  listedPages: { title: string; description: string | null; sectionName: string }[];
   /** Kept unless it is now wrong, so a real change gives a small diff. */
   previousSummary: string | null;
   previousNotes: string[];

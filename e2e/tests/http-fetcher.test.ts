@@ -71,7 +71,7 @@ describe('static pages', () => {
     );
     const sentHeaders = JSON.parse(response.body) as Record<string, string>;
     expect(sentHeaders['user-agent']).toMatch(/^LlmsTxtGenerator\//);
-    expect(sentHeaders['accept']).toContain('application/json');
+    expect(sentHeaders.accept).toContain('application/json');
   });
 });
 
@@ -185,7 +185,7 @@ describe('content types', () => {
 describe('conditional GET', () => {
   it('returns 304 with an empty body when the ETag still matches', async () => {
     const first = expectResponse(await fetcher.fetch({ url: `${hostileSite.origin}/conditional`, acceptedContentTypes: html }));
-    const etag = first.headers['etag'];
+    const etag = first.headers.etag;
     expect(etag).toBeDefined();
 
     const second = expectResponse(

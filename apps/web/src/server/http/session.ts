@@ -41,7 +41,7 @@ export function userIdOfSessionToken(token: string | undefined): string | null {
 /** Whether a session cookie was issued for this user, with their current password, and has not expired. */
 export function isValidSessionToken(token: string | undefined, user: SessionUser, now: Date = new Date()): boolean {
   const match = TOKEN_PATTERN.exec(token ?? '');
-  if (!match || match[1] !== user.id) return false;
+  if (match?.[1] !== user.id) return false;
   const expiresAtSeconds = Number(match[2]);
   if (expiresAtSeconds * 1000 <= now.getTime()) return false;
   return isSameText(match[3]!, signature(user, expiresAtSeconds));

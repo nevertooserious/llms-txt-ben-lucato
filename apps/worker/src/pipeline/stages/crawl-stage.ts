@@ -49,7 +49,7 @@ export async function crawlStage(
 
   await recordPipelineRunProgress(databasePool, pipelineRunId, { currentStage: 'crawl' });
   const changedUrls = new Set<string>();
-  const deferredNotFound: Array<Extract<PageReconciliation, { kind: 'not_found' }>> = [];
+  const deferredNotFound: Extract<PageReconciliation, { kind: 'not_found' }>[] = [];
   const trustObservations: SitemapLastModifiedObservation[] = [];
   let pagesDiscoveredCount = 0;
   let pagesHandledCount = 0;

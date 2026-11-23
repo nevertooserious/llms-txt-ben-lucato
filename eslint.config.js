@@ -113,7 +113,46 @@ const DETERMINISM_MESSAGE = 'Pure code takes the time or an id as an input, so e
 export default tseslint.config(
   { ignores: ['**/node_modules/', '**/.next/', '**/next-env.d.ts'] },
   eslint.configs.recommended,
-  ...tseslint.configs.recommended,
+  ...tseslint.configs.strictTypeChecked,
+  ...tseslint.configs.stylisticTypeChecked,
+  {
+    languageOptions: {
+      parserOptions: {
+        projectService: { allowDefaultProject: ['vitest.config.ts', 'apps/web/next.config.ts'] },
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  // Plain JavaScript has no type information to lint with.
+  { files: ['**/*.{js,mjs}'], extends: [tseslint.configs.disableTypeChecked] },
+  {
+    files: ['**/*.{ts,tsx}'],
+    rules: {
+      // Numbers are formatted into messages throughout; anything else must be a string.
+      '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+      '@typescript-eslint/no-confusing-void-expression': ['error', { ignoreArrowShorthand: true }],
+      // `noUncheckedIndexedAccess` is on, so `!` marks an index or capture group the
+      // surrounding code has just bounded (a matched regex, a checked length).
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      // An empty string is treated as missing (an unset variable, a blank description).
+      '@typescript-eslint/prefer-nullish-coalescing': ['error', { ignorePrimitives: { string: true } }],
+      // React takes an async function as an event handler and ignores what it returns.
+      '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: { attributes: false } }],
+    },
+  },
+  // Tests build partial fakes and assert on loosely typed rows.
+  {
+    files: ['**/*.test.{ts,tsx}', 'e2e/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-empty-function': 'off',
+      '@typescript-eslint/unbound-method': 'off',
+      // Teardown runs even when setup failed, so what it closes may never have been assigned.
+      '@typescript-eslint/no-unnecessary-condition': 'off',
+    },
+  },
   // Scripts the fixture sites serve to the headless browser: plain browser JavaScript.
   {
     files: ['e2e/fixture-sites/**/*.js'],

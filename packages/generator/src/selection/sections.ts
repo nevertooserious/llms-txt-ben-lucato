@@ -24,7 +24,7 @@ const MINIMUM_PAGES_IN_AREA_SECTION = 3;
  * sections in their fixed order, then the site's areas with the highest-scoring first,
  * then Pages, then Optional.
  */
-export function sectionNamesInOrder(selected: ReadonlyArray<{ sectionName: string }>): string[] {
+export function sectionNamesInOrder(selected: readonly { sectionName: string }[]): string[] {
   return orderSectionNames(selected.map((entry) => entry.sectionName));
 }
 

@@ -75,7 +75,7 @@ function notFound(response: ServerResponse): void {
 function serve(request: IncomingMessage, response: ServerResponse, requestUrl: URL): void {
   const state = editableSiteStates.get(request.socket.localPort ?? 0);
   const page = state?.pages[requestUrl.pathname];
-  if (state === undefined || page === undefined) return notFound(response);
+  if (state === undefined || page === undefined) { notFound(response); return; }
 
   const status = page.httpStatusCode ?? 200;
   if (status !== 200) {

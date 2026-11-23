@@ -225,18 +225,22 @@ export class HeadlessRenderer {
       // so main-frame redirects come back here and are navigated to afresh, which puts
       // every hop back through the guard. That includes a redirect met by a navigation
       // the page's own script started while its content was settling.
+      // Read through a function: the route handler sets it while `goto` and the settle wait run.
+      const redirectTarget = (): string | null => navigation.redirectTarget;
       let navigationUrl = url;
       let response: BrowserResponse | null;
       for (let redirectCount = 0; ; redirectCount += 1) {
         navigation.redirectTarget = null;
         response = await page.goto(navigationUrl, { waitUntil: 'load', timeout: Math.max(1, deadline - Date.now()) });
-        if (navigation.redirectTarget === null) {
+        let nextUrl = redirectTarget();
+        if (nextUrl === null) {
           if (response === null) throw new Error('navigation produced no response');
           await waitForContentToSettle(page, deadline);
-          if (navigation.redirectTarget === null) break;
+          nextUrl = redirectTarget();
+          if (nextUrl === null) break;
         }
         if (redirectCount >= MAX_REDIRECTS) throw new Error(`more than ${MAX_REDIRECTS} redirects`);
-        navigationUrl = navigation.redirectTarget;
+        navigationUrl = nextUrl;
       }
 
       return {
@@ -258,7 +262,7 @@ export class HeadlessRenderer {
         ? 'disallowed_by_robots'
         : navigation.wasNotHtml
           ? 'unsupported_content_type'
-        : /ERR_BLOCKED_BY_CLIENT/.test(message)
+        : message.includes('ERR_BLOCKED_BY_CLIENT')
           ? 'blocked_address'
           : /timeout/i.test(message)
             ? 'timeout'
@@ -325,7 +329,7 @@ export class HeadlessRenderer {
           dispatcher: this.dispatcher,
           signal: renderEnded,
         });
-        const location = response.headers['location'];
+        const location = response.headers.location;
         if (REDIRECT_STATUS_CODES.has(response.statusCode) && typeof location === 'string') {
           await response.body.dump().catch(() => undefined);
           const target = new URL(location, parsedUrl).href;
@@ -450,7 +454,7 @@ async function waitForContentToSettle(page: Page, deadline: number): Promise<voi
 /** Limits how many renders run at once. */
 class Semaphore {
   private available: number;
-  private readonly waiting: Array<() => void> = [];
+  private readonly waiting: (() => void)[] = [];
 
   constructor(slots: number) {
     this.available = slots;

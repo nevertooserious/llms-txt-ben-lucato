@@ -40,7 +40,7 @@ export function buildNamingContext(siteTitle: string, pages: readonly GeneratorP
 
 /** The name of the area a title ends with: the innermost name taken off it, unless that is the site's. */
 export function areaNameOf(
-  removedEndings: ReadonlyArray<{ separator: string; name: string }>,
+  removedEndings: readonly { separator: string; name: string }[],
   areaNames: ReadonlySet<string>,
 ): { separator: string; name: string } | null {
   const innermost = removedEndings.at(-1);

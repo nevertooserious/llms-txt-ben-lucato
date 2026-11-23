@@ -1,4 +1,5 @@
 import { load } from 'cheerio/slim';
+import { isText } from 'domhandler';
 import { ROBOTS_USER_AGENT_TOKEN } from '../discovery/robots-rules';
 
 // What the crawler reads from a page's HTML for itself: the links to follow, which of
@@ -118,7 +119,7 @@ export function readVisibleTextBlocks(html: string): string[] {
     .addBack()
     .contents()
     .each((_index, node) => {
-      if (node.type !== 'text') return;
+      if (!isText(node)) return;
       const text = node.data.replace(/\s+/g, ' ').trim();
       if (text !== '') blocks.push(text);
     });
@@ -126,7 +127,7 @@ export function readVisibleTextBlocks(html: string): string[] {
 }
 
 /** The target of the first `<meta http-equiv="refresh" content="0; url=/new">` that redirects. */
-function readMetaRefreshUrl(metaAttributes: Array<Record<string, string> | undefined>, baseUrl: string): string | null {
+function readMetaRefreshUrl(metaAttributes: (Record<string, string> | undefined)[], baseUrl: string): string | null {
   for (const attributes of metaAttributes) {
     if ((attributes?.['http-equiv'] ?? '').trim().toLowerCase() !== 'refresh') continue;
     const match = /^\s*(\d+(?:\.\d+)?)\s*[;,]\s*(?:url\s*=\s*)?["']?([^"']+?)["']?\s*$/i.exec(attributes?.content ?? '');
@@ -137,7 +138,7 @@ function readMetaRefreshUrl(metaAttributes: Array<Record<string, string> | undef
   return null;
 }
 
-function navigationLabelOf(...candidates: Array<string | undefined>): string | null {
+function navigationLabelOf(...candidates: (string | undefined)[]): string | null {
   for (const candidate of candidates) {
     const label = (candidate ?? '').replace(/\s+/g, ' ').trim();
     if (label !== '' && label.length <= MAXIMUM_NAVIGATION_LABEL_LENGTH) return label;
