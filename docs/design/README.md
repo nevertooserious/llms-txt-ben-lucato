@@ -4,13 +4,13 @@
 
 ```mermaid
 flowchart LR
-  browser["<b>browser</b><br/>frontend"]
-  web["<b>web app</b><br/>UI + API, serves llms.txt"]
+  browser["<b>browser</b>"]
+  web["<b>web app</b>"]
   site(["<b>target website</b>"])
   claude(["<b>Claude API</b><br/>Haiku and Opus"])
 
   subgraph postgres["Postgres"]
-    tables[("<b>tables</b><br/>sites, pages, versions")]
+    tables[("<b>tables</b>")]
     queue[("<b>job queue</b><br/>pg-boss")]
   end
 
@@ -26,12 +26,12 @@ flowchart LR
   browser -- "submit, poll" --> web
   web --> browser
   web  --> tables
-  web -- "enqueue run" --> queue
+  web --> queue
   queue  --> crawler
   monitor --> queue
-  crawler -- "GET robots, sitemap, etc" --> site
-  generator -- "assessments, summary" --> claude
-  worker -- "pages, versions, progress, heartbeat" --> tables
+  crawler --> site
+  generator --> claude
+  worker --> tables
 
   style queue stroke:#2563eb,stroke-width:3px
 ```
@@ -49,7 +49,7 @@ flowchart LR
 
   url --> crawler
   crawler -- "RawPage, one at a time" --> extractor
-  extractor -- "PageRecord[]: title, desc, type" --> generator
+  extractor -- "PageRecord[]" --> generator
   generator --> file
   crawler --> postgres
   extractor --> postgres
@@ -62,8 +62,8 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-  discover["<b>Read important data first</b><br/>robots.txt, sitemaps, the site's own llms.txt, homepage navigation"]
-  frontier["<b>Priority queue</b><br/>within a depth: navigation, llms.txt, sitemap, other links<br/>a URL family waits after 12 pages; documentation areas take turns"]
+  discover["<b>Read important data first</b><br/>robots.txt, etc"]
+  frontier["<b>Priority queue</b>"]
   allowed{"<b>Allowed by robots.txt?</b>"}
   skipped(["<b>skipped</b><br/>disallowed by robots.txt"])
   needed{"<b>Can skip page?</b><br/>(trusted sitemap?)"}
@@ -80,8 +80,8 @@ flowchart TD
   frontier -- "next URL" --> allowed
   allowed -- "no" --> skipped
   allowed -- "yes" --> needed
-  needed -- "no" --> notRequested
-  needed -- "yes" --> fetch
+  needed -- "yes" --> notRequested
+  needed -- "no" --> fetch
   fetch <--> guard
   guard <--> site
   fetch --> onPage
