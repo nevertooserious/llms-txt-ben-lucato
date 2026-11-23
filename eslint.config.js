@@ -9,7 +9,7 @@ import tseslint from 'typescript-eslint';
 //   - the pure stages (extractor, generator) and contracts do not touch the database or
 //     the queue: the worker loads their inputs and stores their outputs.
 //
-// Layers inside a component (README.md, "Inside a component"):
+// Layers inside a component (CLAUDE.md, "Inside a component"):
 //   - in the crawler, only `network/` may open a connection, so every request is made by
 //     code that sits beside the SSRF guard;
 //   - in @llms-txt/db, only `connection/` may import `pg`;
