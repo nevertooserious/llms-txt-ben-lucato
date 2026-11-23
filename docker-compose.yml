@@ -4,7 +4,6 @@
 
 x-app: &app
   build: .
-  image: llms-txt-generator:local
   init: true
   restart: unless-stopped
   depends_on:
