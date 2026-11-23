@@ -240,37 +240,39 @@ export async function savePageAssessment(
   );
 }
 
+interface GeneratorPageRow {
+  normalised_url: string;
+  fetch_url: string;
+  canonical_url: string | null;
+  extracted_title: string | null;
+  extracted_description: string | null;
+  declared_site_name: string | null;
+  page_type: PageType;
+  language_code: string | null;
+  content_markdown: string;
+  content_digest: string;
+  listing_fields_hash: string;
+  crawl_depth: number;
+  discovered_via: DiscoverySource;
+  is_in_site_navigation: boolean;
+  inbound_link_count: number;
+  navigation_label: string | null;
+  navigation_position: number | null;
+  first_link_position: number | null;
+  has_noindex_directive: boolean;
+  markdown_variant_url: string | null;
+  outbound_link_urls: string[] | null;
+  generated_description: string | null;
+  assessed_page_type: AssessedPageType | null;
+  listing_value: PageListingValue | null;
+  exclusion_reason: PageExclusionReason | null;
+  assessed_page_scope: PageScope | null;
+  assessment_source_hash: string | null;
+}
+
 /** The generator's input: every listed page that has been extracted. */
 export async function loadGeneratorPages(database: Queryable, siteId: string): Promise<GeneratorPage[]> {
-  const result = await database.query<{
-    normalised_url: string;
-    fetch_url: string;
-    canonical_url: string | null;
-    extracted_title: string | null;
-    extracted_description: string | null;
-    declared_site_name: string | null;
-    page_type: PageType;
-    language_code: string | null;
-    content_markdown: string;
-    content_digest: string;
-    listing_fields_hash: string;
-    crawl_depth: number;
-    discovered_via: DiscoverySource;
-    is_in_site_navigation: boolean;
-    inbound_link_count: number;
-    navigation_label: string | null;
-    navigation_position: number | null;
-    first_link_position: number | null;
-    has_noindex_directive: boolean;
-    markdown_variant_url: string | null;
-    outbound_link_urls: string[] | null;
-    generated_description: string | null;
-    assessed_page_type: AssessedPageType | null;
-    listing_value: PageListingValue | null;
-    exclusion_reason: PageExclusionReason | null;
-    assessed_page_scope: PageScope | null;
-    assessment_source_hash: string | null;
-  }>(
+  const result = await database.query<GeneratorPageRow>(
     `select normalised_url, fetch_url, canonical_url, extracted_title, extracted_description,
             declared_site_name, page_type, language_code, content_markdown, content_digest,
             listing_fields_hash, crawl_depth, discovered_via, is_in_site_navigation,
@@ -283,7 +285,11 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
       order by normalised_url`,
     [siteId],
   );
-  return result.rows.map((row) => ({
+  return result.rows.map(generatorPageFrom);
+}
+
+function generatorPageFrom(row: GeneratorPageRow): GeneratorPage {
+  return {
     record: {
       normalisedUrl: row.normalised_url,
       canonicalUrl: row.canonical_url,
@@ -322,5 +328,5 @@ export async function loadGeneratorPages(database: Queryable, siteId: string): P
     },
     markdownVariantUrl: row.markdown_variant_url,
     outboundLinkUrls: row.outbound_link_urls ?? [],
-  }));
+  };
 }

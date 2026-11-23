@@ -42,59 +42,14 @@ export async function crawlStage(
   storedPageList: readonly StoredPage[],
 ): Promise<CrawlStageResult> {
   const { databasePool, logger, settings } = dependencies;
-  const now = dependencies.now ?? (() => new Date());
   const { pipelineRunId } = job;
   const storedPages = new Map(storedPageList.map((page) => [page.normalisedUrl, page]));
-  let siteTitle = site.siteTitle;
+  const pageStore = new CrawledPageStore(dependencies, site, pipelineRunId, storedPages);
 
   await recordPipelineRunProgress(databasePool, pipelineRunId, { currentStage: 'crawl' });
-  const changedUrls = new Set<string>();
-  const deferredNotFound: Extract<PageReconciliation, { kind: 'not_found' }>[] = [];
-  const trustObservations: SitemapLastModifiedObservation[] = [];
   let pagesDiscoveredCount = 0;
   let pagesHandledCount = 0;
   let lastProgressWriteAt = 0;
-
-  const handlePage = async (page: RawPage): Promise<void> => {
-    const stored = storedPages.get(page.normalisedUrl);
-    const outcome = reconcilePage(stored, page, now());
-    if (outcome.kind === 'ignored') return;
-    if (outcome.kind === 'not_found') {
-      deferredNotFound.push(outcome);
-      return;
-    }
-    await saveCrawledPage(databasePool, site.id, pipelineRunId, outcome.write);
-    if (outcome.kind === 'fetched') {
-      const extracted = await extractAndSave(page, stored);
-      if (extracted && page.crawlSignals.crawlDepth === 0 && extracted.title !== null && extracted.title !== siteTitle) {
-        siteTitle = extracted.title;
-        await saveSiteTitle(databasePool, site.id, extracted.title);
-      }
-    }
-  };
-
-  const extractAndSave = async (page: RawPage, stored: StoredPage | undefined): Promise<PageRecord | null> => {
-    let record;
-    try {
-      record = extractPage({
-        html: page.html,
-        normalisedUrl: page.normalisedUrl,
-        finalUrl: page.finalUrl,
-        isHomepage: page.crawlSignals.crawlDepth === 0,
-      });
-    } catch (error) {
-      // One page the extractor cannot read keeps its old record; the run goes on.
-      logger.warn('extraction failed', { url: page.normalisedUrl, error });
-      return null;
-    }
-    await saveExtractedPage(databasePool, site.id, record);
-    if (stored?.listingFieldsHash !== record.listingFieldsHash || stored.removedAt !== null) {
-      changedUrls.add(page.normalisedUrl);
-    }
-    const observation = observeSitemapLastModified(stored, page, record.contentDigest);
-    if (observation !== null) trustObservations.push(observation);
-    return record;
-  };
 
   const crawl = await dependencies.crawl({
     rootUrl: site.rootUrl,
@@ -105,7 +60,7 @@ export async function crawlStage(
     knownMachineReadableResourceUrls: site.machineReadableResourceUrls,
     onProgress: (progress) => (pagesDiscoveredCount = progress.pagesDiscovered),
     onPage: async (page) => {
-      await handlePage(page);
+      await pageStore.handlePage(page);
       pagesHandledCount += 1;
       if (Date.now() - lastProgressWriteAt >= PROGRESS_WRITE_INTERVAL_MS) {
         lastProgressWriteAt = Date.now();
@@ -113,7 +68,7 @@ export async function crawlStage(
           pagesDiscoveredCount,
           // A running count for the site screen; the crawl's own count replaces it at the end.
           pagesFetchedCount: pagesHandledCount,
-          pagesChangedCount: changedUrls.size,
+          pagesChangedCount: pageStore.changedUrls.size,
         });
       }
     },
@@ -135,18 +90,87 @@ export async function crawlStage(
   const verdict = evaluateSafetyGate(crawl, settings.maxFailedFetchShare);
   if (!verdict.passed) throw new PipelineRunFailure(verdict.reason);
 
-  for (const notFound of deferredNotFound) {
-    await saveCrawledPage(databasePool, site.id, pipelineRunId, notFound.write);
-    if (notFound.isNewlyRemoved) changedUrls.add(notFound.write.normalisedUrl);
-  }
+  await pageStore.saveDeferredRemovals();
   await saveSiteCrawlOutcome(databasePool, site.id, {
     requiresHeadlessRendering: crawl.requiresHeadlessRendering,
     decidedHeadlessRendering: crawl.decidedHeadlessRendering,
-    sitemapLastModifiedIsTrusted: assessSitemapLastModifiedTrust(site.sitemapLastModifiedIsTrusted, trustObservations),
+    sitemapLastModifiedIsTrusted: assessSitemapLastModifiedTrust(site.sitemapLastModifiedIsTrusted, pageStore.trustObservations),
     machineReadableResourceUrls: crawl.machineReadableResourceUrls,
   });
 
-  return { crawl, siteTitle, pagesChangedCount: changedUrls.size };
+  return { crawl, siteTitle: pageStore.siteTitle, pagesChangedCount: pageStore.changedUrls.size };
+}
+
+/**
+ * Stores each page as the crawl hands it over, and keeps what the stage needs once the
+ * crawl is done. A page that answered 404 or 410 is held back until the crawl has passed
+ * the safety gate, so a failed run removes nothing.
+ */
+class CrawledPageStore {
+  /** The homepage's title as this crawl read it, else the stored one. */
+  siteTitle: string | null;
+  readonly changedUrls = new Set<string>();
+  readonly trustObservations: SitemapLastModifiedObservation[] = [];
+  private readonly deferredNotFound: Extract<PageReconciliation, { kind: 'not_found' }>[] = [];
+  private readonly now: () => Date;
+
+  constructor(
+    private readonly dependencies: PipelineStageDependencies,
+    private readonly site: SiteForRun,
+    private readonly pipelineRunId: string,
+    private readonly storedPages: ReadonlyMap<string, StoredPage>,
+  ) {
+    this.siteTitle = site.siteTitle;
+    this.now = dependencies.now ?? (() => new Date());
+  }
+
+  async handlePage(page: RawPage): Promise<void> {
+    const { databasePool } = this.dependencies;
+    const stored = this.storedPages.get(page.normalisedUrl);
+    const outcome = reconcilePage(stored, page, this.now());
+    if (outcome.kind === 'ignored') return;
+    if (outcome.kind === 'not_found') {
+      this.deferredNotFound.push(outcome);
+      return;
+    }
+    await saveCrawledPage(databasePool, this.site.id, this.pipelineRunId, outcome.write);
+    if (outcome.kind !== 'fetched') return;
+    const title = (await this.extractAndSave(page, stored))?.title ?? null;
+    if (page.crawlSignals.crawlDepth === 0 && title !== null && title !== this.siteTitle) {
+      this.siteTitle = title;
+      await saveSiteTitle(databasePool, this.site.id, title);
+    }
+  }
+
+  async saveDeferredRemovals(): Promise<void> {
+    for (const notFound of this.deferredNotFound) {
+      await saveCrawledPage(this.dependencies.databasePool, this.site.id, this.pipelineRunId, notFound.write);
+      if (notFound.isNewlyRemoved) this.changedUrls.add(notFound.write.normalisedUrl);
+    }
+  }
+
+  private async extractAndSave(page: RawPage, stored: StoredPage | undefined): Promise<PageRecord | null> {
+    let record;
+    try {
+      record = extractPage({
+        html: page.html,
+        normalisedUrl: page.normalisedUrl,
+        finalUrl: page.finalUrl,
+        isHomepage: page.crawlSignals.crawlDepth === 0,
+      });
+    } catch (error) {
+      // One page the extractor cannot read keeps its old record; the run goes on.
+      this.dependencies.logger.warn('extraction failed', { url: page.normalisedUrl, error });
+      return null;
+    }
+    await saveExtractedPage(this.dependencies.databasePool, this.site.id, record);
+    if (stored?.listingFieldsHash !== record.listingFieldsHash || stored.removedAt !== null) {
+      this.changedUrls.add(page.normalisedUrl);
+    }
+    const observation = observeSitemapLastModified(stored, page, record.contentDigest);
+    if (observation !== null) this.trustObservations.push(observation);
+    return record;
+  }
 }
 
 function knownPageFrom(stored: StoredPage): KnownPage {

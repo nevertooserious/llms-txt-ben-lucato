@@ -67,16 +67,9 @@ export function areaSectionNamesOf(
   candidates: readonly GeneratorPage[],
   homepage: GeneratorPage | undefined,
 ): Map<string, string> {
-  const pageCounts = new Map<string, number>();
-  for (const page of eligiblePages) {
-    if ((page.assessment?.pageType ?? page.record.pageType) !== 'other') continue;
-    if (page.assessment?.listingValue === 'optional') continue;
-    const firstSegment = segmentsUnderSiteRoot(page, homepage)?.[0];
-    if (firstSegment !== undefined) pageCounts.set(firstSegment, (pageCounts.get(firstSegment) ?? 0) + 1);
-  }
   const reservedNames = [...Object.values(SECTION_NAMES), GENERAL_SECTION_NAME, OPTIONAL_SECTION_NAME];
   const names = new Map<string, string>();
-  for (const [segment, pageCount] of pageCounts) {
+  for (const [segment, pageCount] of pagesByFirstSegment(eligiblePages, homepage)) {
     if (pageCount < MINIMUM_PAGES_IN_AREA_SECTION) continue;
     const areaPage = candidates.find((page) => {
       const segments = segmentsUnderSiteRoot(page, homepage);
@@ -89,6 +82,18 @@ export function areaSectionNamesOf(
     names.set(segment, reservedNames.find((reserved) => reserved.toLowerCase() === name.toLowerCase()) ?? name);
   }
   return names;
+}
+
+/** How many pages of type `other` that are not optional sit under each first path segment. */
+function pagesByFirstSegment(pages: readonly GeneratorPage[], homepage: GeneratorPage | undefined): Map<string, number> {
+  const pageCounts = new Map<string, number>();
+  for (const page of pages) {
+    if ((page.assessment?.pageType ?? page.record.pageType) !== 'other') continue;
+    if (page.assessment?.listingValue === 'optional') continue;
+    const firstSegment = segmentsUnderSiteRoot(page, homepage)?.[0];
+    if (firstSegment !== undefined) pageCounts.set(firstSegment, (pageCounts.get(firstSegment) ?? 0) + 1);
+  }
+  return pageCounts;
 }
 
 /** The page's path segments below the homepage's path, or null on another host. */

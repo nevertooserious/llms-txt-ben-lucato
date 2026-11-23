@@ -43,27 +43,8 @@ export function extractPage(input: ExtractPageInput): PageRecord {
   const baseUrl = documentBaseUrl($, input.finalUrl);
 
   // Metadata is read before content selection, which removes elements.
-  const { heading, headingWithAnchor } = firstHeading($);
-  const openGraphTitle = withoutHeadingAnchor(metaContent($, 'meta[property="og:title"]'), heading, headingWithAnchor);
-  // An inline <svg>'s <title> names an icon, not the page.
-  // <title> holds text only, so markup written inside it arrives as text and is taken out.
-  const titleText = $('title').not('svg title').first().text().replace(/<\/?[a-z][^>]*>/gi, '');
-  const titleTag = withoutHeadingAnchor(nonEmptyText(titleText), heading, headingWithAnchor);
-  const declaredSiteName = siteNameOrNull(
-    metaContent($, 'meta[property="og:site_name"]') ??
-      structuredDataWebSiteName($) ??
-      metaContent($, 'meta[name="application-name" i]'),
-  );
-  const pageNameInTitleTag =
-    input.isHomepage || titleTag === null || declaredSiteName === null
-      ? null
-      : withoutSiteName(titleTag, declaredSiteName);
-  const declaredTitle =
-    pageNameInTitleTag ??
-    (!input.isHomepage && openGraphTitle !== null && titleTag !== null && isSiteNameOf(openGraphTitle, titleTag)
-      ? (heading ?? titleTag)
-      : (openGraphTitle ?? titleTag ?? heading));
-  const title = declaredTitle !== null && isFileNameOf(declaredTitle, input.normalisedUrl) ? (heading ?? declaredTitle) : declaredTitle;
+  const declaredSiteName = readDeclaredSiteName($);
+  const title = chooseTitle(readTitleSources($), declaredSiteName, input);
   const metadataDescription =
     metaContent($, 'meta[name="description" i]') ?? metaContent($, 'meta[property="og:description"]');
   const canonicalHref = $('link[rel~="canonical"][href]').first().attr('href');
@@ -94,6 +75,49 @@ export function extractPage(input: ExtractPageInput): PageRecord {
     contentDigest,
     listingFieldsHash: computeListingFieldsHash({ title, description, contentDigest }),
   };
+}
+
+/** The texts a page's title can come from. */
+interface TitleSources {
+  /** The first <h1>, without its permalink anchor. */
+  heading: string | null;
+  openGraphTitle: string | null;
+  titleTag: string | null;
+}
+
+function readTitleSources($: CheerioAPI): TitleSources {
+  const { heading, headingWithAnchor } = firstHeading($);
+  const openGraphTitle = withoutHeadingAnchor(metaContent($, 'meta[property="og:title"]'), heading, headingWithAnchor);
+  // An inline <svg>'s <title> names an icon, not the page.
+  // <title> holds text only, so markup written inside it arrives as text and is taken out.
+  const titleText = $('title').not('svg title').first().text().replace(/<\/?[a-z][^>]*>/gi, '');
+  const titleTag = withoutHeadingAnchor(nonEmptyText(titleText), heading, headingWithAnchor);
+  return { heading, openGraphTitle, titleTag };
+}
+
+function readDeclaredSiteName($: CheerioAPI): string | null {
+  return siteNameOrNull(
+    metaContent($, 'meta[property="og:site_name"]') ??
+      structuredDataWebSiteName($) ??
+      metaContent($, 'meta[name="application-name" i]'),
+  );
+}
+
+/** The title, by the rules on extractPage. */
+function chooseTitle(sources: TitleSources, declaredSiteName: string | null, input: ExtractPageInput): string | null {
+  const declaredTitle = input.isHomepage
+    ? (sources.openGraphTitle ?? sources.titleTag ?? sources.heading)
+    : innerPageTitle(sources, declaredSiteName);
+  if (declaredTitle === null || !isFileNameOf(declaredTitle, input.normalisedUrl)) return declaredTitle;
+  return sources.heading ?? declaredTitle;
+}
+
+function innerPageTitle({ heading, openGraphTitle, titleTag }: TitleSources, declaredSiteName: string | null): string | null {
+  if (titleTag === null) return openGraphTitle ?? heading;
+  const pageNameInTitleTag = declaredSiteName === null ? null : withoutSiteName(titleTag, declaredSiteName);
+  if (pageNameInTitleTag !== null) return pageNameInTitleTag;
+  if (openGraphTitle !== null && isSiteNameOf(openGraphTitle, titleTag)) return heading ?? titleTag;
+  return openGraphTitle ?? titleTag;
 }
 
 function metaContent($: CheerioAPI, selector: string): string | null {

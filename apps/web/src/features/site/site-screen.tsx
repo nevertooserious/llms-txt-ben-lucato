@@ -14,10 +14,13 @@ import { fetchSiteView, SiteApiError } from '@/browser/site-api';
 const ACTIVE_POLL_INTERVAL_MS = 1500;
 const IDLE_POLL_INTERVAL_MS = 30_000;
 
-export function SiteScreen({ publicSlug }: { publicSlug: string }) {
+/**
+ * The site's view, polled: quickly while a run is queued or running, slowly otherwise.
+ * `markDeleted` stops a poll already in flight from showing a deleted site again.
+ */
+function useSiteView(publicSlug: string) {
   const [view, setView] = useState<SiteView | null>(null);
   const [loadError, setLoadError] = useState<SiteApiError | null>(null);
-  // Set on delete, so a poll already in flight cannot show the site again.
   const isDeleted = useRef(false);
   // A poll can overlap the refresh after a change (a pin, a save). Only the newest
   // request's answer is shown, so a poll sent before the change cannot undo it on screen.
@@ -38,12 +41,10 @@ export function SiteScreen({ publicSlug }: { publicSlug: string }) {
     }
   }, [publicSlug]);
 
-  const handleDeleted = useCallback(() => {
+  const markDeleted = useCallback(() => {
     isDeleted.current = true;
-    window.location.assign('/');
-  }, [publicSlug]);
+  }, []);
 
-  // Poll quickly while a run is queued or running, slowly otherwise.
   const isRunActive = view?.latestRun ? isActiveRunStatus(view.latestRun.status) : false;
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -58,6 +59,16 @@ export function SiteScreen({ publicSlug }: { publicSlug: string }) {
       clearTimeout(timer);
     };
   }, [isRunActive, refresh]);
+
+  return { view, loadError, refresh, markDeleted };
+}
+
+export function SiteScreen({ publicSlug }: { publicSlug: string }) {
+  const { view, loadError, refresh, markDeleted } = useSiteView(publicSlug);
+  const handleDeleted = useCallback(() => {
+    markDeleted();
+    window.location.assign('/');
+  }, [markDeleted]);
 
   if (loadError?.status === 404) {
     return (
@@ -100,32 +111,39 @@ export function SiteScreen({ publicSlug }: { publicSlug: string }) {
         </div>
         {loadError && <p className="notice notice-danger">{loadError.message} Retrying…</p>}
       </section>
-      <div className="ledger">
-        <section className="cell cell-half">
-          <RunProgress run={view.latestRun} crawlPageBudget={view.crawlPageBudget} hasPublishedVersion={view.publishedVersion !== null} />
-        </section>
-        <section className="cell cell-half">
-          <MonitoringPanel view={view} onChanged={refresh} />
-        </section>
-        <section className="cell">
-          <LlmsTxtResult view={view} />
-        </section>
-        <section className="cell">
-          <PagesPanel view={view} onChanged={refresh} />
-        </section>
-        {view.publishedVersion && (
-          <section className="cell">
-            <VersionComparison
-              publicSlug={publicSlug}
-              versions={view.versions}
-              publishedVersionNumber={view.publishedVersion.versionNumber}
-            />
-          </section>
-        )}
-        <section className="cell">
-          <VersionHistory view={view} onChanged={refresh} />
-        </section>
-      </div>
+      <SiteLedger view={view} onChanged={refresh} />
     </main>
+  );
+}
+
+/** The site's cells: the latest run, monitoring, the file, its pages and its versions. */
+function SiteLedger({ view, onChanged }: { view: SiteView; onChanged: () => Promise<void> }) {
+  return (
+    <div className="ledger">
+      <section className="cell cell-half">
+        <RunProgress run={view.latestRun} crawlPageBudget={view.crawlPageBudget} hasPublishedVersion={view.publishedVersion !== null} />
+      </section>
+      <section className="cell cell-half">
+        <MonitoringPanel view={view} onChanged={onChanged} />
+      </section>
+      <section className="cell">
+        <LlmsTxtResult view={view} />
+      </section>
+      <section className="cell">
+        <PagesPanel view={view} onChanged={onChanged} />
+      </section>
+      {view.publishedVersion && (
+        <section className="cell">
+          <VersionComparison
+            publicSlug={view.publicSlug}
+            versions={view.versions}
+            publishedVersionNumber={view.publishedVersion.versionNumber}
+          />
+        </section>
+      )}
+      <section className="cell">
+        <VersionHistory view={view} onChanged={onChanged} />
+      </section>
+    </div>
   );
 }

@@ -38,29 +38,15 @@ interface PagesPanelProps {
  * Changes are collected and saved together, so one save is one new version.
  */
 export function PagesPanel({ view, onChanged }: PagesPanelProps) {
-  const [loaded, setLoaded] = useState<SitePagesView | null>(null);
+  const { publicSlug, rootUrl } = view;
+  // A finished run or a new version changes which pages exist and where they are listed.
+  const reloadKey = `${view.versions[0]?.versionNumber ?? ''}/${view.latestRun?.status ?? ''}`;
+  const { loaded, loadErrorMessage, load } = useSitePages(publicSlug, reloadKey);
   /** The choices as edited; null while they are as saved. */
   const [draft, setDraft] = useState<PageChoices | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
-
-  const { publicSlug, rootUrl } = view;
-  const load = useCallback(async () => {
-    try {
-      setLoaded(await fetchSitePages(publicSlug));
-      setErrorMessage(null);
-    } catch (error) {
-      setErrorMessage(error instanceof SiteApiError ? error.message : 'The pages could not be loaded.');
-    }
-  }, [publicSlug]);
-
-  // A finished run or a new version changes which pages exist and where they are listed.
-  const newestVersionNumber = view.versions[0]?.versionNumber ?? null;
-  const latestRunStatus = view.latestRun?.status ?? null;
-  useEffect(() => {
-    void load();
-  }, [load, newestVersionNumber, latestRunStatus]);
 
   const pages = useMemo(() => loaded?.pages ?? [], [loaded]);
   const saved = useMemo<PageChoices>(
@@ -73,19 +59,17 @@ export function PagesPanel({ view, onChanged }: PagesPanelProps) {
   );
   const current = draft ?? saved;
   const tree = useMemo(() => groupPagesByPath(pages, rootUrl), [pages, rootUrl]);
-  const unsavedChangeCount =
-    differenceCount(saved.excludedUrls, current.excludedUrls) +
-    differenceCount(saved.excludedUrlPrefixes, current.excludedUrlPrefixes) +
-    differenceCount(saved.keptUrls, current.keptUrls);
+  const groupUrlPrefixes = useMemo(() => new Set(groupUrlPrefixesOf(tree)), [tree]);
 
   function edit(next: PageChoices) {
     setDraft(next);
     setSavedMessage(null);
+    setSaveErrorMessage(null);
   }
 
   async function save() {
     setIsSaving(true);
-    setErrorMessage(null);
+    setSaveErrorMessage(null);
     try {
       const result = await savePageExclusions(publicSlug, {
         excludedUrls: [...current.excludedUrls],
@@ -96,43 +80,27 @@ export function PagesPanel({ view, onChanged }: PagesPanelProps) {
       setDraft(null);
       setSavedMessage(savedMessageFor(result));
     } catch (error) {
-      setErrorMessage(error instanceof SiteApiError ? error.message : 'The changes could not be saved.');
+      setSaveErrorMessage(error instanceof SiteApiError ? error.message : 'The changes could not be saved.');
     } finally {
       setIsSaving(false);
     }
   }
 
-  const listedCount = pages.filter((page) => page.listedInSection !== null).length;
-  const excludedCount = pages.filter((page) => !page.isHomepage && page.listedInSection === null).length;
-  const groupUrlPrefixes = useMemo(() => new Set(groupUrlPrefixesOf(tree)), [tree]);
+  const errorMessage = saveErrorMessage ?? loadErrorMessage;
   const treeProps = { saved, current, groupUrlPrefixes, onEdit: edit };
   return (
     <details className="pages-panel">
       <summary className="pages-panel-summary">
         <h2 className="cell-title">Pages</h2>
-        <span className="pages-panel-counts">
-          {loaded === null ? 'Loading…' : `${pages.length} crawled · ${listedCount} listed · ${excludedCount} excluded`}
-        </span>
+        <span className="pages-panel-counts">{loaded === null ? 'Loading…' : pageCountsOf(pages)}</span>
         {/* In the summary so they stay in reach with the tree scrolled; a button does not toggle the section. */}
-        {(unsavedChangeCount > 0 || savedMessage) && (
-          <span className="pages-panel-actions" role="status">
-            {unsavedChangeCount > 0 ? (
-              <>
-                <span>
-                  {unsavedChangeCount} unsaved {unsavedChangeCount === 1 ? 'change' : 'changes'}
-                </span>
-                <button type="button" className="button" disabled={isSaving} onClick={() => setDraft(null)}>
-                  Discard
-                </button>
-                <button type="button" className="button" disabled={isSaving} onClick={save}>
-                  {isSaving ? 'Saving…' : 'Save and regenerate'}
-                </button>
-              </>
-            ) : (
-              <span>{savedMessage}</span>
-            )}
-          </span>
-        )}
+        <UnsavedChanges
+          unsavedChangeCount={unsavedChangeCountOf(saved, current)}
+          savedMessage={savedMessage}
+          isSaving={isSaving}
+          onDiscard={() => setDraft(null)}
+          onSave={save}
+        />
       </summary>
       <p className="hint">
         A ticked page is listed in your llms.txt. Tick or untick pages to change that; unticking a path also leaves out pages
@@ -152,6 +120,71 @@ export function PagesPanel({ view, onChanged }: PagesPanelProps) {
         </ul>
       )}
     </details>
+  );
+}
+
+/** The site's pages, loaded again whenever `reloadKey` changes. */
+function useSitePages(publicSlug: string, reloadKey: string) {
+  const [loaded, setLoaded] = useState<SitePagesView | null>(null);
+  const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    try {
+      setLoaded(await fetchSitePages(publicSlug));
+      setLoadErrorMessage(null);
+    } catch (error) {
+      setLoadErrorMessage(error instanceof SiteApiError ? error.message : 'The pages could not be loaded.');
+    }
+  }, [publicSlug]);
+  useEffect(() => {
+    void load();
+  }, [load, reloadKey]);
+  return { loaded, loadErrorMessage, load };
+}
+
+interface UnsavedChangesProps {
+  unsavedChangeCount: number;
+  savedMessage: string | null;
+  isSaving: boolean;
+  onDiscard: () => void;
+  onSave: () => Promise<void>;
+}
+
+/** The count of unsaved changes with its buttons, or what the last save did. */
+function UnsavedChanges({ unsavedChangeCount, savedMessage, isSaving, onDiscard, onSave }: UnsavedChangesProps) {
+  if (unsavedChangeCount === 0 && !savedMessage) return null;
+  if (unsavedChangeCount === 0) {
+    return (
+      <span className="pages-panel-actions" role="status">
+        <span>{savedMessage}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="pages-panel-actions" role="status">
+      <span>
+        {unsavedChangeCount} unsaved {unsavedChangeCount === 1 ? 'change' : 'changes'}
+      </span>
+      <button type="button" className="button" disabled={isSaving} onClick={onDiscard}>
+        Discard
+      </button>
+      <button type="button" className="button" disabled={isSaving} onClick={onSave}>
+        {isSaving ? 'Saving…' : 'Save and regenerate'}
+      </button>
+    </span>
+  );
+}
+
+function pageCountsOf(pages: readonly SitePageView[]): string {
+  const listedCount = pages.filter((page) => page.listedInSection !== null).length;
+  const excludedCount = pages.filter((page) => !page.isHomepage && page.listedInSection === null).length;
+  return `${pages.length} crawled · ${listedCount} listed · ${excludedCount} excluded`;
+}
+
+function unsavedChangeCountOf(saved: PageChoices, current: PageChoices): number {
+  return (
+    differenceCount(saved.excludedUrls, current.excludedUrls) +
+    differenceCount(saved.excludedUrlPrefixes, current.excludedUrlPrefixes) +
+    differenceCount(saved.keptUrls, current.keptUrls)
   );
 }
 

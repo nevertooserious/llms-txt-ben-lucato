@@ -49,13 +49,10 @@ export async function POST(request: Request): Promise<Response> {
         return apiError(400, 'invalid_url', 'That is not an http or https URL.');
       case 'already_exists': {
         const siteUrl = siteApiPath(outcome.publicSlug);
-        return apiError(
-          409,
-          'site_already_exists',
-          'You already have a site for this URL.',
-          { location: siteUrl },
-          { publicSlug: outcome.publicSlug, siteUrl },
-        );
+        return apiError(409, 'site_already_exists', 'You already have a site for this URL.', {
+          headers: { location: siteUrl },
+          details: { publicSlug: outcome.publicSlug, siteUrl },
+        });
       }
       case 'submitted': {
         const runUrl = runApiPath(outcome.publicSlug, outcome.pipelineRunId);
