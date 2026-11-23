@@ -30,6 +30,8 @@ export interface SiteView {
   publicSlug: string;
   rootUrl: string;
   siteTitle: string | null;
+  /** False for the demo site, which the API refuses to delete. */
+  canBeDeleted: boolean;
   /** Path of the hosted file, relative to the web app's origin. */
   hostedLlmsTxtPath: string;
   monitoring: {

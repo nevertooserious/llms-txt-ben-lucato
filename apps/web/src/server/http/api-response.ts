@@ -2,6 +2,7 @@
 
 export type ApiErrorCode =
   | 'cooldown_active'
+  | 'demo_site_protected'
   | 'internal_error'
   | 'invalid_request'
   | 'invalid_url'

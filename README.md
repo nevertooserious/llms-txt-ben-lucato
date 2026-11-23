@@ -48,7 +48,7 @@ LLM_CLIENT=stub docker compose up --build  # http://localhost:3000, login user1 
 
 This starts Postgres (with `db/schema.sql` applied on first boot), the web app and the worker. `LLM_CLIENT=stub` runs without a model or an API key: pages are kept with their meta descriptions, so the output shows the pipeline working rather than a real file. To use Claude, put `ANTHROPIC_API_KEY` in a `.env` file at the repository root and run `docker compose up --build`. `WEB_PORT` (default 3000) and `POSTGRES_PORT` (default 5433) change the host ports.
 
-A new database also gets a demo site with four versions, linked from the home page and at <http://localhost:3000/w/demo>. `db/demo-seed.sql` is applied only by this local stack. The site is not real, so "Check now" on it ends in a failed run and keeps the published file.
+A new database also gets a demo site with four versions, linked from the home page and at <http://localhost:3000/w/demo>. `db/demo-seed.sql` is applied only by this local stack. The site is not real, so "Check now" on it ends in a failed run and keeps the published file. The demo site cannot be deleted: the API answers 403 `demo_site_protected` and its page has no delete button.
 
 The schema and demo are applied only to an empty database, so to change the schema or restore the demo run `docker compose down --volumes`, which deletes all local data. The crawler's SSRF guard refuses private addresses, so this stack cannot crawl a site running on your machine.
 
@@ -124,7 +124,7 @@ curl -s -u user1:pass1 localhost:3000/api/sites/<slug>/runs/<runId>
 
 A run's `status` is `queued`, `running`, `succeeded`, `unchanged` or `failed`. While it is active, the response has a `Retry-After` header. Re-triggering during a run returns that run, and re-triggering within five minutes of the last run answers 429 with `Retry-After`.
 
-Errors are JSON with a message and a stable code, such as `{"error": "This site has no such run.", "code": "run_not_found"}`. The codes are `unauthorized`, `invalid_request`, `invalid_url`, `invalid_version_number`, `site_not_found`, `run_not_found`, `version_not_found`, `run_in_progress`, `run_produced_no_version`, `site_already_exists`, `cooldown_active` and `internal_error`. A user has one site per URL: submitting a URL they already have answers 409 `site_already_exists`, with the existing site's `publicSlug` and `siteUrl`.
+Errors are JSON with a message and a stable code, such as `{"error": "This site has no such run.", "code": "run_not_found"}`. The codes are `unauthorized`, `invalid_request`, `invalid_url`, `invalid_version_number`, `site_not_found`, `run_not_found`, `version_not_found`, `run_in_progress`, `run_produced_no_version`, `site_already_exists`, `demo_site_protected`, `cooldown_active` and `internal_error`. A user has one site per URL: submitting a URL they already have answers 409 `site_already_exists`, with the existing site's `publicSlug` and `siteUrl`.
 
 ## Deployment
 

@@ -7,6 +7,7 @@ import {
 } from '@llms-txt/db';
 import { validateLlmsTxt } from '@llms-txt/generator';
 import { hostedLlmsTxtPath } from '@/server/http/api-response';
+import { isDemoSite } from './demo-site';
 import type { PipelineRunView, SiteView } from '@/shared/site-view';
 
 /** Everything the site screen shows: the site, its latest run, the published file. */
@@ -26,6 +27,7 @@ export async function loadSiteView(
     publicSlug,
     rootUrl: overview.rootUrl,
     siteTitle: overview.siteTitle,
+    canBeDeleted: !isDemoSite(publicSlug),
     hostedLlmsTxtPath: hostedLlmsTxtPath(publicSlug),
     monitoring: {
       nextCheckAt: overview.nextMonitorCheckAt?.toISOString() ?? null,
