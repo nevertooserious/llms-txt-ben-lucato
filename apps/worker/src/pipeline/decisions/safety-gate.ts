@@ -1,6 +1,6 @@
 import type { CrawlResult } from '@llms-txt/contracts';
 
-// The safety gate (docs/design/diagrams/monitor-check.svg): a run whose fetches mostly failed
+// The safety gate (docs/design/README.md, "Change detection"): a run whose fetches mostly failed
 // says more about the site's health, or about our access to it, than about its content,
 // so it publishes nothing and records no removals.
 

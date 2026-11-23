@@ -2,7 +2,7 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
-// Component boundaries (docs/design/diagrams/system-overview.svg):
+// Component boundaries (docs/design/README.md):
 //   - only the crawler may fetch from the web (network modules);
 //   - the extractor does no I/O of any kind;
 //   - only @llms-txt/db may import `pg`, so every SQL query lives there;
