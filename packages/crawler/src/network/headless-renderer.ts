@@ -8,6 +8,7 @@ import {
 } from 'playwright';
 import { Agent, request } from 'undici';
 import { DEFAULT_USER_AGENT } from './http-fetcher';
+import { decodeContentEncoding } from './decode-content-encoding';
 import { readCapped, ResponseTooLargeError } from './read-capped';
 import {
   BlockedAddressError,
@@ -345,7 +346,13 @@ export class HeadlessRenderer {
       return;
     }
     const maxBytes = route.request().resourceType() === 'script' ? this.maxScriptBytes : this.maxResponseBytes;
-    const responseBody = await readCapped(countedAgainstRender(response.body, session.navigation), maxBytes);
+    // The body goes to the browser decoded, since a server may compress one that was asked for plain.
+    const contentEncoding = response.headers['content-encoding'];
+    const responseBody = decodeContentEncoding(
+      await readCapped(countedAgainstRender(response.body, session.navigation), maxBytes),
+      typeof contentEncoding === 'string' ? contentEncoding : undefined,
+      maxBytes,
+    );
     await route.fulfill({
       status: response.statusCode,
       headers: forwardableResponseHeaders(response.headers),

@@ -86,6 +86,12 @@ describe('rendering', () => {
     expect(pageAt(result, site, '/pricing').html).toContain('<title>Pricing | Shellfish Analytics</title>');
   });
 
+  it('renders a page whose server compressed it without being asked', async () => {
+    const outcome = await headlessRenderer.render(`${sites['hostile-site'].origin}/gzip-unasked`);
+    expect(outcome).toMatchObject({ kind: 'rendered' });
+    if (outcome.kind === 'rendered') expect(outcome.html).toContain('Gzipped anyway');
+  });
+
   it('late-loaded content: waits past network idle, no loading placeholder', async () => {
     const site = sites['client-app-shell'];
     const result = await crawl('client-app-shell', { pageBudget: 1 });
