@@ -20,8 +20,7 @@ export function apiError(
   status: number,
   code: ApiErrorCode,
   message: string,
-  headers?: Record<string, string>,
-  details?: Record<string, string>,
+  { headers, details }: { headers?: Record<string, string>; details?: Record<string, string> } = {},
 ): Response {
   return Response.json({ error: message, code, ...details }, { status, headers });
 }

@@ -20,7 +20,7 @@ export async function GET(
       : null;
     if (run === null) return apiError(404, 'run_not_found', 'This site has no such run.');
     if (isActiveRunStatus(run.status)) {
-      return apiError(409, 'run_in_progress', 'This run has not finished.', { 'retry-after': '2' });
+      return apiError(409, 'run_in_progress', 'This run has not finished.', { headers: { 'retry-after': '2' } });
     }
     const file =
       run.versionNumber === null ? null : await loadLlmsTxtVersionFile(services.databasePool, siteId, run.versionNumber);

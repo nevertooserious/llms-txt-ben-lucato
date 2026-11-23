@@ -120,17 +120,6 @@ const OVER_LIMIT_FILES = {
   'packages/crawler/src/crawl/crawl-site.ts': { complexity: 26, depth: 5, parameters: 5, fileLines: 830 },
   'packages/crawler/src/network/http-fetcher.ts': { complexity: 31, functionLines: 100 },
   'packages/crawler/src/network/headless-renderer.ts': { complexity: 26, parameters: 6, functionLines: 82 },
-  'packages/extractor/src/extract-page.ts': { complexity: 24 },
-  'packages/generator/src/naming/site-name.ts': { complexity: 19 },
-  'packages/generator/src/rendering/generate-llms-txt.ts': { complexity: 19 },
-  'packages/generator/src/selection/sections.ts': { complexity: 17 },
-  'packages/db/src/repositories/pages.ts': { functionLines: 81 },
-  'apps/worker/src/pipeline/stages/crawl-stage.ts': { functionLines: 102 },
-  'apps/web/src/shared/diff-lines.ts': { complexity: 21 },
-  'apps/web/src/features/site/pages-panel.tsx': { complexity: 16, functionLines: 109 },
-  'apps/web/src/features/site/version-comparison.tsx': { complexity: 16, functionLines: 128 },
-  'apps/web/src/features/site/site-screen.tsx': { functionLines: 105 },
-  'apps/web/src/server/http/api-response.ts': { parameters: 5 },
   // One object literal: the OpenAPI description of every route.
   'apps/web/src/server/http/openapi-document.ts': { fileLines: 459 },
 };

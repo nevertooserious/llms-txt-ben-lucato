@@ -38,7 +38,7 @@ export async function proxy(request: NextRequest): Promise<Response> {
     if (isPublic) return proceed();
     webServices().logger.error('checking the login failed', { error });
     return pathname.startsWith('/api/')
-      ? apiError(500, 'internal_error', 'The login could not be checked.', NO_STORE)
+      ? apiError(500, 'internal_error', 'The login could not be checked.', { headers: NO_STORE })
       : new Response('The login could not be checked. Try again shortly.', { status: 503, headers: NO_STORE });
   }
   if (userId !== null) {
@@ -52,8 +52,7 @@ export async function proxy(request: NextRequest): Promise<Response> {
     // pages are not sent it; they go to the login page instead (browser/login-redirect.ts).
     const isFromThisApp = request.headers.get('sec-fetch-site') === 'same-origin';
     return apiError(401, 'unauthorized', 'Send a username and password with HTTP Basic auth.', {
-      ...NO_STORE,
-      ...(isFromThisApp ? {} : CHALLENGE),
+      headers: { ...NO_STORE, ...(isFromThisApp ? {} : CHALLENGE) },
     });
   }
   const loginUrl = new URL(LOGIN_PATH, request.url);

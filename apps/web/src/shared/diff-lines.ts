@@ -22,34 +22,16 @@ export function diffLines(fromText: string, toText: string): DiffLine[] {
   const fromLines = splitLines(fromText);
   const toLines = splitLines(toText);
 
-  let prefix = 0;
-  while (prefix < fromLines.length && prefix < toLines.length && fromLines[prefix] === toLines[prefix]) prefix += 1;
-  let suffix = 0;
-  while (
-    suffix < fromLines.length - prefix &&
-    suffix < toLines.length - prefix &&
-    fromLines[fromLines.length - 1 - suffix] === toLines[toLines.length - 1 - suffix]
-  ) {
-    suffix += 1;
-  }
+  const prefix = sharedLineCount(fromLines, toLines, 0, (index) => index);
+  const suffix = sharedLineCount(fromLines, toLines, prefix, (index, lines) => lines.length - 1 - index);
 
   const fromCount = fromLines.length - prefix - suffix;
   const toCount = toLines.length - prefix - suffix;
   const width = toCount + 1;
   const canAlign = (fromCount + 1) * width <= MAX_TABLE_CELLS;
-
-  // common[i * width + j]: the longest common subsequence of the middles from i and j on.
-  const common = new Uint32Array(canAlign ? (fromCount + 1) * width : 0);
-  if (canAlign) {
-    for (let i = fromCount - 1; i >= 0; i -= 1) {
-      for (let j = toCount - 1; j >= 0; j -= 1) {
-        common[i * width + j] =
-          fromLines[prefix + i] === toLines[prefix + j]
-            ? common[(i + 1) * width + j + 1]! + 1
-            : Math.max(common[(i + 1) * width + j]!, common[i * width + j + 1]!);
-      }
-    }
-  }
+  const common = canAlign
+    ? commonSubsequenceTable(fromLines.slice(prefix, prefix + fromCount), toLines.slice(prefix, prefix + toCount))
+    : new Uint32Array(0);
 
   const result: DiffLine[] = [];
   const pushUnchanged = (fromIndex: number, toIndex: number) =>
@@ -88,6 +70,38 @@ export function diffLines(fromText: string, toText: string): DiffLine[] {
     pushUnchanged(fromLines.length - suffix + index, toLines.length - suffix + index);
   }
   return result;
+}
+
+/**
+ * How many lines the two texts share, counted from one end: `lineAt` turns a count into
+ * the index of the next line to compare. Stops `reserved` lines short of either text's
+ * length, so a suffix does not overlap the prefix.
+ */
+function sharedLineCount(
+  fromLines: readonly string[],
+  toLines: readonly string[],
+  reserved: number,
+  lineAt: (index: number, lines: readonly string[]) => number,
+): number {
+  const limit = Math.min(fromLines.length, toLines.length) - reserved;
+  let count = 0;
+  while (count < limit && fromLines[lineAt(count, fromLines)] === toLines[lineAt(count, toLines)]) count += 1;
+  return count;
+}
+
+/** table[i * (toLines.length + 1) + j]: the longest common subsequence of the lines from i and j on. */
+function commonSubsequenceTable(fromLines: readonly string[], toLines: readonly string[]): Uint32Array {
+  const width = toLines.length + 1;
+  const table = new Uint32Array((fromLines.length + 1) * width);
+  for (let i = fromLines.length - 1; i >= 0; i -= 1) {
+    for (let j = toLines.length - 1; j >= 0; j -= 1) {
+      table[i * width + j] =
+        fromLines[i] === toLines[j]
+          ? table[(i + 1) * width + j + 1]! + 1
+          : Math.max(table[(i + 1) * width + j]!, table[i * width + j + 1]!);
+    }
+  }
+  return table;
 }
 
 /** Keeps `contextLineCount` unchanged lines around each change and folds the rest. */

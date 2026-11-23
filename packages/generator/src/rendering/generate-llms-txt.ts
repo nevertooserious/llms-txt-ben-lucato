@@ -70,41 +70,59 @@ export function generateLlmsTxt(input: GenerateLlmsTxtInput): string {
   const homepageEntry = homepageEntryOf(input, context, summary);
   const titles = entryTitlesOf(selected, context, homepageEntry === null ? [] : [homepageEntry.title]);
 
-  const blocks: string[] = [`# ${singleLine(input.siteName ?? '') || siteTitle || 'Untitled site'}`];
-  if (summary !== '') blocks.push(`> ${summary}`);
-  const notes = (input.siteNotes ?? []).map((note) => truncate(singleLine(note))).filter((note) => note !== '');
-  if (notes.length > 0) blocks.push(notes.map((note) => `- ${note}`).join('\n'));
-
-  const sections = sectionNamesInOrder(selected).map((sectionName) => ({
+  const sections: Section[] = sectionNamesInOrder(selected).map((sectionName) => ({
     sectionName,
     lines: selected
       .filter((entry) => entry.sectionName === sectionName)
       .map((entry) => renderEntry(entry, titles.get(entry.page.record.normalisedUrl)!)),
   }));
-  if (homepageEntry !== null) {
-    // First of the first section a reader should keep, whatever that section is: the
-    // homepage is where the site itself starts.
-    const firstSection = sections.find((section) => section.sectionName !== OPTIONAL_SECTION_NAME);
-    if (firstSection !== undefined) firstSection.lines.unshift(homepageEntry.line);
-    else sections.unshift({ sectionName: GENERAL_SECTION_NAME, lines: [homepageEntry.line] });
-  }
-  const resourceLines = machineReadableResourceLines(input.machineReadableResourceUrls ?? []);
-  if (resourceLines.length > 0) {
-    const sameName = sections.find((section) => section.sectionName === MACHINE_READABLE_SECTION_NAME);
-    if (sameName !== undefined) sameName.lines.push(...resourceLines);
-    else {
-      // Last of what a reader should keep: Optional is what it may skip.
-      const optionalIndex = sections.findIndex((section) => section.sectionName === OPTIONAL_SECTION_NAME);
-      const resourceSection = { sectionName: MACHINE_READABLE_SECTION_NAME, lines: resourceLines };
-      sections.splice(optionalIndex === -1 ? sections.length : optionalIndex, 0, resourceSection);
-    }
-  }
+  if (homepageEntry !== null) addHomepageEntry(sections, homepageEntry.line);
+  addMachineReadableResources(sections, machineReadableResourceLines(input.machineReadableResourceUrls ?? []));
+
+  const blocks = headerBlocks(input, siteTitle, summary);
   for (const section of sections) blocks.push(`## ${section.sectionName}`, section.lines.join('\n'));
   const llmsTxt = `${blocks.join('\n\n')}\n`;
 
   const validation = validateLlmsTxt(llmsTxt);
   if (!validation.isValid) throw new Error(`generated llms.txt breaks the spec: ${validation.problems.join('; ')}`);
   return llmsTxt;
+}
+
+interface Section {
+  sectionName: string;
+  lines: string[];
+}
+
+/** The H1, the summary and the notes: what stands above the sections. */
+function headerBlocks(input: GenerateLlmsTxtInput, siteTitle: string, summary: string): string[] {
+  const blocks: string[] = [`# ${singleLine(input.siteName ?? '') || siteTitle || 'Untitled site'}`];
+  if (summary !== '') blocks.push(`> ${summary}`);
+  const notes = (input.siteNotes ?? []).map((note) => truncate(singleLine(note))).filter((note) => note !== '');
+  if (notes.length > 0) blocks.push(notes.map((note) => `- ${note}`).join('\n'));
+  return blocks;
+}
+
+/**
+ * First of the first section a reader should keep, whatever that section is: the
+ * homepage is where the site itself starts.
+ */
+function addHomepageEntry(sections: Section[], homepageLine: string): void {
+  const firstSection = sections.find((section) => section.sectionName !== OPTIONAL_SECTION_NAME);
+  if (firstSection !== undefined) firstSection.lines.unshift(homepageLine);
+  else sections.unshift({ sectionName: GENERAL_SECTION_NAME, lines: [homepageLine] });
+}
+
+/** Last of what a reader should keep: Optional is what it may skip. */
+function addMachineReadableResources(sections: Section[], resourceLines: string[]): void {
+  if (resourceLines.length === 0) return;
+  const sameName = sections.find((section) => section.sectionName === MACHINE_READABLE_SECTION_NAME);
+  if (sameName !== undefined) {
+    sameName.lines.push(...resourceLines);
+    return;
+  }
+  const optionalIndex = sections.findIndex((section) => section.sectionName === OPTIONAL_SECTION_NAME);
+  const resourceSection = { sectionName: MACHINE_READABLE_SECTION_NAME, lines: resourceLines };
+  sections.splice(optionalIndex === -1 ? sections.length : optionalIndex, 0, resourceSection);
 }
 
 /**

@@ -22,24 +22,31 @@ export function siteNameFrom(homepageTitle: string, pages: readonly GeneratorPag
     .filter((page) => page.crawlSignals.crawlDepth > 0)
     .map((page) => singleLine(page.record.title ?? ''))
     .filter((pageTitle) => pageTitle !== '' && pageTitle !== title);
-  const otherTitleParts = otherTitles.map(titlePartsOf);
+  return sharedTitlePartOf(title, titleParts, otherTitles.map(titlePartsOf)) ?? mostCommonTitleEndOf(otherTitles) ?? title;
+}
 
-  // Of parts as many pages share (`Docs | Acme - A fast tool` on every page), the
-  // shorter is the name and the longer the tagline.
-  let siteName = title;
+/**
+ * The part of the homepage's title that the most other pages' titles carry too. Of parts
+ * as many pages share (`Docs | Acme - A fast tool` on every page), the shorter is the
+ * name and the longer the tagline.
+ */
+function sharedTitlePartOf(title: string, titleParts: readonly string[], otherTitleParts: readonly (readonly string[])[]): string | null {
+  if (titleParts.length <= 1) return null;
+  let siteName: string | null = null;
   let mostPagesSharing = MINIMUM_PAGES_SHARING_SITE_NAME - 1;
-  for (const candidate of titleParts.length > 1 ? titleParts : []) {
+  for (const candidate of titleParts) {
     const pagesSharing = otherTitleParts.filter((parts) => parts.length > 1 && parts.includes(candidate)).length;
-    const isBetter =
-      pagesSharing > mostPagesSharing ||
-      (pagesSharing === mostPagesSharing && siteName !== title && candidate.length < siteName.length);
-    if (isBetter) {
+    const isShorterOfEqual = pagesSharing === mostPagesSharing && siteName !== null && candidate.length < siteName.length;
+    if (pagesSharing > mostPagesSharing || isShorterOfEqual) {
       siteName = candidate;
       mostPagesSharing = pagesSharing;
     }
   }
-  if (siteName !== title) return siteName;
+  return siteName === title ? null : siteName;
+}
 
+/** The name most other pages' titles end or start with, when at least half do. */
+function mostCommonTitleEndOf(otherTitles: readonly string[]): string | null {
   const pagesByTitleEnd = new Map<string, number>();
   for (const pageTitle of otherTitles) {
     for (const part of new Set([lastTitlePartOf(pageTitle), firstTitlePartOf(pageTitle)])) {
@@ -48,5 +55,5 @@ export function siteNameFrom(homepageTitle: string, pages: readonly GeneratorPag
   }
   const [mostCommon] = [...pagesByTitleEnd].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
   const pagesNeeded = Math.max(MINIMUM_PAGES_SHARING_SITE_NAME, otherTitles.length / 2);
-  return mostCommon !== undefined && mostCommon[1] >= pagesNeeded ? mostCommon[0] : title;
+  return mostCommon !== undefined && mostCommon[1] >= pagesNeeded ? mostCommon[0] : null;
 }
