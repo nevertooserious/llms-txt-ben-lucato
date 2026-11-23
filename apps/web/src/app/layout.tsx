@@ -10,7 +10,6 @@ const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono'
 
 export const metadata: Metadata = {
   title: 'llms.txt generator',
-  description: 'Generate an llms.txt for a website and keep it up to date.',
 };
 
 export const viewport = { themeColor: '#f4f4f4' };

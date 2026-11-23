@@ -458,10 +458,6 @@ export const openApiDocument = {
   info: {
     title: 'llms.txt generator API',
     version: '1.0.0',
-    description:
-      'Generate an llms.txt for a website and keep it up to date. Every endpoint needs HTTP Basic auth, or the ' +
-      "web app's sign-in cookie, except the live file. A site belongs to the user who submitted it, and " +
-      "another user's site answers 404.",
   },
   tags: [sitesTag, runsTag, versionsTag, pagesTag, hostedFileTag].map((name) => ({ name })),
   security: [{ basicAuth: [] }],
