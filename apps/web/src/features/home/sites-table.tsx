@@ -43,7 +43,7 @@ function useSiteRows(sites: SiteListEntry[]): Map<string, SiteRowState> {
       if (isCancelled) return;
       setRows(new Map(latestRows));
       if (sites.some((site) => isRunActive(latestRows.get(site.publicSlug)))) {
-        timer = setTimeout(tick, ACTIVE_POLL_INTERVAL_MS);
+        timer = setTimeout(() => void tick(), ACTIVE_POLL_INTERVAL_MS);
       }
     };
     void tick();

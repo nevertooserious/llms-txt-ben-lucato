@@ -2,7 +2,7 @@ import { apiError } from './api-response';
 import { SIGNED_IN_USER_HEADER } from './session';
 
 /** The id of the user a request is from, as src/proxy.ts established it; null when signed out. */
-export function signedInUserIdOf(request: Request): string | null {
+function signedInUserIdOf(request: Request): string | null {
   return request.headers.get(SIGNED_IN_USER_HEADER);
 }
 

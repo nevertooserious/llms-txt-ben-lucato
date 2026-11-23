@@ -4,7 +4,11 @@
 # Checks:
 #   - every shell script in scripts/ parses
 #   - every Python script in scripts/ compiles
-#   - ESLint, including the component-boundary import rules in eslint.config.js
+#   - ESLint with type information: the strict rule set, the component-boundary import
+#     rules and the complexity and size limits in eslint.config.js
+#   - no unused files, exports or dependencies (knip, knip.json)
+#   - under 1% duplicated code (jscpd, .jscpd.json)
+#   - no known vulnerability in a dependency that ships (npm audit)
 #   - TypeScript typecheck of every workspace
 #   - the Playwright image in CI matches the playwright version in package-lock.json
 #
@@ -31,6 +35,21 @@ done
 
 if ! npm run --silent lint; then
   echo "lint: eslint failed" >&2
+  status=1
+fi
+
+if ! npm run --silent lint:dead-code; then
+  echo "lint: knip found unused files, exports or dependencies" >&2
+  status=1
+fi
+
+if ! npm run --silent lint:duplication > /dev/null; then
+  echo "lint: duplicated code is over the threshold; run 'npm run lint:duplication' to see it" >&2
+  status=1
+fi
+
+if ! npm audit --omit=dev --audit-level=high > /dev/null; then
+  echo "lint: a dependency has a known vulnerability; run 'npm audit --omit=dev' to see it" >&2
   status=1
 fi
 

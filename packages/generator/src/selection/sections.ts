@@ -24,12 +24,12 @@ const MINIMUM_PAGES_IN_AREA_SECTION = 3;
  * sections in their fixed order, then the site's areas with the highest-scoring first,
  * then Pages, then Optional.
  */
-export function sectionNamesInOrder(selected: ReadonlyArray<{ sectionName: string }>): string[] {
+export function sectionNamesInOrder(selected: readonly { sectionName: string }[]): string[] {
   return orderSectionNames(selected.map((entry) => entry.sectionName));
 }
 
 /** `names` holds each section's name at least once, areas in the order their best pages rank. */
-export function orderSectionNames(names: readonly string[]): string[] {
+function orderSectionNames(names: readonly string[]): string[] {
   const fixedNames: string[] = Object.values(SECTION_NAMES);
   const lastNames = [GENERAL_SECTION_NAME, OPTIONAL_SECTION_NAME];
   const areaNames = [...new Set(names)].filter((name) => !fixedNames.includes(name) && !lastNames.includes(name));

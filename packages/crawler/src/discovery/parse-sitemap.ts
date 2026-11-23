@@ -22,10 +22,10 @@ export function parseSitemap(xml: string): ParsedSitemap {
   const byLocalName = (name: string) => $('*').filter((_index, element) => 'tagName' in element && localName(element.tagName) === name);
 
   if (byLocalName('sitemapindex').length > 0) {
+    // Cheerio's map leaves out the nulls: a <sitemap> with no <loc>.
     const sitemapUrls = byLocalName('sitemap')
       .map((_index, element) => childText($(element).children().toArray(), 'loc', $))
-      .get()
-      .filter((url): url is string => url !== null);
+      .get();
     return { kind: 'sitemapindex', sitemapUrls };
   }
 

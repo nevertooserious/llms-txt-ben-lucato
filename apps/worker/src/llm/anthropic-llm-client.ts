@@ -20,7 +20,7 @@ const SITE_SUMMARY_MAX_TOKENS = 6_000;
 /** The part of a response this client reads. */
 interface LlmResponse {
   stop_reason: string | null;
-  content: ReadonlyArray<{ type: string; text?: string }>;
+  content: readonly { type: string; text?: string }[];
 }
 
 /** The text of a finished answer. A refusal or a cut-off answer is not one. */

@@ -23,6 +23,9 @@ import tseslint from 'typescript-eslint';
 //   - only the config modules read `process.env`.
 //   - in the web app, `app/` routes call `server/` and render `features/`; `server/` and
 //     the browser code (`features/`, `browser/`) share only `shared/`.
+//
+// Beyond the boundaries: the typescript-eslint strict rule sets, linted with type
+// information, and limits on complexity and size (SIZE_LIMITS).
 // Builtins match with or without the `node:` prefix; all modules match subpaths too.
 // ESLint does not merge `no-restricted-imports` across config blocks, so each group of
 // files gets exactly one block below with its full list.
@@ -110,10 +113,78 @@ const WORKER_DEPENDENCIES = Object.keys(packageDependencies);
 const WEB_DEPENDENCIES = ['contracts', 'db', 'generator', 'runtime'];
 const DETERMINISM_MESSAGE = 'Pure code takes the time or an id as an input, so equal inputs give equal output.';
 
+const SHIPPED_SOURCE = ['apps/*/src/**/*.{ts,tsx}', 'packages/*/src/**/*.ts'];
+const SIZE_LIMITS = { complexity: 15, depth: 4, parameters: 4, functionLines: 80, fileLines: 400 };
+/** @type {Record<string, Partial<typeof SIZE_LIMITS>>} */
+const OVER_LIMIT_FILES = {
+  'packages/crawler/src/crawl/crawl-site.ts': { complexity: 26, depth: 5, parameters: 5, fileLines: 830 },
+  'packages/crawler/src/network/http-fetcher.ts': { complexity: 31, functionLines: 100 },
+  'packages/crawler/src/network/headless-renderer.ts': { complexity: 26, parameters: 6, functionLines: 82 },
+  'packages/extractor/src/extract-page.ts': { complexity: 24 },
+  'packages/generator/src/naming/site-name.ts': { complexity: 19 },
+  'packages/generator/src/rendering/generate-llms-txt.ts': { complexity: 19 },
+  'packages/generator/src/selection/sections.ts': { complexity: 17 },
+  'packages/db/src/repositories/pages.ts': { functionLines: 81 },
+  'apps/worker/src/pipeline/stages/crawl-stage.ts': { functionLines: 102 },
+  'apps/web/src/shared/diff-lines.ts': { complexity: 21 },
+  'apps/web/src/features/site/pages-panel.tsx': { complexity: 16, functionLines: 109 },
+  'apps/web/src/features/site/version-comparison.tsx': { complexity: 16, functionLines: 128 },
+  'apps/web/src/features/site/site-screen.tsx': { functionLines: 105 },
+  'apps/web/src/server/http/api-response.ts': { parameters: 5 },
+  // One object literal: the OpenAPI description of every route.
+  'apps/web/src/server/http/openapi-document.ts': { fileLines: 459 },
+};
+const sizeLimits = (/** @type {typeof SIZE_LIMITS} */ limits) => ({
+  complexity: ['error', limits.complexity],
+  'max-depth': ['error', limits.depth],
+  'max-params': ['error', limits.parameters],
+  'max-lines-per-function': ['error', { max: limits.functionLines, skipBlankLines: true, skipComments: true }],
+  'max-lines': ['error', { max: limits.fileLines, skipBlankLines: true, skipComments: true }],
+});
+
 export default tseslint.config(
   { ignores: ['**/node_modules/', '**/.next/', '**/next-env.d.ts'] },
   eslint.configs.recommended,
-  ...tseslint.configs.recommended,
+  ...tseslint.configs.strictTypeChecked,
+  ...tseslint.configs.stylisticTypeChecked,
+  {
+    languageOptions: {
+      parserOptions: {
+        projectService: { allowDefaultProject: ['vitest.config.ts', 'apps/web/next.config.ts'] },
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  // Plain JavaScript has no type information to lint with.
+  { files: ['**/*.{js,mjs}'], extends: [tseslint.configs.disableTypeChecked] },
+  {
+    files: ['**/*.{ts,tsx}'],
+    rules: {
+      // Numbers are formatted into messages throughout; anything else must be a string.
+      '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+      '@typescript-eslint/no-confusing-void-expression': ['error', { ignoreArrowShorthand: true }],
+      // `noUncheckedIndexedAccess` is on, so `!` marks an index or capture group the
+      // surrounding code has just bounded (a matched regex, a checked length).
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      // An empty string is treated as missing (an unset variable, a blank description).
+      '@typescript-eslint/prefer-nullish-coalescing': ['error', { ignorePrimitives: { string: true } }],
+      // React takes an async function as an event handler and ignores what it returns.
+      '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: { attributes: false } }],
+    },
+  },
+  // Tests build partial fakes and assert on loosely typed rows.
+  {
+    files: ['**/*.test.{ts,tsx}', 'e2e/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-empty-function': 'off',
+      '@typescript-eslint/unbound-method': 'off',
+      // Teardown runs even when setup failed, so what it closes may never have been assigned.
+      '@typescript-eslint/no-unnecessary-condition': 'off',
+    },
+  },
   // Scripts the fixture sites serve to the headless browser: plain browser JavaScript.
   {
     files: ['e2e/fixture-sites/**/*.js'],
@@ -281,6 +352,18 @@ export default tseslint.config(
       ],
     },
   },
+  // Size and complexity limits for the code that ships (tests are long by nature).
+  {
+    files: SHIPPED_SOURCE,
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: sizeLimits(SIZE_LIMITS),
+  },
+  // Files that were over a limit when the limits were added, each held at what it measured
+  // then so it cannot grow. Splitting one up means deleting its line here.
+  ...Object.entries(OVER_LIMIT_FILES).map(([file, measured]) => ({
+    files: [file],
+    rules: sizeLimits({ ...SIZE_LIMITS, ...measured }),
+  })),
   // Server code may not call fetch either (LLM calls go through the Anthropic SDK);
   // browser components in apps/web may still fetch the app's own /api.
   {

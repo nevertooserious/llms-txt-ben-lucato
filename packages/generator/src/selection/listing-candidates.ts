@@ -206,5 +206,5 @@ function isOtherLanguage(
 
 function primarySubtag(languageCode: string | null): string | null {
   const subtag = languageCode?.split(/[-_]/)[0]?.trim().toLowerCase();
-  return subtag ? subtag : null;
+  return subtag || null;
 }

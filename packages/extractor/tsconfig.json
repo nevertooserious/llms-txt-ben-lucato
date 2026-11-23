@@ -1,4 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Turndown's types describe the nodes it passes to a rule with the DOM's interfaces.
+    "lib": ["ES2023", "DOM"]
+  },
   "include": ["src"]
 }

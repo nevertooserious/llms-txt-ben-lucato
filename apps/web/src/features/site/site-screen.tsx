@@ -50,7 +50,7 @@ export function SiteScreen({ publicSlug }: { publicSlug: string }) {
     let isCancelled = false;
     const tick = async () => {
       await refresh();
-      if (!isCancelled) timer = setTimeout(tick, isRunActive ? ACTIVE_POLL_INTERVAL_MS : IDLE_POLL_INTERVAL_MS);
+      if (!isCancelled) timer = setTimeout(() => void tick(), isRunActive ? ACTIVE_POLL_INTERVAL_MS : IDLE_POLL_INTERVAL_MS);
     };
     void tick();
     return () => {

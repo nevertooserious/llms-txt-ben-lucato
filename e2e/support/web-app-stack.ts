@@ -74,7 +74,7 @@ export class WebAppStack {
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
-    for (const stream of [webApp.stdout!, webApp.stderr!]) stream.on('data', (chunk) => webAppOutput.push(String(chunk)));
+    for (const stream of [webApp.stdout, webApp.stderr]) stream.on('data', (chunk) => webAppOutput.push(String(chunk)));
 
     const stack = new WebAppStack(
       `http://127.0.0.1:${port}`,

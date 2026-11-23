@@ -8,17 +8,17 @@ import type { LlmClient } from '@llms-txt/generator';
  */
 export function createStubLlmClient(): LlmClient {
   return {
-    async assessPage(input) {
-      return {
+    assessPage(input) {
+      return Promise.resolve({
         description: input.metaDescription ?? '',
         listingValue: 'primary',
         exclusionReason: null,
         scope: 'broad',
         pageType: ASSESSED_PAGE_TYPES.find((pageType) => pageType === input.urlBasedPageType) ?? 'other',
-      };
+      });
     },
-    async writeSiteSummary(input) {
-      return { summary: input.homepageDescription ?? '', notes: [], siteName: null };
+    writeSiteSummary(input) {
+      return Promise.resolve({ summary: input.homepageDescription ?? '', notes: [], siteName: null });
     },
   };
 }

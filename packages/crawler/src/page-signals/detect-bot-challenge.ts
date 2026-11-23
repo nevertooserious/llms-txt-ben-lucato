@@ -2,7 +2,7 @@ import { load } from 'cheerio/slim';
 
 
 /** Headers the vendors set only on a response they challenged. */
-const CHALLENGE_HEADERS: Array<[name: string, value: RegExp]> = [
+const CHALLENGE_HEADERS: [name: string, value: RegExp][] = [
   ['cf-mitigated', /challenge/i],
   ['x-vercel-mitigated', /challenge/i],
 ];

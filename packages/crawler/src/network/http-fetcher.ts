@@ -162,7 +162,7 @@ export class HttpFetcher {
       }
 
       const headers = flattenHeaders(response.headers);
-      const location = headers['location'];
+      const location = headers.location;
       if (REDIRECT_STATUS_CODES.has(response.statusCode) && location !== undefined) {
         await response.body.dump().catch(() => undefined);
         if (redirectChain.length >= this.maxRedirects) {

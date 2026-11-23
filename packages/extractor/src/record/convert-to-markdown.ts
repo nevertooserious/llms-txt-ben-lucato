@@ -13,7 +13,7 @@ const turndownService = new TurndownService({
 
 // A link with no text renders as `[](url)`, which says nothing.
 turndownService.addRule('dropEmptyLinks', {
-  filter: (node) => node.nodeName === 'A' && (node.textContent ?? '').trim() === '',
+  filter: (node) => node.nodeName === 'A' && node.textContent.trim() === '',
   replacement: () => '',
 });
 
@@ -21,9 +21,9 @@ turndownService.addRule('dropEmptyLinks', {
 turndownService.addRule('listItem', {
   filter: 'li',
   replacement: (content, node, options) => {
-    const list = node.parentNode;
+    const list = node.parentElement;
     let marker = `${options.bulletListMarker} `;
-    if (list && list.nodeName === 'OL') {
+    if (list?.nodeName === 'OL') {
       // A list may start at 0; only a missing or unreadable start means 1.
       const start = Number.parseInt(list.getAttribute('start') ?? '', 10);
       marker = `${(Number.isNaN(start) ? 1 : start) + Array.prototype.indexOf.call(list.children, node)}. `;
