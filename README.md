@@ -144,7 +144,7 @@ A deploy does not touch the schema. `db/schema.sql` was applied once to the empt
 
 | Command | What it runs |
 |---|---|
-| `scripts/lint.sh` | ESLint, typecheck, and checks on diagrams and scripts |
+| `scripts/lint.sh` | ESLint, typecheck, and checks on scripts |
 | `scripts/test.sh` | Unit tests (Vitest) and tests for `scripts/` |
 | `scripts/validate-schema.sh`, `npm run test:database` | Apply `db/schema.sql` to Postgres and check it against the contracts enums; CI only (`schema` job) |
 | `scripts/test-e2e.sh` | End-to-end tests against local fixture sites; in CI, runs inside the pinned Playwright image (`e2e` job). The pipeline and monitor tests run the real worker, and the browser tests (`e2e/tests/browser.test.ts`) drive the web app in headless Chromium through submitting a site and "check now". These need `DATABASE_URL` (the browser tests create and drop a database of their own, so the role must be allowed to create databases) and are skipped locally without it |

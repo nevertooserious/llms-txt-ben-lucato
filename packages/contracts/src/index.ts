@@ -1,4 +1,4 @@
-// The typed hand-offs between pipeline stages (docs/design/diagrams/pipeline-contracts.svg):
+// The typed hand-offs between pipeline stages (docs/design/README.md, "Pipeline contracts"):
 //
 //   crawler:   site URL       -> RawPage, one at a time, then a CrawlResult
 //   extractor: RawPage        -> PageRecord
