@@ -151,6 +151,21 @@ describe('limits and failures', () => {
     );
   });
 
+  it('decompresses a body the server compressed without being asked', async () => {
+    const gzipped = expectResponse(await fetcher.fetch({ url: `${hostileSite.origin}/gzip-unasked`, acceptedContentTypes: html }));
+    expect(gzipped.body).toContain('<title>Gzipped anyway</title>');
+    const brotli = expectResponse(await fetcher.fetch({ url: `${hostileSite.origin}/brotli-unasked`, acceptedContentTypes: html }));
+    expect(brotli.body).toContain('<title>Brotli anyway</title>');
+  });
+
+  it('fails a body that is not in the encoding it declares', async () => {
+    expectFailure(await fetcher.fetch({ url: `${hostileSite.origin}/gzip-mislabelled`, acceptedContentTypes: html }), 'network_error');
+  });
+
+  it('applies the size cap to the decompressed body', async () => {
+    expectFailure(await fetcher.fetch({ url: `${hostileSite.origin}/gzip-bomb`, acceptedContentTypes: html }), 'response_too_large');
+  });
+
   it('returns 5xx and 410 as responses for the caller to judge', async () => {
     const serverError = expectResponse(
       await fetcher.fetch({ url: `${hostileSite.origin}/server-error`, acceptedContentTypes: html }),

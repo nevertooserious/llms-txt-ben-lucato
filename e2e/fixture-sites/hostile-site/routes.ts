@@ -1,3 +1,4 @@
+import { brotliCompressSync, gzipSync } from 'node:zlib';
 import type { FixtureRoutes } from '../../support/fixture-site-server';
 
 // Responses a well-behaved site never sends. Each route is one failure case.
@@ -32,6 +33,25 @@ export const routes: FixtureRoutes = {
 
   // Never responds at all.
   '/no-response': () => undefined,
+
+  // Compressed although the request asked for no encoding, as some CDNs do.
+  '/gzip-unasked': (_request, response) => {
+    response.writeHead(200, { 'content-type': 'text/html', 'content-encoding': 'gzip' }).end(gzipSync(page('Gzipped anyway')));
+  },
+
+  '/brotli-unasked': (_request, response) => {
+    response.writeHead(200, { 'content-type': 'text/html', 'content-encoding': 'br' }).end(brotliCompressSync(page('Brotli anyway')));
+  },
+
+  // Says gzip, sends plain text.
+  '/gzip-mislabelled': (_request, response) => {
+    response.writeHead(200, { 'content-type': 'text/html', 'content-encoding': 'gzip' }).end(page('Not gzip at all'));
+  },
+
+  // A few kilobytes on the wire, 8 MB once decompressed.
+  '/gzip-bomb': (_request, response) => {
+    response.writeHead(200, { 'content-type': 'text/html', 'content-encoding': 'gzip' }).end(gzipSync(Buffer.alloc(8 * 1024 * 1024, 'a')));
+  },
 
   '/server-error': (_request, response) => {
     response.writeHead(500, { 'content-type': 'text/html' }).end(page('Internal server error'));
