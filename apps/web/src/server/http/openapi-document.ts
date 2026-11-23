@@ -66,6 +66,7 @@ const schemas: Record<string, JsonSchema> = {
         description: 'A stable code for programs.',
         enum: [
           'cooldown_active',
+          'demo_site_protected',
           'internal_error',
           'invalid_request',
           'invalid_url',
@@ -166,6 +167,7 @@ const schemas: Record<string, JsonSchema> = {
     publicSlug: { type: 'string' },
     rootUrl: { type: 'string', format: 'uri' },
     siteTitle: nullable('string', { description: "The site's name, as the file's H1 gives it." }),
+    canBeDeleted: { type: 'boolean', description: 'False for the demo site.' },
     hostedLlmsTxtPath: { type: 'string', description: "The hosted file's path on this app." },
     monitoring: objectOf({ nextCheckAt: nullableDateTime }),
     latestRun: nullableReference('PipelineRun'),
@@ -272,8 +274,14 @@ const paths = {
       tags: [sitesTag],
       operationId: 'deleteSite',
       summary: 'Delete a site',
-      description: 'Deletes its file, hosted URL, crawl data, overrides and version history.',
-      responses: { 204: { description: 'Deleted.' }, 401: unauthorised, 404: siteNotFound, 500: internalError },
+      description: 'Deletes its file, hosted URL, crawl data, overrides and version history. The demo site cannot be deleted.',
+      responses: {
+        204: { description: 'Deleted.' },
+        401: unauthorised,
+        403: errorResponse('`demo_site_protected`: this is the demo site.'),
+        404: siteNotFound,
+        500: internalError,
+      },
     },
   },
   '/api/sites/{publicSlug}/runs': {

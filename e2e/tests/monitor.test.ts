@@ -14,7 +14,7 @@ import { GET as runRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/r
 import { GET as runFileRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/runs/[pipelineRunId]/llms.txt/route';
 import { GET as versionFileRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/versions/[versionNumber]/llms.txt/route';
 import { DELETE as unpinVersionRoute, PUT as pinVersionRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/published-version/route';
-import { DELETE as deleteSiteRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/route';
+import { DELETE as deleteSiteRoute, GET as siteRoute } from '../../apps/web/src/app/api/sites/[publicSlug]/route';
 import { GET as hostedLlmsTxtRoute } from '../../apps/web/src/app/w/[publicSlug]/llms.txt/route';
 import { webServices } from '../../apps/web/src/server/composition/web-services';
 import { SIGNED_IN_USER_HEADER } from '../../apps/web/src/server/http/session';
@@ -359,6 +359,28 @@ describe.skipIf(!databaseUrl)('monitor, end to end', () => {
       params: Promise.resolve({ publicSlug, versionNumber: '999' }),
     });
     expect(await missingVersion.json()).toMatchObject({ code: 'version_not_found' });
+  });
+
+  it('refuses to delete the demo site', async () => {
+    const demoParams = { params: Promise.resolve({ publicSlug: 'demo' }) };
+    await databasePool.query(
+      `insert into sites (owner_user_id, root_url, submitted_url, public_slug)
+       values ($1, 'https://docs.fernhill.example', 'https://docs.fernhill.example', 'demo')`,
+      [ownerUserId],
+    );
+    try {
+      const refused = await deleteSiteRoute(apiRequest('DELETE'), demoParams);
+      expect(refused.status).toBe(403);
+      expect(await refused.json()).toMatchObject({ code: 'demo_site_protected' });
+      const view = await siteRoute(apiRequest('GET'), demoParams);
+      expect(await view.json()).toMatchObject({ publicSlug: 'demo', canBeDeleted: false });
+
+      // To another user the demo is not there, as for any site.
+      const otherUser = await createUserIfAbsent(databasePool, { username: 'monitor-test-other', passwordHash: 'matches no password' });
+      expect((await deleteSiteRoute(apiRequest('DELETE', undefined, otherUser.id), demoParams)).status).toBe(404);
+    } finally {
+      await databasePool.query("delete from sites where public_slug = 'demo'");
+    }
   });
 
   it('a deleted site loses its file and its checks', async () => {

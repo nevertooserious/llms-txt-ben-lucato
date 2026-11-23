@@ -96,7 +96,7 @@ export function SiteScreen({ publicSlug }: { publicSlug: string }) {
               </a>
             </h1>
           </div>
-          <DeleteSiteControl publicSlug={publicSlug} onDeleted={handleDeleted} />
+          {view.canBeDeleted && <DeleteSiteControl publicSlug={publicSlug} onDeleted={handleDeleted} />}
         </div>
         {loadError && <p className="notice notice-danger">{loadError.message} Retrying…</p>}
       </section>

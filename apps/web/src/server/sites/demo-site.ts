@@ -5,7 +5,12 @@ import { loadOwnedSiteIdBySlug, type Queryable } from '@llms-txt/db';
 // DEMO_SITE_ENABLED.
 export const DEMO_PUBLIC_SLUG = 'demo';
 
-/** The demo site's path, or null if it is not this user's, has been deleted or was never seeded. */
+/** The demo site cannot be deleted: nothing in the app can bring it back. */
+export function isDemoSite(publicSlug: string): boolean {
+  return publicSlug === DEMO_PUBLIC_SLUG;
+}
+
+/** The demo site's path, or null if it is not this user's, or was never seeded. */
 export async function loadDemoSitePath(database: Queryable, userId: string): Promise<string | null> {
   return (await loadOwnedSiteIdBySlug(database, DEMO_PUBLIC_SLUG, userId)) === null ? null : `/w/${DEMO_PUBLIC_SLUG}`;
 }

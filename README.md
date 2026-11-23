@@ -10,7 +10,7 @@ Needs Docker.
 LLM_CLIENT=stub docker compose up --build
 ```
 
-Open <http://localhost:3000> and sign in as `user1` / `pass1`. This starts Postgres, the web app and the worker, with a demo site already there.
+Open <http://localhost:3000> and sign in as `user1` / `pass1`. This starts Postgres, the web app and the worker, with a demo site already there (it cannot be deleted).
 
 `LLM_CLIENT=stub` runs without a model, so every crawled page is listed with its own meta description. It shows the app working, not the file it would really write.
 
