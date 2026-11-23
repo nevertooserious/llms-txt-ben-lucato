@@ -96,7 +96,7 @@ export interface KnownPage {
  */
 export type RobotsTxtStatus = 'parsed' | 'unavailable' | 'unreachable';
 
-/** Most pages one run fetches unless `CRAWL_PAGE_BUDGET` says otherwise. A starting value; see docs/design/README.md, section 10. */
+/** Most pages one run fetches unless `CRAWL_PAGE_BUDGET` says otherwise. A starting value, not tuned against real sites. */
 export const DEFAULT_CRAWL_PAGE_BUDGET = 200;
 
 export type CrawlStopReason =

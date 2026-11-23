@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="720" style="color:#171717;font-family:system-ui,-apple-system,'Segoe UI',sans-serif" viewBox="0 0 1100 720" role="img" aria-label="Every five minutes a cron job in the worker runs the monitor tick. The tick fails stale runs, claims the sites whose next check is due, moves each one's next check on by its interval, and starts a pipeline run for it. The web app's check now starts a run through the same function. A run and its queue job are created together, at most one active run per site. The worker takes user requests ahead of scheduled checks and runs the same pipeline as a first generation, which ends as succeeded, unchanged or failed.">
+<style>
+.b { fill: #fff; stroke: currentColor; stroke-width: 1.2; }
+.ext { fill: #f4f4f5; stroke: currentColor; stroke-width: 1.2; }
+.zone { fill: none; stroke: #71717a; stroke-width: 1.2; stroke-dasharray: 5 4; }
+.key { fill: #fff; stroke: #2563eb; stroke-width: 2.4; }
+.ln { fill: none; stroke: currentColor; stroke-width: 1.3; }
+.t { fill: currentColor; font-size: 13px; font-weight: 600; text-anchor: middle; }
+.s { fill: #71717a; font-size: 10.5px; text-anchor: middle; }
+.l { fill: currentColor; font-size: 11px; }
+</style>
+<rect x="0" y="0" width="1100" height="720" fill="#ffffff"/>
+
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- cron -->
+  <rect class="ext" x="20" y="60" width="210" height="56" rx="6"/>
+  <text class="t" x="125" y="84">pg-boss cron</text>
+  <text class="s" x="125" y="102">every 5 minutes, in the worker</text>
+  <line class="ln" x1="230" y1="88" x2="310" y2="88" marker-end="url(#ar)"/>
+
+  <!-- tick zone -->
+  <rect class="zone" x="290" y="20" width="440" height="306" rx="8"/>
+  <text class="s" x="302" y="40" style="text-anchor:start">monitor tick</text>
+
+  <rect class="b" x="310" y="60" width="400" height="56" rx="6"/>
+  <text class="t" x="510" y="84">1  reap stale runs</text>
+  <text class="s" x="510" y="102">running with no heartbeat for 2 minutes, or queued for 6 hours</text>
+
+  <line class="ln" x1="510" y1="116" x2="510" y2="150" marker-end="url(#ar)"/>
+
+  <rect class="b" x="310" y="150" width="400" height="56" rx="6"/>
+  <text class="t" x="510" y="174">2  claim the sites that are due</text>
+  <text class="s" x="510" y="192">up to 100; rows another tick has locked are skipped</text>
+
+  <line class="ln" x1="510" y1="206" x2="510" y2="240" marker-end="url(#ar)"/>
+
+  <rect class="b" x="310" y="240" width="400" height="56" rx="6"/>
+  <text class="t" x="510" y="264">3  move each site's next check on</text>
+  <text class="s" x="510" y="282">by monitor_check_interval, 7 days unless set otherwise</text>
+
+  <!-- tables -->
+  <rect class="b" x="820" y="60" width="260" height="56" rx="6"/>
+  <text class="t" x="950" y="84">pipeline_runs</text>
+  <text class="s" x="950" y="102">a stale run becomes failed; its site is free</text>
+  <line class="ln" x1="710" y1="88" x2="820" y2="88" marker-end="url(#ar)"/>
+
+  <rect class="b" x="820" y="150" width="260" height="146" rx="6"/>
+  <text class="t" x="950" y="214">sites</text>
+  <text class="s" x="950" y="232">next_monitor_check_at</text>
+  <text class="s" x="950" y="248">last_monitor_check_at</text>
+  <line class="ln" x1="820" y1="178" x2="710" y2="178" marker-end="url(#ar)"/>
+  <line class="ln" x1="710" y1="268" x2="820" y2="268" marker-end="url(#ar)"/>
+
+  <line class="ln" x1="510" y1="296" x2="510" y2="370" marker-end="url(#ar)"/>
+  <text class="l" x="518" y="352">one run per due site</text>
+
+  <!-- start run -->
+  <rect class="key" x="310" y="370" width="400" height="56" rx="6"/>
+  <text class="t" x="510" y="394">startPipelineRun</text>
+  <text class="s" x="510" y="412">the run row and its job in one transaction; one active run per site</text>
+
+  <rect class="ext" x="20" y="361" width="210" height="74" rx="6"/>
+  <text class="t" x="125" y="387">web app: check now</text>
+  <text class="s" x="125" y="405">at most once per 5 minutes;</text>
+  <text class="s" x="125" y="421">joins a run in progress</text>
+  <line class="ln" x1="230" y1="398" x2="310" y2="398" marker-end="url(#ar)"/>
+
+  <line class="ln" x1="510" y1="426" x2="510" y2="460" marker-end="url(#ar)"/>
+
+  <!-- queue -->
+  <rect class="b" x="310" y="460" width="400" height="56" rx="6"/>
+  <text class="t" x="510" y="484">job queue</text>
+  <text class="s" x="510" y="502">a user's request is taken ahead of a scheduled check; no retries</text>
+
+  <line class="ln" x1="510" y1="516" x2="510" y2="550" marker-end="url(#ar)"/>
+
+  <!-- run -->
+  <rect class="b" x="310" y="550" width="400" height="56" rx="6"/>
+  <text class="t" x="510" y="574">pipeline run, in the worker</text>
+  <text class="s" x="510" y="592">load, crawl, generate, publish: the same as a first generation</text>
+
+  <!-- outcomes -->
+  <polyline class="ln" points="510,606 510,625 180,625 180,644" marker-end="url(#ar)"/>
+  <line class="ln" x1="510" y1="606" x2="510" y2="644" marker-end="url(#ar)"/>
+  <polyline class="ln" points="510,625 840,625 840,644" marker-end="url(#ar)"/>
+
+  <rect class="b" x="40" y="644" width="280" height="56" rx="6"/>
+  <text class="t" x="180" y="668">succeeded</text>
+  <text class="s" x="180" y="686">a new version is published</text>
+
+  <rect class="b" x="370" y="644" width="280" height="56" rx="6"/>
+  <text class="t" x="510" y="668">unchanged</text>
+  <text class="s" x="510" y="686">the text is the same, so no new version</text>
+
+  <rect class="ext" x="700" y="644" width="280" height="56" rx="6"/>
+  <text class="t" x="840" y="668">failed</text>
+  <text class="s" x="840" y="686">the published file stays; the next check retries</text>
+</svg>

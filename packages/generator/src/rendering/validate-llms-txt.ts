@@ -10,7 +10,7 @@ const ENTRY_PATTERN = /^- \[(?:\\.|[^\]\\])+\]\([^()\s]+\)(?:: \S.*)?$/;
 const HEADING_PATTERN = /^(#{1,6})(?:\s+(.*))?$/;
 
 /**
- * Checks the rules in docs/design/README.md section 8: one H1 first, an optional
+ * Checks the llms.txt rules (docs/design/diagrams/generator.svg): one H1 first, an optional
  * blockquote, body text with no headings, then H2 sections that hold only one-line
  * `- [title](url): description` entries. No H3 or deeper. A section of skippable links
  * is named exactly `Optional`.

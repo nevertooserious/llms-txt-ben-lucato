@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="900" style="color:#171717;font-family:system-ui,-apple-system,'Segoe UI',sans-serif" viewBox="0 0 1100 900" role="img" aria-label="The crawler takes the site's root URL and its known pages from the worker. It discovers URLs from robots.txt, sitemaps, the site's own llms.txt and the homepage navigation, and keeps them in a prioritised frontier under a page budget. Each URL is checked against robots.txt and scope, skipped when a trusted sitemap lastmod has not moved, and otherwise fetched over plain HTTP or in a headless browser, always through the SSRF guard. Each page is handed to the worker as it arrives and its links join the frontier. When the pages are done the crawler requests the site's machine-readable files and returns a CrawlResult.">
+<style>
+.b { fill: #fff; stroke: currentColor; stroke-width: 1.2; }
+.ext { fill: #f4f4f5; stroke: currentColor; stroke-width: 1.2; }
+.key { fill: #fff; stroke: #2563eb; stroke-width: 2.4; }
+.ln { fill: none; stroke: currentColor; stroke-width: 1.3; }
+.t { fill: currentColor; font-size: 13px; font-weight: 600; text-anchor: middle; }
+.s { fill: #71717a; font-size: 10.5px; text-anchor: middle; }
+.l { fill: currentColor; font-size: 11px; }
+.c { fill: #71717a; font-size: 11px; text-anchor: end; }
+</style>
+<rect x="0" y="0" width="1100" height="900" fill="#ffffff"/>
+
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- inputs -->
+  <rect class="ext" x="20" y="20" width="230" height="164" rx="6"/>
+  <text class="t" x="135" y="46">from the worker</text>
+  <text class="l" x="36" y="76">the site's root URL</text>
+  <text class="l" x="36" y="98">its rendering decision</text>
+  <text class="l" x="36" y="120">known pages, each with its ETag,</text>
+  <text class="l" x="36" y="136">Last-Modified, sitemap lastmod</text>
+  <text class="l" x="36" y="152">and stored links</text>
+
+  <line class="ln" x1="250" y1="48" x2="310" y2="48" marker-end="url(#ar)"/>
+  <line class="ln" x1="250" y1="128" x2="310" y2="128" marker-end="url(#ar)"/>
+
+  <!-- discover -->
+  <rect class="b" x="310" y="20" width="400" height="56" rx="6"/>
+  <text class="t" x="510" y="44">discover URLs</text>
+  <text class="s" x="510" y="62">robots.txt, sitemaps, the site's own llms.txt, homepage navigation</text>
+
+  <line class="ln" x1="510" y1="76" x2="510" y2="110" marker-end="url(#ar)"/>
+
+  <!-- frontier -->
+  <rect class="b" x="310" y="110" width="400" height="74" rx="6"/>
+  <text class="t" x="510" y="134">frontier: prioritised, breadth first</text>
+  <text class="s" x="510" y="152">within a depth: navigation, llms.txt, sitemap, other links</text>
+  <text class="s" x="510" y="168">a URL family waits after 12 pages; documentation areas take turns</text>
+
+  <line class="ln" x1="510" y1="184" x2="510" y2="218" marker-end="url(#ar)"/>
+  <text class="l" x="518" y="205">next URL</text>
+
+  <!-- allowed -->
+  <rect class="b" x="310" y="218" width="400" height="56" rx="6"/>
+  <text class="t" x="510" y="242">may it be requested?</text>
+  <text class="s" x="510" y="260">robots.txt rules, under the root URL, 500 ms or Crawl-delay apart</text>
+
+  <line class="ln" x1="710" y1="246" x2="800" y2="246" marker-end="url(#ar)"/>
+  <text class="l" x="735" y="240" text-anchor="middle">no</text>
+  <rect class="ext" x="800" y="218" width="280" height="56" rx="6"/>
+  <text class="t" x="940" y="242">skipped</text>
+  <text class="s" x="940" y="260">disallowed by robots.txt, or out of scope</text>
+
+  <line class="ln" x1="510" y1="274" x2="510" y2="308" marker-end="url(#ar)"/>
+  <text class="l" x="518" y="295">yes</text>
+
+  <!-- needed -->
+  <rect class="b" x="310" y="308" width="400" height="56" rx="6"/>
+  <text class="t" x="510" y="332">is a request needed?</text>
+  <text class="s" x="510" y="350">not for a known page whose trusted sitemap lastmod has not moved</text>
+
+  <line class="ln" x1="710" y1="336" x2="800" y2="336" marker-end="url(#ar)"/>
+  <text class="l" x="735" y="330" text-anchor="middle">no</text>
+  <rect class="ext" x="800" y="308" width="280" height="56" rx="6"/>
+  <text class="t" x="940" y="332">not requested</text>
+  <text class="s" x="940" y="350">the stored page stands, and its links still count</text>
+
+  <line class="ln" x1="510" y1="364" x2="510" y2="398" marker-end="url(#ar)"/>
+  <text class="l" x="518" y="385">yes</text>
+
+  <!-- fetch -->
+  <rect class="b" x="310" y="398" width="400" height="90" rx="6"/>
+  <text class="t" x="510" y="422">fetch the page</text>
+  <text class="s" x="510" y="440">plain HTTP, as a conditional GET when validators are stored</text>
+  <text class="s" x="510" y="456">headless Chromium if the site needs rendering or the HTML is empty</text>
+  <text class="s" x="510" y="472">then a probe for a .md version of the page</text>
+
+  <line class="ln" x1="510" y1="488" x2="510" y2="522" marker-end="url(#ar)" marker-start="url(#ar)"/>
+
+  <!-- SSRF guard -->
+  <rect class="key" x="310" y="522" width="400" height="56" rx="6"/>
+  <text class="t" x="510" y="546">SSRF guard</text>
+  <text class="s" x="510" y="564">every request, the browser's too: each resolved address is checked</text>
+
+  <line class="ln" x1="710" y1="550" x2="800" y2="550" marker-end="url(#ar)" marker-start="url(#ar)"/>
+  <rect class="ext" x="800" y="522" width="280" height="56" rx="6"/>
+  <text class="t" x="940" y="546">target website</text>
+  <text class="s" x="940" y="564">public addresses only; 15 s and 5 MB per fetch</text>
+
+  <!-- fetch -> hand over, round the guard -->
+  <polyline class="ln" points="310,443 280,443 280,640 310,640" marker-end="url(#ar)"/>
+  <text class="c" x="270" y="536">200, 304,</text>
+  <text class="c" x="270" y="552">404 or 410</text>
+
+  <!-- hand over -->
+  <rect class="b" x="310" y="612" width="400" height="56" rx="6"/>
+  <text class="t" x="510" y="636">onPage(RawPage)</text>
+  <text class="s" x="510" y="654">handed over as each page arrives, and waited for</text>
+
+  <line class="ln" x1="710" y1="640" x2="800" y2="640" marker-end="url(#ar)"/>
+  <rect class="b" x="800" y="612" width="280" height="56" rx="6"/>
+  <text class="t" x="940" y="636">worker</text>
+  <text class="s" x="940" y="654">extracts the page and stores it</text>
+
+  <!-- loop back to the frontier -->
+  <polyline class="ln" points="760,640 760,147 710,147" marker-end="url(#ar)"/>
+  <text class="l" x="768" y="150">the page's links join the frontier,</text>
+  <text class="l" x="768" y="166">until 200 pages, 15 minutes,</text>
+  <text class="l" x="768" y="182">or no URL is left</text>
+
+  <line class="ln" x1="510" y1="668" x2="510" y2="712" marker-end="url(#ar)"/>
+  <text class="l" x="518" y="694">when the pages are done</text>
+
+  <!-- machine-readable files -->
+  <rect class="b" x="310" y="712" width="400" height="56" rx="6"/>
+  <text class="t" x="510" y="736">machine-readable files</text>
+  <text class="s" x="510" y="754">llms-full.txt, section llms.txt files, OpenAPI: at most 20 requests</text>
+
+  <line class="ln" x1="510" y1="768" x2="510" y2="802" marker-end="url(#ar)"/>
+
+  <!-- result -->
+  <rect class="b" x="310" y="802" width="400" height="74" rx="6"/>
+  <text class="t" x="510" y="826">CrawlResult</text>
+  <text class="s" x="510" y="844">navigation and inbound-link signals, failed fetches with reasons,</text>
+  <text class="s" x="510" y="860">robots.txt status, why the crawl stopped, the rendering decision</text>
+
+  <line class="ln" x1="710" y1="839" x2="800" y2="839" marker-end="url(#ar)"/>
+  <rect class="b" x="800" y="811" width="280" height="56" rx="6"/>
+  <text class="t" x="940" y="835">worker</text>
+  <text class="s" x="940" y="853">safety gate, then the generator</text>
+</svg>

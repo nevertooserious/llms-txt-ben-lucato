@@ -30,21 +30,21 @@
   <rect class="b" x="440" y="40" width="240" height="240" rx="6"/>
   <text class="t" x="454" y="68">extractor</text>
   <text class="s" x="454" y="86">pure function, no I/O</text>
-  <text class="l" x="454" y="116">1  canonical URL, dedupe</text>
+  <text class="l" x="454" y="116">1  canonical URL, language</text>
   <text class="l" x="454" y="138">2  title: og, title tag, h1</text>
   <text class="l" x="454" y="160">3  desc: meta, og, first paragraph</text>
   <text class="l" x="454" y="182">4  main content to markdown</text>
-  <text class="l" x="454" y="204">5  kind: docs, api, blog, legal…</text>
+  <text class="l" x="454" y="204">5  page type: docs, api, blog, legal…</text>
   <text class="l" x="454" y="226">6  hash of listing fields</text>
 
   <!-- generator -->
   <rect class="b" x="790" y="40" width="240" height="240" rx="6"/>
   <text class="t" x="804" y="68">generator</text>
   <text class="s" x="804" y="86">LLM client, or a stub in dev</text>
-  <text class="l" x="804" y="116">1  score pages: nav, depth, inlinks</text>
-  <text class="l" x="804" y="138">2  H2 sections from page type</text>
-  <text class="l" x="804" y="160">3  LLM: summary, missing descs</text>
-  <text class="l" x="804" y="182">4  low scores go under Optional</text>
+  <text class="l" x="804" y="116">1  filter out unlistable pages</text>
+  <text class="l" x="804" y="138">2  LLM assesses each page</text>
+  <text class="l" x="804" y="160">3  select, score, H2 by page type</text>
+  <text class="l" x="804" y="182">4  LLM: site name, summary, notes</text>
   <text class="l" x="804" y="204">5  render, validate against spec</text>
 
   <!-- hand-offs -->
@@ -57,7 +57,7 @@
 
   <line class="ln" x1="680" y1="160" x2="790" y2="160" marker-end="url(#ar)"/>
   <text class="a" x="735" y="152">PageRecord[]</text>
-  <text class="s" x="735" y="178" text-anchor="middle">title, desc, kind</text>
+  <text class="s" x="735" y="178" text-anchor="middle">title, desc, type</text>
 
   <line class="ln" x1="1030" y1="160" x2="1090" y2="160" marker-end="url(#ar)"/>
   <text class="a" x="1062" y="152">llms.txt</text>

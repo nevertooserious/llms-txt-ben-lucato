@@ -31,7 +31,7 @@ export function observeSitemapLastModified(
  * change was flagged by its lastmod. Otherwise the current answer stands.
  *
  * Once trusted, pages with an unchanged lastmod are not fetched, so a later miss can
- * only be seen on a full crawl (docs/design/README.md, section 10, "Stale sitemap").
+ * only be seen on a full crawl.
  */
 export function assessSitemapLastModifiedTrust(
   isTrusted: boolean,
