@@ -217,9 +217,8 @@ export class HeadlessRenderer {
       context.on('page', (popup) => {
         if (popup !== page) void popup.close();
       });
-      await page.route('**/*', (route) =>
-        this.fulfilFromNode(route, page, navigation, isUrlAllowed, blockedRequestUrls, renderEnded.signal),
-      );
+      const session: RenderSession = { page, navigation, isUrlAllowed, blockedRequestUrls, renderEnded: renderEnded.signal };
+      await page.route('**/*', (route) => this.fulfilFromNode(route, session));
       await page.routeWebSocket(/.*/, (webSocket) => webSocket.close());
 
       // Chromium follows a redirect it was handed by route.fulfill outside interception,
@@ -282,108 +281,136 @@ export class HeadlessRenderer {
    * back to `renderNow` to navigate, and any other is followed here, hop by hop, each
    * hop on a new guarded connection.
    */
-  private async fulfilFromNode(
-    route: Route,
-    page: Page,
-    navigation: NavigationState,
-    isUrlAllowed: (url: string) => boolean,
-    blockedRequestUrls: string[],
-    renderEnded: AbortSignal,
-  ): Promise<void> {
+  private async fulfilFromNode(route: Route, session: RenderSession): Promise<void> {
     const browserRequest = route.request();
-    if (SKIPPED_RESOURCE_TYPES.has(browserRequest.resourceType())) {
-      await route.abort('aborted').catch(() => undefined);
-      return;
-    }
-    // Stylesheets are skipped too, but answered with an empty one, not refused: an app
-    // that loads its routes on demand waits for each route's stylesheet, and gives up on
-    // the route when one fails to load (Vite's preload helper does), leaving the page empty.
-    if (browserRequest.resourceType() === 'stylesheet') {
-      await route.fulfill({ status: 200, contentType: 'text/css', body: '' }).catch(() => undefined);
-      return;
-    }
-    const isMainFrameNavigation = browserRequest.isNavigationRequest() && browserRequest.frame() === page.mainFrame();
-
-    let currentUrl = browserRequest.url();
-    let method = browserRequest.method();
-    let body = browserRequest.postDataBuffer() ?? undefined;
+    if (await answerWithoutFetching(route, browserRequest.resourceType())) return;
+    const isMainFrameNavigation = browserRequest.isNavigationRequest() && browserRequest.frame() === session.page.mainFrame();
+    const hop: RequestHop = {
+      url: browserRequest.url(),
+      method: browserRequest.method(),
+      body: browserRequest.postDataBuffer() ?? undefined,
+    };
     const headers = await forwardableRequestHeaders(browserRequest);
 
     try {
       for (let redirectCount = 0; ; redirectCount += 1) {
-        const parsedUrl = new URL(currentUrl);
-        // data: and blob: URLs never reach interception; anything else non-HTTP is refused.
-        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+        const parsedUrl = new URL(hop.url);
+        if (!mayRequest(parsedUrl, isMainFrameNavigation, session)) {
           await route.abort('blockedbyclient').catch(() => undefined);
           return;
         }
-        if (!isUrlAllowed(currentUrl)) {
-          if (isMainFrameNavigation) navigation.wasDisallowedByRobots = true;
-          await route.abort('blockedbyclient').catch(() => undefined);
-          return;
-        }
-
         const response = await request(parsedUrl, {
-          method: method as 'GET',
+          method: hop.method as 'GET',
           headers,
-          body,
+          body: hop.body,
           dispatcher: this.dispatcher,
-          signal: renderEnded,
+          signal: session.renderEnded,
         });
         const location = response.headers.location;
-        if (REDIRECT_STATUS_CODES.has(response.statusCode) && typeof location === 'string') {
-          await response.body.dump().catch(() => undefined);
-          const target = new URL(location, parsedUrl).href;
-          if (isMainFrameNavigation) {
-            navigation.redirectTarget = target;
-            await route.fulfill({ status: 200, contentType: 'text/html', body: '' });
-            return;
-          }
-          if (redirectCount >= MAX_REDIRECTS) throw new Error(`more than ${MAX_REDIRECTS} redirects`);
-          if (response.statusCode === 303 || ((response.statusCode === 301 || response.statusCode === 302) && method === 'POST')) {
-            method = 'GET';
-            body = undefined;
-          }
-          currentUrl = target;
-          continue;
-        }
-
-        if (isMainFrameNavigation && response.statusCode >= 200 && response.statusCode < 300 && !isHtmlResponse(response.headers)) {
-          navigation.wasNotHtml = true;
-          await response.body.dump().catch(() => undefined);
-          await route.abort('blockedbyclient').catch(() => undefined);
+        if (!REDIRECT_STATUS_CODES.has(response.statusCode) || typeof location !== 'string') {
+          await this.fulfilWith(route, response, isMainFrameNavigation, session);
           return;
         }
-
-        const maxBytes = browserRequest.resourceType() === 'script' ? this.maxScriptBytes : this.maxResponseBytes;
-        const responseBody = await bodyForBrowser(response, navigation, maxBytes);
-        await route.fulfill({
-          status: response.statusCode,
-          headers: forwardableResponseHeaders(response.headers),
-          body: responseBody,
-        });
-        return;
+        await response.body.dump().catch(() => undefined);
+        const target = new URL(location, parsedUrl).href;
+        if (isMainFrameNavigation) {
+          session.navigation.redirectTarget = target;
+          await route.fulfill({ status: 200, contentType: 'text/html', body: '' });
+          return;
+        }
+        if (redirectCount >= MAX_REDIRECTS) throw new Error(`more than ${MAX_REDIRECTS} redirects`);
+        followRedirect(hop, response.statusCode, target);
       }
     } catch (error) {
       if (error instanceof BlockedAddressError) {
-        blockedRequestUrls.push(currentUrl);
+        session.blockedRequestUrls.push(hop.url);
         await route.abort('blockedbyclient').catch(() => undefined);
         return;
       }
       await route.abort(error instanceof ResponseTooLargeError ? 'failed' : 'connectionfailed').catch(() => undefined);
     }
   }
+
+  /** Hands a response that is not a redirect to the browser, unless it is a main frame that is not HTML. */
+  private async fulfilWith(
+    route: Route,
+    response: Awaited<ReturnType<typeof request>>,
+    isMainFrameNavigation: boolean,
+    session: RenderSession,
+  ): Promise<void> {
+    const isSuccess = response.statusCode >= 200 && response.statusCode < 300;
+    if (isMainFrameNavigation && isSuccess && !isHtmlResponse(response.headers)) {
+      session.navigation.wasNotHtml = true;
+      await response.body.dump().catch(() => undefined);
+      await route.abort('blockedbyclient').catch(() => undefined);
+      return;
+    }
+    const maxBytes = route.request().resourceType() === 'script' ? this.maxScriptBytes : this.maxResponseBytes;
+    // The body goes to the browser decoded, since a server may compress one that was asked for plain.
+    const contentEncoding = response.headers['content-encoding'];
+    const responseBody = decodeContentEncoding(
+      await readCapped(countedAgainstRender(response.body, session.navigation), maxBytes),
+      typeof contentEncoding === 'string' ? contentEncoding : undefined,
+      maxBytes,
+    );
+    await route.fulfill({
+      status: response.statusCode,
+      headers: forwardableResponseHeaders(response.headers),
+      body: responseBody,
+    });
+  }
 }
 
-/** The body as the browser is to read it: capped, and decoded, since a server may compress one that was asked for plain. */
-async function bodyForBrowser(
-  response: { body: AsyncIterable<Buffer> & { destroy(): void }; headers: Record<string, string | string[] | undefined> },
-  navigation: NavigationState,
-  maxBytes: number,
-): Promise<Buffer> {
-  const contentEncoding = response.headers['content-encoding'];
-  const body = await readCapped(countedAgainstRender(response.body, navigation), maxBytes);
-  return decodeContentEncoding(body, typeof contentEncoding === 'string' ? contentEncoding : undefined, maxBytes);
+/** What one render's requests share. */
+interface RenderSession {
+  page: Page;
+  navigation: NavigationState;
+  isUrlAllowed: (url: string) => boolean;
+  /** Filled with the URLs the SSRF guard refused. */
+  blockedRequestUrls: string[];
+  /** Aborts the requests still being made once the render is over. */
+  renderEnded: AbortSignal;
+}
+
+/** One request of a redirect chain followed for the browser. */
+interface RequestHop {
+  url: string;
+  method: string;
+  body: Buffer | undefined;
+}
+
+/** Answers a request for a resource the render does not need. False when it must be fetched. */
+async function answerWithoutFetching(route: Route, resourceType: string): Promise<boolean> {
+  if (SKIPPED_RESOURCE_TYPES.has(resourceType)) {
+    await route.abort('aborted').catch(() => undefined);
+    return true;
+  }
+  // Stylesheets are skipped too, but answered with an empty one, not refused: an app
+  // that loads its routes on demand waits for each route's stylesheet, and gives up on
+  // the route when one fails to load (Vite's preload helper does), leaving the page empty.
+  if (resourceType === 'stylesheet') {
+    await route.fulfill({ status: 200, contentType: 'text/css', body: '' }).catch(() => undefined);
+    return true;
+  }
+  return false;
+}
+
+/** Whether a URL may be requested for the page; notes a main-frame URL that robots.txt refuses. */
+function mayRequest(url: URL, isMainFrameNavigation: boolean, session: RenderSession): boolean {
+  // data: and blob: URLs never reach interception; anything else non-HTTP is refused.
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+  if (session.isUrlAllowed(url.href)) return true;
+  if (isMainFrameNavigation) session.navigation.wasDisallowedByRobots = true;
+  return false;
+}
+
+/** Moves the hop on to a redirect's target, as a GET where the status says so. */
+function followRedirect(hop: RequestHop, statusCode: number, target: string): void {
+  if (statusCode === 303 || ((statusCode === 301 || statusCode === 302) && hop.method === 'POST')) {
+    hop.method = 'GET';
+    hop.body = undefined;
+  }
+  hop.url = target;
 }
 
 /**
