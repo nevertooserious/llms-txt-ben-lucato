@@ -6,7 +6,7 @@ import type { BasicAuthCredentials } from '../http/basic-auth';
 export interface WebConfig {
   databaseUrl: string;
   logLevel: LogLevel;
-  /** Least time between a site's last run and a "check now" (docs/design/README.md, section 7). */
+  /** Least time between a site's last run and a "check now". */
   checkNowCooldownSeconds: number;
   /** Most pages one run fetches. The worker enforces it from the same variable; the web app only shows it. */
   crawlPageBudget: number;

@@ -1,8 +1,8 @@
 import type { RawPage } from '@llms-txt/contracts';
 import type { CrawledPageWrite, StoredPage } from '@llms-txt/db';
 
-// What one crawled page does to its stored row (docs/design/README.md, section 5,
-// "Pages that go missing"). Pure: the worker loads the stored row, calls this, and saves
+// What one crawled page does to its stored row, including a page
+// that has gone missing or come back. Pure: the worker loads the stored row, calls this, and saves
 // the result. Pages the crawl did not reach, or could not fetch, never come through
 // here, so they are never changed, let alone removed.
 

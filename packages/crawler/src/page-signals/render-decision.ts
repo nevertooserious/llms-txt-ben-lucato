@@ -2,7 +2,7 @@ import { fragmentRoutePathOf } from '@llms-txt/contracts';
 import { isInScope, normaliseUrl } from '../discovery/normalise-url';
 import type { PageSignals } from './read-page-signals';
 
-// When to use the headless browser (docs/design/README.md, section 2, Fetching).
+// When to use the headless browser (docs/design/diagrams/crawler.svg).
 //
 // Per site: on a first crawl the homepage is fetched both ways and compared. If the
 // browser finds much more text, or many pages of the site that plain HTTP does not link,

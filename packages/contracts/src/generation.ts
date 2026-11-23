@@ -29,8 +29,7 @@ export interface PageOverride {
 /**
  * The client-side route a URL's fragment names, as a path: `/install` for `#/install`,
  * `#!/install` and `#/install?id=usage`. Empty when the fragment is not a route, or is
- * the root route (`#/`). Only the pages of a site that routes on the fragment have one
- * (docs/design/README.md, section 2, Hash-routed sites).
+ * the root route (`#/`). Only the pages of a site that routes on the fragment have one.
  */
 export function fragmentRoutePathOf(url: URL): string {
   const route = /^#!?\/([^?]*)/.exec(url.hash)?.[1] ?? '';

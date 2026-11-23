@@ -1,4 +1,4 @@
-// A page's identity is its normalised URL (docs/design/README.md, section 3): the URL
+// A page's identity is its normalised URL (docs/design/diagrams/data-model.svg): the URL
 // after cleanup that needs no fetch.
 
 import { fragmentRoutePathOf } from '@llms-txt/contracts';

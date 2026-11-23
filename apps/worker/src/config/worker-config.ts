@@ -5,7 +5,7 @@ import { ConfigurationError, logLevel, optionalString, positiveInteger, required
 export interface WorkerConfig {
   databaseUrl: string;
   logLevel: LogLevel;
-  /** Sites crawled at once (docs/design/README.md, section 4). */
+  /** Sites crawled at once. */
   pipelineRunConcurrency: number;
   /** How often a running run writes pipeline_runs.last_heartbeat_at. */
   heartbeatIntervalMs: number;
@@ -15,7 +15,7 @@ export interface WorkerConfig {
   queuedStaleAfterSeconds: number;
   /** Most monitor checks enqueued per tick. */
   maxMonitorChecksPerTick: number;
-  /** Most pages one run fetches. A starting value; see docs/design/README.md, section 10. */
+  /** Most pages one run fetches. A starting value, not tuned against real sites. */
   crawlPageBudget: number;
   /** Above this share of failed fetches a run fails and publishes nothing. A starting value. */
   maxFailedFetchShare: number;
