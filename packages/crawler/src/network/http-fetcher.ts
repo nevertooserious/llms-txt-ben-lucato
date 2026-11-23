@@ -119,114 +119,110 @@ export class HttpFetcher {
   }
 
   async fetch(fetchRequest: FetchRequest): Promise<FetchOutcome> {
-    const { url: requestedUrl } = fetchRequest;
-    const maxResponseBytes = fetchRequest.maxResponseBytes ?? this.maxResponseBytes;
     const signal = AbortSignal.timeout(this.timeoutMs);
-    const redirectChain: string[] = [];
-    let currentUrl = requestedUrl;
+    const progress: FetchProgress = { currentUrl: fetchRequest.url, redirectChain: [] };
+    try {
+      return await this.fetchFollowingRedirects(fetchRequest, progress, signal);
+    } catch (error) {
+      if (!(error instanceof FetchFailedError)) throw error;
+      return {
+        kind: 'failed',
+        requestedUrl: fetchRequest.url,
+        failedUrl: progress.currentUrl,
+        reason: error.reason,
+        message: error.message,
+      };
+    }
+  }
 
-    const fail = (reason: FetchFailureReason, message: string): FetchFailure => ({
-      kind: 'failed',
-      requestedUrl,
-      failedUrl: currentUrl,
-      reason,
-      message,
-    });
-
+  /** Throws FetchFailedError for every way a fetch can fail. */
+  private async fetchFollowingRedirects(
+    fetchRequest: FetchRequest,
+    progress: FetchProgress,
+    signal: AbortSignal,
+  ): Promise<FetchedResponse> {
     for (;;) {
-      let parsedUrl: URL;
-      try {
-        parsedUrl = new URL(currentUrl);
-      } catch {
-        return fail('invalid_url', `not a valid URL: ${currentUrl}`);
-      }
-      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-        return fail('unsupported_scheme', `only http and https are fetched, not ${parsedUrl.protocol}`);
-      }
-      // Credentials in a URL would be sent to the target; never fetch them.
-      if (parsedUrl.username !== '' || parsedUrl.password !== '') {
-        return fail('invalid_url', 'URLs with credentials are not fetched');
-      }
-      parsedUrl.hash = '';
-
-      let response: Awaited<ReturnType<typeof request>>;
-      try {
-        response = await request(parsedUrl, {
-          method: 'GET',
-          dispatcher: this.dispatcher,
-          signal,
-          headers: this.requestHeaders(fetchRequest),
-        });
-      } catch (error) {
-        return fail(...classifyError(error, signal));
-      }
+      const url = fetchableUrlOf(progress.currentUrl);
+      const response = await request(url, {
+        method: 'GET',
+        dispatcher: this.dispatcher,
+        signal,
+        headers: this.requestHeaders(fetchRequest),
+      }).catch((error: unknown) => {
+        throw new FetchFailedError(...classifyError(error, signal));
+      });
 
       const headers = flattenHeaders(response.headers);
-      const location = headers.location;
-      if (REDIRECT_STATUS_CODES.has(response.statusCode) && location !== undefined) {
+      if (REDIRECT_STATUS_CODES.has(response.statusCode) && headers.location !== undefined) {
         await response.body.dump().catch(() => undefined);
-        if (redirectChain.length >= this.maxRedirects) {
-          return fail('too_many_redirects', `more than ${this.maxRedirects} redirects`);
-        }
-        redirectChain.push(parsedUrl.href);
-        try {
-          currentUrl = new URL(location, parsedUrl).href;
-        } catch {
-          return fail('invalid_url', `redirect to an invalid URL: ${location}`);
-        }
-        if (fetchRequest.isRedirectAllowed?.(currentUrl) === false) {
-          return fail('disallowed_by_robots', `redirect to ${currentUrl}, which robots.txt disallows`);
-        }
+        this.followRedirect(fetchRequest, progress, url, headers.location);
         continue;
-      }
-
-      const contentType = mediaType(headers['content-type']);
-      const acceptsAnyType = fetchRequest.acceptedContentTypes.includes('*/*');
-      if (contentType !== null && !acceptsAnyType && !fetchRequest.acceptedContentTypes.includes(contentType)) {
-        await response.body.dump().catch(() => undefined);
-        // An error page's type says nothing about the URL; its status is what matters.
-        const isSuccess = response.statusCode >= 200 && response.statusCode < 300;
-        if (!isSuccess) {
-          return { kind: 'response', requestedUrl, finalUrl: parsedUrl.href, redirectChain, httpStatusCode: response.statusCode, headers, contentType, body: '' };
-        }
-        return fail('unsupported_content_type', `content type ${contentType} is not one of the accepted types`);
-      }
-
-      const declaredLength = Number(headers['content-length']);
-      if (!fetchRequest.truncateAtMaxBytes && Number.isFinite(declaredLength) && declaredLength > maxResponseBytes) {
-        response.body.destroy();
-        return fail('response_too_large', `declared length ${declaredLength} exceeds ${maxResponseBytes} bytes`);
-      }
-
-      let bodyBytes: Buffer;
-      try {
-        bodyBytes = await readCapped(response.body, maxResponseBytes, { truncate: fetchRequest.truncateAtMaxBytes });
-      } catch (error) {
-        if (error instanceof ResponseTooLargeError) {
-          return fail('response_too_large', `body exceeds ${maxResponseBytes} bytes`);
-        }
-        return fail(...classifyError(error, signal));
-      }
-      if (fetchRequest.decompressGzip && bodyBytes[0] === 0x1f && bodyBytes[1] === 0x8b) {
-        try {
-          bodyBytes = gunzipSync(bodyBytes, { maxOutputLength: maxResponseBytes });
-        } catch (error) {
-          if (error instanceof RangeError) return fail('response_too_large', `gunzipped body exceeds ${maxResponseBytes} bytes`);
-          return fail('network_error', `could not gunzip: ${error instanceof Error ? error.message : String(error)}`);
-        }
       }
 
       return {
         kind: 'response',
-        requestedUrl,
-        finalUrl: parsedUrl.href,
-        redirectChain,
+        requestedUrl: fetchRequest.url,
+        finalUrl: url.href,
+        redirectChain: progress.redirectChain,
         httpStatusCode: response.statusCode,
         headers,
-        contentType,
-        body: decodeBody(bodyBytes, headers['content-type']),
+        contentType: mediaType(headers['content-type']),
+        body: await this.readBody(fetchRequest, response, headers, signal),
       };
     }
+  }
+
+  /** Moves `progress` on to the redirect's target, or throws when it may not be followed. */
+  private followRedirect(fetchRequest: FetchRequest, progress: FetchProgress, from: URL, location: string): void {
+    if (progress.redirectChain.length >= this.maxRedirects) {
+      throw new FetchFailedError('too_many_redirects', `more than ${this.maxRedirects} redirects`);
+    }
+    progress.redirectChain.push(from.href);
+    try {
+      progress.currentUrl = new URL(location, from).href;
+    } catch {
+      throw new FetchFailedError('invalid_url', `redirect to an invalid URL: ${location}`);
+    }
+    if (fetchRequest.isRedirectAllowed?.(progress.currentUrl) === false) {
+      throw new FetchFailedError('disallowed_by_robots', `redirect to ${progress.currentUrl}, which robots.txt disallows`);
+    }
+  }
+
+  /** The decoded body; empty, and unread, for an error response of a type that was not asked for. */
+  private async readBody(
+    fetchRequest: FetchRequest,
+    response: ResponseData,
+    headers: Record<string, string>,
+    signal: AbortSignal,
+  ): Promise<string> {
+    const contentType = mediaType(headers['content-type']);
+    const acceptsAnyType = fetchRequest.acceptedContentTypes.includes('*/*');
+    if (contentType !== null && !acceptsAnyType && !fetchRequest.acceptedContentTypes.includes(contentType)) {
+      await response.body.dump().catch(() => undefined);
+      // An error page's type says nothing about the URL; its status is what matters.
+      const isSuccess = response.statusCode >= 200 && response.statusCode < 300;
+      if (!isSuccess) return '';
+      throw new FetchFailedError('unsupported_content_type', `content type ${contentType} is not one of the accepted types`);
+    }
+
+    const maxResponseBytes = fetchRequest.maxResponseBytes ?? this.maxResponseBytes;
+    const declaredLength = Number(headers['content-length']);
+    if (!fetchRequest.truncateAtMaxBytes && Number.isFinite(declaredLength) && declaredLength > maxResponseBytes) {
+      response.body.destroy();
+      throw new FetchFailedError('response_too_large', `declared length ${declaredLength} exceeds ${maxResponseBytes} bytes`);
+    }
+
+    const bodyBytes = await readCapped(response.body, maxResponseBytes, { truncate: fetchRequest.truncateAtMaxBytes }).catch(
+      (error: unknown) => {
+        if (error instanceof ResponseTooLargeError) {
+          throw new FetchFailedError('response_too_large', `body exceeds ${maxResponseBytes} bytes`);
+        }
+        throw new FetchFailedError(...classifyError(error, signal));
+      },
+    );
+    const isGzipped = bodyBytes[0] === 0x1f && bodyBytes[1] === 0x8b;
+    const decompressed = fetchRequest.decompressGzip && isGzipped ? gunzipCapped(bodyBytes, maxResponseBytes) : bodyBytes;
+    return decodeBody(decompressed, headers['content-type']);
   }
 
   /** Closes pooled connections. Call when the crawl is done. */
@@ -245,6 +241,56 @@ export class HttpFetcher {
     if (fetchRequest.ifNoneMatch !== undefined) headers['if-none-match'] = fetchRequest.ifNoneMatch;
     if (fetchRequest.ifModifiedSince !== undefined) headers['if-modified-since'] = fetchRequest.ifModifiedSince;
     return headers;
+  }
+}
+
+type ResponseData = Awaited<ReturnType<typeof request>>;
+
+/** Where a fetch has got to: what a failure reports, and what the response is built from. */
+interface FetchProgress {
+  /** The URL being fetched: the requested one, then each redirect's target. */
+  currentUrl: string;
+  /** Every URL fetched before the current one, in order. */
+  redirectChain: string[];
+}
+
+/** Thrown inside a fetch for a failure the caller is told about as a FetchFailure. */
+class FetchFailedError extends Error {
+  constructor(
+    readonly reason: FetchFailureReason,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/** The URL to request, without its fragment. Throws for a URL that is never fetched. */
+function fetchableUrlOf(url: string): URL {
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    throw new FetchFailedError('invalid_url', `not a valid URL: ${url}`);
+  }
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    throw new FetchFailedError('unsupported_scheme', `only http and https are fetched, not ${parsedUrl.protocol}`);
+  }
+  // Credentials in a URL would be sent to the target; never fetch them.
+  if (parsedUrl.username !== '' || parsedUrl.password !== '') {
+    throw new FetchFailedError('invalid_url', 'URLs with credentials are not fetched');
+  }
+  parsedUrl.hash = '';
+  return parsedUrl;
+}
+
+function gunzipCapped(bodyBytes: Buffer, maxResponseBytes: number): Buffer {
+  try {
+    return gunzipSync(bodyBytes, { maxOutputLength: maxResponseBytes });
+  } catch (error) {
+    if (error instanceof RangeError) {
+      throw new FetchFailedError('response_too_large', `gunzipped body exceeds ${maxResponseBytes} bytes`);
+    }
+    throw new FetchFailedError('network_error', `could not gunzip: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

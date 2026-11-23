@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { machineReadableResourceKindOf } from '@llms-txt/contracts';
-import { homepageMarkdownVariantUrlsFor, htmlUrlForMarkdownLink, markdownVariantUrlFor, parseRetryAfter } from './crawl-site';
+import { homepageMarkdownVariantUrlsFor, htmlUrlForMarkdownLink, markdownVariantUrlFor } from './markdown-variants';
+import { parseRetryAfter } from './polite-fetcher';
 
 // crawlSite itself runs against fixture sites in e2e/tests/crawler.test.ts.
 
