@@ -87,7 +87,7 @@ export const publicInternetOnly: NetworkPolicy = {
 /** Resolves a hostname to every address it has. Injectable so tests can simulate DNS. */
 export type HostnameResolver = (hostname: string) => Promise<string[]>;
 
-export const resolveWithSystemDns: HostnameResolver = async (hostname) => {
+const resolveWithSystemDns: HostnameResolver = async (hostname) => {
   const answers = await lookup(hostname, { all: true, order: 'verbatim' });
   return answers.map((answer) => answer.address);
 };

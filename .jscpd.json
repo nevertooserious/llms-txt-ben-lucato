@@ -1,0 +1,22 @@
+{
+  "path": [
+    "apps",
+    "packages",
+    "e2e",
+    "scripts"
+  ],
+  "ignore": [
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/fixtures/**",
+    "e2e/fixture-sites/**",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ],
+  "minTokens": 70,
+  "threshold": 1,
+  "reporters": [
+    "consoleFull"
+  ],
+  "gitignore": true
+}

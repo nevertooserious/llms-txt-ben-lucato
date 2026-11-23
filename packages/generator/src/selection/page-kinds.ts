@@ -15,6 +15,6 @@ export function isDocumentationPage(page: GeneratorPage): boolean {
   return isDocumentationType(page.record.pageType);
 }
 
-export function isDocumentationType(pageType: PageType): boolean {
+function isDocumentationType(pageType: PageType): boolean {
   return pageType === 'docs' || pageType === 'api' || pageType === 'guide';
 }

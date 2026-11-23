@@ -8,7 +8,6 @@ export {
 } from './enrichment-inputs';
 export {
   LlmOutputRejectedError,
-  MAXIMUM_SITE_NOTES,
   PAGE_ASSESSMENT_MODEL,
   SITE_SUMMARY_MODEL,
   type GeneratedSiteSummary,
